@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.9%2B-informational)
-![CI](https://github.com/Furox88/axiomize/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)
 
 **Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **six perspectives**, an honest comparison, runnable validation code — and what would falsify the model.
 
@@ -31,7 +31,7 @@ Copy `skills/axiomize/` into your agent's skills directory:
 
 ```bash
 # Claude Code
-git clone https://github.com/Furox88/axiomize
+git clone https://github.com/Furox-Art/axiomize
 cp -r axiomize/skills/axiomize ~/.claude/skills/
 
 # opencode
