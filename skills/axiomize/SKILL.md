@@ -11,6 +11,10 @@ Turn vague ideas into formal mathematical models through disciplined decompositi
 
 Follow ALL phases in order. Never skip a phase. Show intermediate outputs to the user.
 
+### Phase 0 — Set Rigor Level
+
+Pick **basic**, **standard** (default), or **research** using the signals table in [rigor.md](rigor.md), announce it in your first line, and offer: *"say 'deeper' or 'quicker' anytime."* The ladder defines what each phase requires at each level — basic stays light but honest, research adds model criticism, dimensionless reduction, uncertainty quantification and reproducibility. Whatever the tier, the final answer opens with a plain-language summary (≤ 5 sentences).
+
 ### Phase 1 — Parse the Idea
 
 Restate the idea in one sentence. Then extract:
@@ -132,5 +136,6 @@ Assemble the final answer using [templates/report.md](templates/report.md). Its 
 - NEVER present an equation without defining every symbol.
 - NEVER skip Phase 5 multi-perspective analysis silently — if reducing scope, say so explicitly.
 - ALWAYS state units for parameters.
+- ALWAYS open the final deliverable with a plain-language summary, regardless of tier.
 - If the idea is purely qualitative (no measurable quantity exists), say so and propose the closest measurable proxy instead of inventing fake precision.
 - Distinguish clearly between: established science, reasonable assumption, pure speculation.

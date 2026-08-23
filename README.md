@@ -10,6 +10,16 @@
 
 LLMs answer "how do I model X?" with a single plausible guess. Real modeling discipline is different: you decompose, extract parameters with units, attack from several mathematical lenses, compare honestly, and state falsifiable predictions. This skill enforces that discipline.
 
+## Three rigor levels
+
+The same workflow serves a curious beginner and a thesis chapter — you pick the depth:
+
+- **basic** — *"just tell me quickly"* → top parameters, 2 lenses, informal math, plain words
+- **standard** *(default)* → the full 8-phase discipline
+- **research** — *"rigorous / for my thesis"* → ≥ 3 lenses + model criticism, dimensionless reduction (Buckingham π), uncertainty quantification, reproducibility statement
+
+Whatever the tier, every report opens with a **plain-language summary** (≤ 5 sentences, no jargon) and follows an **escalation rule**: if a quick run hits a threshold or lenses disagree, that sub-problem is automatically promoted one level deeper. See [`skills/axiomize/rigor.md`](skills/axiomize/rigor.md).
+
 ## The workflow
 
 ```

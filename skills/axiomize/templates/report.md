@@ -6,8 +6,14 @@ The deliverable of every full modeling session. Copy this skeleton, fill every s
 
 # Model Report: <one-line name>
 
+**Rigor level:** basic / standard / research *(chosen at Phase 0; see rigor.md)*
 **Idea as stated:** <user's original words, quoted>
 **Model in one sentence:** <"This idea reduces to a ___-type system with ___">
+
+**Plain-language summary** *(≤ 5 sentences, required at every tier)*:
+<what happens, what we recommend, and the single number/threshold that matters most — no jargon>
+
+---
 
 ## 1. Decomposition
 
@@ -74,5 +80,12 @@ Killed by: <observations that would falsify it, mapped back to assumptions>
 | e.g., "demand is i.i.d. weekly" | assumption | needs data check |
 | e.g., "customers will accept 3 min waits" | speculation | unvalidated |
 
+## 9. Research-tier appendix *(only when level = research)*
+
+- **Limitations:** <what this model cannot answer, stated without hedging>
+- **Reproducibility:** <seeds used, library versions, minimal data needed to rerun>
+- **Canonical results inherited:** <named theorems/formulas relied on instead of re-derived>
+- **Model criticism log:** <rival hypotheses each lens excluded, from Phase 5>
+
 ---
-*Generated via Axiomize workflow · archetypes matched: <list>*
+*Generated via Axiomize workflow · rigor level: <tier> · archetypes matched: <list>*
