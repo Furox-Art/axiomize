@@ -37,5 +37,9 @@ Analysis methods ladder (cheap→expensive):
 
 ## Strengths / Blind Spots
 
-- ✅ Captures heterogeneity & clustering cheaply; yields actionable targeting (whom to vaccinate/influence/inspect)
-- ❌ Needs real network data (often unavailable — then state this and fall back to synthetic graphs with stated P(k)); temporal network changes usually ignored; dynamics parameters still come from other lenses
+- (+) Captures heterogeneity & clustering cheaply; yields actionable targeting (whom to vaccinate/influence/inspect)
+- (-) Needs real network data (often unavailable — then state this and fall back to synthetic graphs with stated P(k)); temporal network changes usually ignored; dynamics parameters still come from other lenses
+
+---
+
+**See also:** pairs naturally with [deterministic](deterministic.md) (your R₀ becomes R_eff = R₀·⟨k²⟩/⟨k⟩) and [agent-based](agent-based.md) (ABM on the actual graph). No worked example yet — see [CONTRIBUTING](../../CONTRIBUTING.md) to add one.

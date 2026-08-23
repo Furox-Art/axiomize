@@ -21,8 +21,8 @@ Each file in `skills/axiomize/perspectives/` follows a fixed contract. A new len
 - Numbered list of artifacts every analysis must produce
 
 ## Strengths / Blind Spots
-- ✅ what this view uniquely sees
-- ❌ what this view cannot see (honesty is the product)
+- (+) what this view uniquely sees
+- (-) what this view cannot see (honesty is the product)
 ```
 
 Rules for perspective content:

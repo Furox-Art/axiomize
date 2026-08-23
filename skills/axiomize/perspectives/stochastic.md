@@ -40,5 +40,9 @@ When no closed form exists:
 
 ## Strengths / Blind Spots
 
-- ✅ Quantifies risk and uncertainty honestly; captures rare-event and threshold phenomena invisible deterministically
-- ❌ Needs more data to fit distributions; results are intervals not points (some users hate this); computationally heavier
+- (+) Quantifies risk and uncertainty honestly; captures rare-event and threshold phenomena invisible deterministically
+- (-) Needs more data to fit distributions; results are intervals not points (some users hate this); computationally heavier
+
+---
+
+**See also:** worked examples — [epidemic SIR](../../examples/epidemic-sir.md) (fade-out check), [retail inventory](../../examples/supply-chain-inventory.md) (safety stock), [coffee shop](../../examples/coffee-shop-staffing.md) (Erlang-C waits) · runnable demo: `tools/validate.py --model gillespie`

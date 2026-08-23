@@ -13,16 +13,18 @@ LLMs answer "how do I model X?" with a single plausible guess. Real modeling dis
 ## The workflow
 
 ```
-idea ──▶ 1. Parse (system / state / goal / horizon)
-     ──▶ 2. Decompose into sub-problems (flow · interaction · decision · uncertainty)
-     ──▶ 3. Parameter table   (symbol, unit, range, sensitivity)
-     ──▶ 4. Assumptions       (each with its violation consequence)
-     ──▶ 5. Multi-perspective modeling:
-              deterministic · stochastic · optimization ·
-              agent-based · network · control
-     ──▶ 6. Compare & recommend
-     ──▶ 7. Implement in Python + validate + sensitivity sweep
-     ──▶ 8. Falsifiability    (what observation kills this model?)
+idea
+ │
+ ├── 1. Parse ............... system / state / goal / horizon
+ ├── 2. Decompose ........... flow | interaction | decision | uncertainty
+ ├── 3. Parameters .......... symbol - unit - range - sensitivity
+ ├── 4. Assumptions ......... each with its violation consequence
+ ├── 5. Multi-perspective ...
+ │        deterministic | stochastic | optimization |
+ │        agent-based | network | control
+ ├── 6. Compare ............. scored table, one recommended model
+ ├── 7. Implement ........... Python + sanity checks + sensitivity sweep
+ └── 8. Falsifiability ...... what observation kills this model?
 ```
 
 ## Install

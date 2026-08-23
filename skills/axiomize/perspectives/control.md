@@ -37,5 +37,9 @@ y  = g(x)            measurement y (what you can actually observe)
 
 ## Strengths / Blind Spots
 
-- ✅ Turns "what happens" into "how to act"; quantifies trade-off between error and effort; explicit robustness margins
-- ❌ Local (linearized) validity only — big excursions leave the regime; assumes sensor+actuator availability; optimal ≠ implementable if gains require unrealistic reaction speeds
+- (+) Turns "what happens" into "how to act"; quantifies trade-off between error and effort; explicit robustness margins
+- (-) Local (linearized) validity only — big excursions leave the regime; assumes sensor+actuator availability; optimal ≠ implementable if gains require unrealistic reaction speeds
+
+---
+
+**See also:** worked example — [retail inventory](../../examples/supply-chain-inventory.md) (reorder rule as feedback controller, lead time as dead-time). Builds directly on [deterministic](deterministic.md) state-space form; extends to [optimization](optimization.md) via LQR cost.

@@ -34,5 +34,9 @@ Checklist for building it:
 
 ## Strengths / Blind Spots
 
-- ✅ Cheap, interpretable, exact threshold results
-- ❌ No noise, no individual variation, wrong when populations are small or events are rare
+- (+) Cheap, interpretable, exact threshold results
+- (-) No noise, no individual variation, wrong when populations are small or events are rare
+
+---
+
+**See also:** worked example using this lens as primary — [epidemic SIR](../../examples/epidemic-sir.md) · templates: [parameter table](../templates/parameters.md), [assumptions](../templates/assumptions.md)

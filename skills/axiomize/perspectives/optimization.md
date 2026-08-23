@@ -42,5 +42,9 @@ Multiple actors, each optimizing against others:
 
 ## Strengths / Blind Spots
 
-- ✅ Directly answers "what should we do"; shadow prices quantify trade-offs
-- ❌ Assumes rationality and known objectives; optimal-for-model ≠ good-for-reality; garbage objective = garbage decision
+- (+) Directly answers "what should we do"; shadow prices quantify trade-offs
+- (-) Assumes rationality and known objectives; optimal-for-model ≠ good-for-reality; garbage objective = garbage decision
+
+---
+
+**See also:** worked examples — [retail inventory](../../examples/supply-chain-inventory.md) ((s,Q) policy), [coffee shop](../../examples/coffee-shop-staffing.md) (staffing ILP fed by Erlang-C waits — lenses composing). Templates: [parameter table](../templates/parameters.md)
