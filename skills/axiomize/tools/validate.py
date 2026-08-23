@@ -82,6 +82,28 @@ def report_sir(args):
             pi = int(np.argmax(i))
             print(f"{b:6.3f} {b/gamma:7.2f} {i[pi]:14,.0f} {s.t[pi]:9.1f} {s.y[2][-1]/N:11.4f}")
 
+    if args.plot:
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print("plot skipped: matplotlib not installed")
+        else:
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for series, label in [(S, "S"), (I, "I"), (R, "R")]:
+                ax.plot(t, series, lw=2, label=label)
+            ax.axvline(t[peak_idx], ls="--", c="gray", lw=1)
+            ax.annotate(f"peak {I[peak_idx]:,.0f}\nday {t[peak_idx]:.0f}",
+                        (t[peak_idx], I[peak_idx]), xytext=(8, -4),
+                        textcoords="offset points", fontsize=9)
+            ax.set_xlabel("days")
+            ax.set_ylabel("individuals")
+            ax.set_title(f"SIR: beta={beta}, gamma={gamma}, R0={r0:.2f}")
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig(args.plot, dpi=130)
+            plt.close(fig)
+            print(f"\nplot saved -> {args.plot}")
+
     return 0 if ok else 1
 
 
@@ -253,7 +275,8 @@ def main():
     p.add_argument("--mu", type=float, default=20, help="queue service rate per server per hour")
     p.add_argument("--target-wait", type=float, default=3, help="promised max average wait, minutes")
     p.add_argument("--days", type=int, default=180, help="SIR simulation horizon")
-    p.add_argument("--sweep", action="store_true", help="run parameter sensitivity sweep")
+    p.add_argument("--sweep", action="store_true", help="run sensitivity sweep over beta")
+    p.add_argument("--plot", metavar="PNG", default=None, help="save SIR curves plot (needs matplotlib)")
     args = p.parse_args()
     sys.exit(MODELS[args.model](args))
 

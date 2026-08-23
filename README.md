@@ -81,8 +81,8 @@ Lenses **compose**: e.g., queueing theory computes the wait, an integer program 
 ```bash
 pip install numpy scipy
 
-# deterministic SIR vs final-size theory + sensitivity sweep
-python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --sweep
+# deterministic SIR vs final-size theory + sensitivity sweep + plot
+python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --sweep --plot curve.png
 
 # exact CTMC simulation -> extinction probability matches (1/(1+R0))^I0
 python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1
@@ -91,7 +91,33 @@ python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1
 python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
 ```
 
+![Example SIR output](docs/sir-example.png)
+
+## Calibrate with your own data
+
+Phase 7 placeholders become real models when you feed observations. The bundled fitter estimates parameters with confidence intervals and derived quantities (R₀ with uncertainty, carrying capacity K, doubling times):
+
+```bash
+python skills/axiomize/tools/fit.py --model sir --data mycases.csv --plot fit.png
+python skills/axiomize/tools/fit.py --model logistic --data adoption.csv
+```
+
+CSV format: time column first, observed values second (`day,infected`). Both models ship with `--selftest` modes that recover known ground truth from noisy synthetic data — the same honesty standard we demand from the models themselves.
+
 Each mode prints internal-consistency checks (conservation laws, bounds, monotonicity, theory match) — the same checks Phase 7 demands from every model the skill produces.
+
+## Related work
+
+Idea→mathematics automation is an active research area; axiomize differs in scope and delivery format:
+
+| Work | Focus | Difference |
+|------|-------|------------|
+| [OptiMUS](https://arxiv.org/abs/2402.10172) | multi-agent optimization modeling | one lens (optimization); research prototype, not installable |
+| [OptimAI](https://arxiv.org/abs/2504.16918) | NL → optimization pipeline | single-perspective pipeline |
+| [ORMind](https://arxiv.org/abs/2506.01326) | operations-reasoning framework | OR-specific |
+| [LLM4OPT](https://github.com/ishmael233/LLM4OPT) | survey/taxonomy of LLM-for-optimization | catalog of papers |
+
+Axiomize covers **six mathematical lenses** (not only optimization), adds **archetype recognition**, enforces **falsifiability and a confidence ledger**, and ships as a **standard Agent Skill** that any Claude Code / opencode / Cursor user can install by copying one folder.
 
 ## Repository layout
 
@@ -100,6 +126,7 @@ skills/axiomize/
 ├── SKILL.md              # the 8-phase workflow (the brain)
 │                          + Parallel Dispatch Protocol (Phase 5)
 ├── archetypes.md         # idea-pattern catalog → canonical models (SIR, newsvendor, M/M/c...)
+├── rigor.md              # three-tier ladder: basic / standard / research
 ├── perspectives/         # one file per mathematical lens
 │   ├── deterministic.md  # ODEs, difference equations, thresholds
 │   ├── stochastic.md     # Markov chains, Monte Carlo, risk
@@ -114,8 +141,10 @@ skills/axiomize/
     └── report.md         # standardized final deliverable skeleton
 
 examples/                 # full end-to-end case studies
+docs/sir-example.png      # sample Phase-7 output plot
 skills/axiomize/tools/    # bundled with the skill itself
 ├── validate.py           # consistency checks & sensitivity sweeps
+├── fit.py                # calibrate parameters from your own CSV data
 ├── parallel_sweep.py     # real process-pool parallel execution engine
 └── check_skill.py        # skill metadata & link linter
 ```

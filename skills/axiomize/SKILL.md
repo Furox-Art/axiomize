@@ -115,8 +115,10 @@ Generate runnable Python for the recommended model:
 
 - Use `numpy`/`scipy.integrate.solve_ivp` for ODEs, `numpy` RNG for stochastic, `scipy.optimize` for optimization, plain loops/dataclasses for agent-based.
 - Parameter values: use literature-typical defaults, clearly marked as placeholders.
+- **If the user has real data** (CSV of observations), calibrate instead of guessing: `tools/fit.py --model <sir|logistic> --data <file>` returns fitted parameters with confidence intervals and derived quantities (R₀, K...). Report both fit quality (RMSE) and parameter uncertainty.
 - Then validate with `tools/validate.py` (dimensional checks, sanity bounds, conservation laws).
 - Run a sensitivity sweep on the 2 highest-sensitivity parameters from Phase 3.
+- When matplotlib is available, produce a plot of the model behavior (`--plot`) and reference it in the report.
 - Present results as: predicted behavior summary + plot description + limitations.
 
 ### Phase 8 — Deliverable Format
@@ -130,6 +132,8 @@ Assemble the final answer using [templates/report.md](templates/report.md). Its 
 5. Code + validation results
 6. **What would falsify this model** — observable predictions that, if wrong, kill the model
 7. **Confidence ledger** — every major claim tagged as established / assumption / speculation
+
+**Archive rule:** after delivering the report, save it to `reports/YYYY-MM-DD-<short-slug>.md` in the working directory (create the folder if needed) and tell the user the path. Modeling sessions should accumulate into a searchable personal archive, not evaporate into chat scrollback.
 
 ## Hard Rules
 

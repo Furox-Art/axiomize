@@ -6,7 +6,7 @@ The deliverable of every full modeling session. Copy this skeleton, fill every s
 
 # Model Report: <one-line name>
 
-**Rigor level:** basic / standard / research *(chosen at Phase 0; see rigor.md)*
+**Date:** YYYY-MM-DD · **Rigor level:** basic / standard / research *(chosen at Phase 0; see rigor.md)*
 **Idea as stated:** <user's original words, quoted>
 **Model in one sentence:** <"This idea reduces to a ___-type system with ___">
 
