@@ -17,6 +17,7 @@ idea
  │
  ├── 1. Parse ............... system / state / goal / horizon
  ├── 2. Decompose ........... flow | interaction | decision | uncertainty
+ │        + match against the archetype catalog (SIR, newsvendor, M/M/c...)
  ├── 3. Parameters .......... symbol - unit - range - sensitivity
  ├── 4. Assumptions ......... each with its violation consequence
  ├── 5. Multi-perspective ...
@@ -24,7 +25,7 @@ idea
  │        agent-based | network | control
  ├── 6. Compare ............. scored table, one recommended model
  ├── 7. Implement ........... Python + sanity checks + sensitivity sweep
- └── 8. Falsifiability ...... what observation kills this model?
+ └── 8. Falsifiability ...... what observation kills this model? + confidence ledger
 ```
 
 ## Install
@@ -87,6 +88,7 @@ Each mode prints internal-consistency checks (conservation laws, bounds, monoton
 ```
 skills/axiomize/
 ├── SKILL.md              # the 8-phase workflow (the brain)
+├── archetypes.md         # idea-pattern catalog → canonical models (SIR, newsvendor, M/M/c...)
 ├── perspectives/         # one file per mathematical lens
 │   ├── deterministic.md  # ODEs, difference equations, thresholds
 │   ├── stochastic.md     # Markov chains, Monte Carlo, risk
@@ -96,7 +98,8 @@ skills/axiomize/
 │   └── control.md        # feedback, regulation, steering
 └── templates/
     ├── assumptions.md    # checklist with violation consequences
-    └── parameters.md     # active parameter table contract
+    ├── parameters.md     # active parameter table contract
+    └── report.md         # standardized final deliverable skeleton
 
 examples/                 # full end-to-end case studies
 tools/validate.py         # consistency checks & sensitivity sweeps

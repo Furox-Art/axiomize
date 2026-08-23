@@ -1,6 +1,6 @@
 ---
 name: axiomize
-description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based), compares the resulting models, and recommends the best one with runnable Python code. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
+description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
 ---
 
 # Axiomize: Idea → Rigorous Mathematical Model
@@ -21,7 +21,13 @@ Restate the idea in one sentence. Then extract:
 - **Goal**: What question must the model answer? (prediction? explanation? optimization? control?)
 - **Horizon**: Time scale and spatial scale that matter.
 
-If any of these is unclear, ask the user BEFORE proceeding.
+If any of these is unclear, ask the user BEFORE proceeding — but ask like a modeler, not generically:
+
+- Vague goal → "Do you want to PREDICT what happens, DECIDE what to do, or CONTROL it to a target?" (this single question routes the whole session)
+- No quantities named → "What would you MEASURE to know this is working?"
+- No scale given → "Over what time period? At what size?"
+
+Never proceed on an idea where neither system boundary nor goal question can be stated.
 
 ### Phase 2 — Decompose
 
@@ -54,7 +60,9 @@ Write assumptions using [templates/assumptions.md](templates/assumptions.md). Ev
 
 ### Phase 5 — Multi-Perspective Modeling
 
-Read EVERY perspective file in `perspectives/`. For each applicable perspective, build an actual model — not just "this could apply":
+**First, check [archetypes.md](archetypes.md):** scan the catalog against each sub-problem from Phase 2. If two or more core features match an archetype (SIR, Bass diffusion, newsvendor, M/M/c, logistic, Lotka–Volterra...), START from that canonical model and adapt — declare the match and what you changed. Inherited closed forms become Phase 7 validation targets. If nothing matches, say "novel territory" explicitly.
+
+Then read EVERY perspective file in `perspectives/`. For each applicable perspective, build an actual model — not just "this could apply":
 
 1. [perspectives/deterministic.md](perspectives/deterministic.md) — ODEs, difference equations, compartmental models
 2. [perspectives/stochastic.md](perspectives/stochastic.md) — random variables, Markov chains, Monte Carlo
@@ -98,7 +106,7 @@ Generate runnable Python for the recommended model:
 
 ### Phase 8 — Deliverable Format
 
-Final answer structure:
+Assemble the final answer using [templates/report.md](templates/report.md). Its non-negotiable elements:
 
 1. **One-line model statement** ("The idea reduces to a SIR-type system with reinfection")
 2. Assumptions & parameter tables
@@ -106,6 +114,7 @@ Final answer structure:
 4. Comparison table + recommendation
 5. Code + validation results
 6. **What would falsify this model** — observable predictions that, if wrong, kill the model
+7. **Confidence ledger** — every major claim tagged as established / assumption / speculation
 
 ## Hard Rules
 
