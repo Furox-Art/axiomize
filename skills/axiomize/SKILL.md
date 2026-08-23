@@ -60,6 +60,8 @@ Read EVERY perspective file in `perspectives/`. For each applicable perspective,
 2. [perspectives/stochastic.md](perspectives/stochastic.md) — random variables, Markov chains, Monte Carlo
 3. [perspectives/optimization.md](perspectives/optimization.md) — objective functions, constraints, equilibria
 4. [perspectives/agent-based.md](perspectives/agent-based.md) — local rules → global behavior
+5. [perspectives/network.md](perspectives/network.md) — graph structure, centrality, dynamics on networks
+6. [perspectives/control.md](perspectives/control.md) — feedback, regulation, steering to setpoint
 
 Applicability rule: model from at least **two** perspectives whenever possible. A single-perspective analysis is acceptable only if the user explicitly asks for speed.
 
@@ -77,10 +79,10 @@ Blind spots: <what this view cannot see>
 
 Build a comparison table:
 
-| Criterion | Deterministic | Stochastic | Optimization | Agent-Based |
-|-----------|---------------|------------|--------------|-------------|
+| Criterion | Det | Stoch | Opt | ABM | Net | Ctrl |
+|-----------|-----|-------|-----|-----|-----|------|
 
-Criteria (score 1–5): fidelity to reality, data requirements, computational cost, analytical tractability, answerability of the user's goal question.
+Criteria (score 1–5): fidelity to reality, data requirements, computational cost, analytical tractability, answerability of the user's goal question. Only include columns for perspectives you actually built; mark rejected ones with a one-line rejection reason under the table.
 
 Recommend ONE primary model (+ optionally one secondary for validation). Justify with the table, not vibes.
 
