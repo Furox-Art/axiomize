@@ -21,3 +21,7 @@ jobs:
         run: python tools/validate.py --model gillespie --N 10000 --I0 1 --runs 300
       - name: Queue (Erlang-C) checks
         run: python tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
+      - name: Parallel sweep engine
+        run: |
+          python tools/parallel_sweep.py --job sweep
+          python tools/parallel_sweep.py --job mc

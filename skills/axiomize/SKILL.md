@@ -73,6 +73,17 @@ Then read EVERY perspective file in `perspectives/`. For each applicable perspec
 
 Applicability rule: model from at least **two** perspectives whenever possible. A single-perspective analysis is acceptable only if the user explicitly asks for speed.
 
+### Parallel Dispatch Protocol
+
+If the runtime supports subagents (Claude Code `Task` tool, opencode `task` tool, equivalent), Phase 5 MUST run in parallel:
+
+1. **Freeze first.** Phases 1–4 are completed and FROZEN before any dispatch: idea statement, goal question, decomposition, parameter table, assumptions. Frozen inputs go into every brief verbatim.
+2. **Select lenses** (≥ 2 applicable). Sub-problems marked *coupled* in Phase 2 stay inside one brief — never split coupled dynamics across agents.
+3. **Dispatch simultaneously**: fill [templates/subagent-brief.md](templates/subagent-brief.md) once per lens and send ALL briefs in a single message so they execute concurrently. Each brief is self-contained; subagents see no other lens's output (independence prevents anchoring bias between lenses).
+4. **Merge**: collect blocks verbatim → resolve every `ASSUMPTION CONFLICT` yourself and document resolutions → deduplicate overlapping insights → proceed to Phase 6 with the collected scores.
+
+Fallback (no subagent support): run the same briefs sequentially through your own context, in the order listed above, and note in the report that independence was sequential rather than parallel.
+
 For each perspective output:
 
 ```

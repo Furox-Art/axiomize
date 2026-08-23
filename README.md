@@ -88,6 +88,7 @@ Each mode prints internal-consistency checks (conservation laws, bounds, monoton
 ```
 skills/axiomize/
 ├── SKILL.md              # the 8-phase workflow (the brain)
+│                          + Parallel Dispatch Protocol (Phase 5)
 ├── archetypes.md         # idea-pattern catalog → canonical models (SIR, newsvendor, M/M/c...)
 ├── perspectives/         # one file per mathematical lens
 │   ├── deterministic.md  # ODEs, difference equations, thresholds
@@ -99,10 +100,28 @@ skills/axiomize/
 └── templates/
     ├── assumptions.md    # checklist with violation consequences
     ├── parameters.md     # active parameter table contract
+    ├── subagent-brief.md # self-contained brief for each parallel lens agent
     └── report.md         # standardized final deliverable skeleton
 
 examples/                 # full end-to-end case studies
-tools/validate.py         # consistency checks & sensitivity sweeps
+tools/
+├── validate.py           # consistency checks & sensitivity sweeps
+└── parallel_sweep.py     # real process-pool parallel execution engine
+```
+
+## Parallel lens dispatch
+
+Phase 5 doesn't have to run lenses one-by-one. On runtimes with a subagent tool (Claude Code, opencode), the skill **freezes** the shared context (idea, decomposition, parameter table, assumptions), fills `templates/subagent-brief.md` once per applicable lens, and dispatches all briefs **in a single message** so they execute concurrently:
+
+- each subagent sees exactly ONE perspective — independence kills anchoring bias between lenses
+- coupled sub-problems stay in one brief; conflicts surface as explicit `ASSUMPTION CONFLICT` flags to resolve at merge time
+- no subagent support? graceful sequential fallback, noted in the report
+
+The same pattern is proven in code: [`tools/parallel_sweep.py`](tools/parallel_sweep.py) splits parameter grids and Monte Carlo chunks across a real process pool:
+
+```bash
+python tools/parallel_sweep.py --job sweep   # 28 ODE tasks, 8 workers, ~1.4s
+python tools/parallel_sweep.py --job mc      # 400 CTMC runs in parallel chunks
 ```
 
 ## Design principles
