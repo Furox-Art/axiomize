@@ -42,4 +42,4 @@ y  = g(x)            measurement y (what you can actually observe)
 
 ---
 
-**See also:** worked example — [retail inventory](../../examples/supply-chain-inventory.md) (reorder rule as feedback controller, lead time as dead-time). Builds directly on [deterministic](deterministic.md) state-space form; extends to [optimization](optimization.md) via LQR cost.
+**See also:** worked example — [retail inventory](../../../examples/supply-chain-inventory.md) (reorder rule as feedback controller, lead time as dead-time). Builds directly on [deterministic](deterministic.md) state-space form; extends to [optimization](optimization.md) via LQR cost.

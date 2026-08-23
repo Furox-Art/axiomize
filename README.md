@@ -72,13 +72,13 @@ Lenses **compose**: e.g., queueing theory computes the wait, an integer program 
 pip install numpy scipy
 
 # deterministic SIR vs final-size theory + sensitivity sweep
-python tools/validate.py --model sir --beta 0.3 --gamma 0.1 --sweep
+python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --sweep
 
 # exact CTMC simulation -> extinction probability matches (1/(1+R0))^I0
-python tools/validate.py --model gillespie --N 10000 --I0 1
+python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1
 
 # M/M/c staffing cliff -> minimal baristas for a 3-minute wait promise
-python tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
+python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
 ```
 
 Each mode prints internal-consistency checks (conservation laws, bounds, monotonicity, theory match) — the same checks Phase 7 demands from every model the skill produces.
@@ -104,9 +104,10 @@ skills/axiomize/
     └── report.md         # standardized final deliverable skeleton
 
 examples/                 # full end-to-end case studies
-tools/
+skills/axiomize/tools/    # bundled with the skill itself
 ├── validate.py           # consistency checks & sensitivity sweeps
-└── parallel_sweep.py     # real process-pool parallel execution engine
+├── parallel_sweep.py     # real process-pool parallel execution engine
+└── check_skill.py        # skill metadata & link linter
 ```
 
 ## Parallel lens dispatch
@@ -117,11 +118,11 @@ Phase 5 doesn't have to run lenses one-by-one. On runtimes with a subagent tool 
 - coupled sub-problems stay in one brief; conflicts surface as explicit `ASSUMPTION CONFLICT` flags to resolve at merge time
 - no subagent support? graceful sequential fallback, noted in the report
 
-The same pattern is proven in code: [`tools/parallel_sweep.py`](tools/parallel_sweep.py) splits parameter grids and Monte Carlo chunks across a real process pool:
+The same pattern is proven in code: [`skills/axiomize/tools/parallel_sweep.py`](skills/axiomize/tools/parallel_sweep.py) splits parameter grids and Monte Carlo chunks across a real process pool:
 
 ```bash
-python tools/parallel_sweep.py --job sweep   # 28 ODE tasks, 8 workers, ~1.4s
-python tools/parallel_sweep.py --job mc      # 400 CTMC runs in parallel chunks
+python skills/axiomize/tools/parallel_sweep.py --job sweep   # 28 ODE tasks, 8 workers, ~1.4s
+python skills/axiomize/tools/parallel_sweep.py --job mc      # 400 CTMC runs in parallel chunks
 ```
 
 ## Design principles

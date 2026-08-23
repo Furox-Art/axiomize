@@ -45,4 +45,4 @@ When no closed form exists:
 
 ---
 
-**See also:** worked examples — [epidemic SIR](../../examples/epidemic-sir.md) (fade-out check), [retail inventory](../../examples/supply-chain-inventory.md) (safety stock), [coffee shop](../../examples/coffee-shop-staffing.md) (Erlang-C waits) · runnable demo: `tools/validate.py --model gillespie`
+**See also:** worked examples — [epidemic SIR](../../../examples/epidemic-sir.md) (fade-out check), [retail inventory](../../../examples/supply-chain-inventory.md) (safety stock), [coffee shop](../../../examples/coffee-shop-staffing.md) (Erlang-C waits) · runnable demo: `tools/validate.py --model gillespie`

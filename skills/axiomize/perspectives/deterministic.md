@@ -39,4 +39,4 @@ Checklist for building it:
 
 ---
 
-**See also:** worked example using this lens as primary — [epidemic SIR](../../examples/epidemic-sir.md) · templates: [parameter table](../templates/parameters.md), [assumptions](../templates/assumptions.md)
+**See also:** worked example using this lens as primary — [epidemic SIR](../../../examples/epidemic-sir.md) · templates: [parameter table](../templates/parameters.md), [assumptions](../templates/assumptions.md)

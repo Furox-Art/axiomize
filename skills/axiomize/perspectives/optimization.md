@@ -47,4 +47,4 @@ Multiple actors, each optimizing against others:
 
 ---
 
-**See also:** worked examples — [retail inventory](../../examples/supply-chain-inventory.md) ((s,Q) policy), [coffee shop](../../examples/coffee-shop-staffing.md) (staffing ILP fed by Erlang-C waits — lenses composing). Templates: [parameter table](../templates/parameters.md)
+**See also:** worked examples — [retail inventory](../../../examples/supply-chain-inventory.md) ((s,Q) policy), [coffee shop](../../../examples/coffee-shop-staffing.md) (staffing ILP fed by Erlang-C waits — lenses composing). Templates: [parameter table](../templates/parameters.md)

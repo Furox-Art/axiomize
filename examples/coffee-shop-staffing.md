@@ -88,7 +88,7 @@ No interaction topology between customers; no continuous setpoint regulation pro
 ## Phase 7 — Implementation
 
 ```bash
-python tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
+python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
 ```
 
 Prints minimal staffing c meeting the wait target across utilization range, plus the cliff table showing E[W] vs c. Sensitivity sweep over μ ∈ {15..25}.

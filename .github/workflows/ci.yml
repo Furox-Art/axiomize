@@ -15,13 +15,15 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install numpy scipy
+      - name: Skill lint (frontmatter + links + compile)
+        run: python skills/axiomize/tools/check_skill.py
       - name: Deterministic SIR checks
-        run: python tools/validate.py --model sir --beta 0.3 --gamma 0.1
+        run: python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1
       - name: Stochastic (Gillespie) checks
-        run: python tools/validate.py --model gillespie --N 10000 --I0 1 --runs 300
+        run: python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1 --runs 300
       - name: Queue (Erlang-C) checks
-        run: python tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
+        run: python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
       - name: Parallel sweep engine
         run: |
-          python tools/parallel_sweep.py --job sweep
-          python tools/parallel_sweep.py --job mc
+          python skills/axiomize/tools/parallel_sweep.py --job sweep
+          python skills/axiomize/tools/parallel_sweep.py --job mc

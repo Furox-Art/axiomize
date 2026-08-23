@@ -84,7 +84,7 @@ Single node, no interaction structure — structure adds nothing to THIS questio
 ## Phase 7 — Implementation
 
 ```bash
-python tools/validate.py --model gillespie   # stochastic epidemic demo
+python skills/axiomize/tools/validate.py --model gillespie   # stochastic epidemic demo
 # inventory Monte Carlo follows the same pattern: sample demands ~ N(μ_D, σ_D),
 # apply (s,Q) rule, report fill rate & avg cost across ≥10⁴ runs
 ```

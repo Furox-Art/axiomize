@@ -72,10 +72,10 @@ Rejected: heterogeneity and network structure deliberately excluded in first pas
 
 ## Phase 7 — Implementation
 
-See `tools/validate.py` usage:
+See `skills/axiomize/tools/validate.py` usage:
 
 ```python
-python tools/validate.py --model sir --beta 0.3 --gamma 0.1 --I0 10 --N 1000000
+python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --I0 10 --N 1000000
 ```
 
 Outputs: peak height/timing, final size vs theoretical prediction (consistency check), R₀, sensitivity sweep over β ∈ [0.2, 0.5].

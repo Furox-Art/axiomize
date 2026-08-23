@@ -41,9 +41,9 @@ Follow the 8-phase structure exactly as in `examples/epidemic-sir.md`. Requireme
 - Real-ish parameter ranges with source classes (`lit.` / `data` / `est.`)
 - At least two perspectives actually built, plus at least one **explicitly rejected with a one-line reason**
 - A falsifiability section naming observations that would kill the model
-- If you add runnable tooling, extend `tools/validate.py` (see below)
+- If you add runnable tooling, extend `skills/axiomize/tools/validate.py` (see below)
 
-## Extending `tools/validate.py`
+## Extending `skills/axiomize/tools/validate.py`
 
 Every new model mode must print sanity checks and exit non-zero when they fail. Accepted checks: conservation laws, bounds/monotonicity, agreement with a closed-form theory result (within stated tolerance), or distributional consistency across Monte Carlo runs. CI runs all modes — keep default parameters under ~60s total runtime.
 

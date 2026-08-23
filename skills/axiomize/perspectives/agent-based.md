@@ -40,4 +40,4 @@ An ABM is only rigorous when fully specified:
 
 ---
 
-**See also:** rejected in all current worked examples with recorded one-line reasons ([epidemic SIR](../../examples/epidemic-sir.md), [retail inventory](../../examples/supply-chain-inventory.md), [coffee shop](../../examples/coffee-shop-staffing.md)) — reading those rejections is the fastest way to learn when ABM earns its cost. Pairs with [network](network.md) for structure-aware ABMs.
+**See also:** rejected in all current worked examples with recorded one-line reasons ([epidemic SIR](../../../examples/epidemic-sir.md), [retail inventory](../../../examples/supply-chain-inventory.md), [coffee shop](../../../examples/coffee-shop-staffing.md)) — reading those rejections is the fastest way to learn when ABM earns its cost. Pairs with [network](network.md) for structure-aware ABMs.

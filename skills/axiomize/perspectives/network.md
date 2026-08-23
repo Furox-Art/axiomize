@@ -42,4 +42,4 @@ Analysis methods ladder (cheap→expensive):
 
 ---
 
-**See also:** pairs naturally with [deterministic](deterministic.md) (your R₀ becomes R_eff = R₀·⟨k²⟩/⟨k⟩) and [agent-based](agent-based.md) (ABM on the actual graph). No worked example yet — see [CONTRIBUTING](../../CONTRIBUTING.md) to add one.
+**See also:** pairs naturally with [deterministic](deterministic.md) (your R₀ becomes R_eff = R₀·⟨k²⟩/⟨k⟩) and [agent-based](agent-based.md) (ABM on the actual graph). No worked example yet — see [CONTRIBUTING](../../../CONTRIBUTING.md) to add one.
