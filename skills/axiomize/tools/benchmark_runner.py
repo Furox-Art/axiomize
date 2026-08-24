@@ -62,7 +62,11 @@ def grade(text, case):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     here = Path(__file__).resolve().parent
-    default_bench = here.parent.parent / "benchmarks" / "ideas.json"
+    candidates = [
+        here.parents[2] / "benchmarks" / "ideas.json",
+        Path.cwd() / "benchmarks" / "ideas.json",
+    ]
+    default_bench = next((str(c) for c in candidates if c.exists()), "")
     p.add_argument("--benchmarks", default=str(default_bench))
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--case", help="case id from ideas.json")
