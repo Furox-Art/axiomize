@@ -38,11 +38,33 @@ PREAMBLE = r"""\documentclass[11pt]{article}
 """
 
 POSTAMBLE = "\n\\end{document}\n"
-
 SUBSCRIPTS = {chr(0x2080 + i): f"$_{{{i}}}$" for i in range(10)}
+SUBSCRIPTS.update({"\u208a": "$_{+}$", "\u208b": "$_{-}$", "\u209c": "$_{t}$",
+                   "\u2090": "$_{a}$", "\u2091": "$_{e}$", "\u2095": "$_{h}$"})
+SUPERS = {**{chr(0x2070 + i): f"$^{i}$" for i in [0, 4, 5, 6, 7, 8, 9]},
+          "\u00b9": "$^1$", "\u00b2": "$^2$", "\u00b3": "$^3$",
+          "\u1d40": "$^{T}$", "\u1d4f": "$^{k}$", "\u207f": "$^{n}$"}
+CIRCLED = {chr(0x2460 + i): f"({i + 1})" for i in range(10)}
+
+DOUBLE_STRUCK = {"\u2124": r"$\mathbb{Z}$", "\u2115": r"$\mathbb{N}$",
+                 "\u211d": r"$\mathbb{R}$", "\u211a": r"$\mathbb{Q}$"}
+
+MATH_EXTRA = {
+    **DOUBLE_STRUCK,
+    "\u2200": r"$\forall$", "\u222b": r"$\int$", "\u2282": r"$\subset$",
+    "\u2286": r"$\subseteq$", "\u2283": r"$\supset$", "\u222a": r"$\cup$",
+    "\u2229": r"$\cap$", "\u230a": r"$\lfloor$", "\u230b": r"$\rfloor$",
+    "\u2308": r"$\lceil$", "\u2309": r"$\rceil$", "\u27fa": r"$\iff$",
+    "\u2194": r"$\leftrightarrow$", "\u21a6": r"$\mapsto$", "\u22c5": r"$\cdot$",
+    "\u2218": r"$\circ$", "\u2245": r"$\cong$", "\u223c": r"$\sim$",
+    "\u2207": r"$\nabla$", "\u2202": r"$\partial$", "\u26a0": "(!)",
+}
 
 TRANSLIT = {
     **SUBSCRIPTS,
+    **SUPERS,
+    **CIRCLED,
+    **MATH_EXTRA,
     "\u00b2": "$^2$", "\u00b3": "$^3$", "\u2070": "$^0$", "\u2074": "$^4$",
     "\u2075": "$^5$", "\u207a": "$^+$", "\u207b": "$^-$",
     "\u03b1": r"$\alpha$", "\u03b2": r"$\beta$", "\u03b3": r"$\gamma$",
@@ -57,12 +79,22 @@ TRANSLIT = {
     "\u2248": r"$\approx$", "\u2208": r"$\in$", "\u2209": r"$\notin$",
     "\u221d": r"$\propto$", "\u00d7": r"$\times$", "\u00f7": r"$\div$",
     "\u221a": r"$\sqrt{\ }$", "\u221e": r"$\infty$", "\u2211": r"$\sum$",
+    "\u226a": r"$\ll$", "\u226b": r"$\gg$",
     "\u2212": "-", "\u2013": "--", "\u2014": "---", "\u00b7": r"$\cdot$",
     "\u27e8": r"$\langle$", "\u27e9": r"$\rangle$", "\u2032": "'",
     "\u2026": "\\ldots{}", "\u2261": r"$\equiv$", "\u00b1": r"$\pm$",
     "\u2713": "yes", "\u2717": "no",
     "\u27f9": r"$\Longrightarrow$", "\u21d4": r"$\Leftrightarrow$", "\u2190": r"$\leftarrow$",
 }
+
+
+def _bare(rep):
+    if rep.startswith("$") and rep.endswith("$") and len(rep) > 1:
+        return rep[1:-1]
+    return r"\text{" + rep + "}"
+
+
+TRANSLIT_MATH = {k: _bare(v) for k, v in TRANSLIT.items()}
 
 
 def esc_map(text, dropped):
@@ -98,25 +130,60 @@ def esc_map(text, dropped):
                 out.append(f"${name.rsplit(' ', 1)[-1].lower()}$")
             elif "GREEK CAPITAL LETTER " in name:
                 out.append(f"${name.rsplit(' ', 1)[-1].capitalize()}$")
+            elif "COMBINING" in name:
+                dropped.add(f"U+{ord(ch):04X} {name}")
+            elif "LETTER" in name:
+                out.append(ch)
+            else:
+                decomposed = unicodedata.normalize("NFKD", ch)
+                if all(ord(c) < 128 for c in decomposed):
+                    out.append(decomposed)
+                else:
+                    dropped.add(f"U+{ord(ch):04X} {name or ch!r}")
+    return "".join(out)
+
+
+def sanitize_math(text, dropped):
+    out = []
+    for ch in text:
+        if ord(ch) < 128:
+            out.append(ch)
+        elif ch in TRANSLIT_MATH:
+            out.append(TRANSLIT_MATH[ch])
+        else:
+            name = unicodedata.name(ch, "")
+            if "GREEK SMALL LETTER " in name:
+                out.append(name.rsplit(" ", 1)[-1].lower())
+            elif "GREEK CAPITAL LETTER " in name:
+                out.append(name.rsplit(" ", 1)[-1])
             else:
                 dropped.add(f"U+{ord(ch):04X} {name or ch!r}")
     return "".join(out)
 
 
+def neutralize_text_macros(math_latex):
+    return math_latex.replace(r"\text{", "{")
+
+
 def inline(text, dropped):
-    parts = text.split("$")
-    out = []
-    for i, seg in enumerate(parts):
-        seg = esc_map(seg, dropped)
-        if i % 2 == 1:
-            out.append("$" + seg + "$")
-        else:
-            seg = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", seg)
-            seg = re.sub(r"`([^`]+)`", r"\\texttt{\1}", seg)
-            out.append(seg)
-    s = "".join(out)
-    s = re.sub(r"\$\$(.+?)\$\$", lambda m: "\\[" + m.group(1) + "\\]", s, flags=re.S)
-    return s
+    spans = []
+
+    def stash(latex):
+        spans.append(latex)
+        return f"\x00{len(spans) - 1}\x00"
+
+    text = re.sub(r"\$\$(.+?)\$\$",
+                  lambda m: stash("\\[" + neutralize_text_macros(sanitize_math(m.group(1), dropped)) + "\\]"),
+                  text, flags=re.S)
+    text = re.sub(r"\$(?![\d,])((?:[^$\n\\]|\\.)+?)\$",
+                  lambda m: stash("$" + neutralize_text_macros(sanitize_math(m.group(1), dropped)) + "$"),
+                  text)
+
+    text = esc_map(text, dropped)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", text)
+    text = re.sub(r"`([^`]+)`", r"\\texttt{\1}", text)
+    text = re.sub(r"\x00(\d+)\x00", lambda m: spans[int(m.group(1))], text)
+    return text
 
 
 def flush_table(rows, dropped):
@@ -141,6 +208,7 @@ def convert(md_text):
     table_buf = []
     code_state = None
     code_buf = []
+    display_buf = None
     list_stack = []
 
     def close_lists(to_depth=0):
@@ -161,6 +229,28 @@ def convert(md_text):
 
     for raw in lines:
         stripped = raw.strip()
+
+        if display_buf is not None:
+            if stripped == "$$":
+                out.append("\\[" + neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)) + "\\]")
+                display_buf = None
+            else:
+                display_buf.append(stripped)
+            continue
+        if stripped == "$$":
+            close_lists()
+            table_buf_flush = flush_table(table_buf, dropped)
+            out.extend(table_buf_flush)
+            table_buf = []
+            display_buf = []
+            continue
+        if stripped.startswith("$$") and stripped.endswith("$$") and len(stripped) > 4:
+            inner = stripped[2:-2].strip()
+            close_lists()
+            out.extend(flush_table(table_buf, dropped))
+            table_buf = []
+            out.append("\\[" + neutralize_text_macros(sanitize_math(inner, dropped)) + "\\]")
+            continue
 
         if stripped.startswith("```"):
             if code_state:
@@ -212,6 +302,9 @@ def convert(md_text):
         out.append(inline(stripped, dropped) + "\\\\")
 
     out.extend(flush_table(table_buf, dropped))
+    if display_buf is not None:
+        out.append("\\[" + neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)) + "\\]")
+        print("warning: unclosed $$ block at end of input - auto-closed")
     close_lists()
     out.append(POSTAMBLE)
 
