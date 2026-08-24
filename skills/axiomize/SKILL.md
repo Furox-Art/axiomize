@@ -1,6 +1,6 @@
 ---
 name: axiomize
-description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control, game theory, causal inference, information theory, reliability, SPC, thermodynamic analogies), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
+description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control, game theory, causal inference, information theory, reliability, SPC, thermodynamic analogies, decision theory, demographic, spatial), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
 ---
 
 # Axiomize: Idea → Rigorous Mathematical Model
@@ -90,6 +90,9 @@ Then read EVERY perspective file in `perspectives/`. For each applicable perspec
 10. [perspectives/reliability.md](perspectives/reliability.md) — failure times, maintenance economics, availability
 11. [perspectives/spc.md](perspectives/spc.md) — detecting process change vs common-cause noise
 12. [perspectives/thermodynamic.md](perspectives/thermodynamic.md) — stock-flow analogies with explicit break points
+13. [perspectives/decision-theory.md](perspectives/decision-theory.md) — choosing under deep uncertainty, EVPI
+14. [perspectives/demographic.md](perspectives/demographic.md) — aging populations, actuarial liabilities
+15. [perspectives/spatial.md](perspectives/spatial.md) — hotspots, clustering, spatial interpolation
 
 Applicability rule: model from at least **two** perspectives whenever possible. A single-perspective analysis is acceptable only if the user explicitly asks for speed.
 

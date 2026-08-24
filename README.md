@@ -55,7 +55,7 @@ Then just ask your agent:
 
 > "Model this idea mathematically: a coffee shop wants to decide how many baristas to schedule"
 
-## The twelve lenses
+## The fifteen lenses
 
 | Lens | Answers | Signature tool |
 |------|---------|----------------|
@@ -71,6 +71,9 @@ Then just ask your agent:
 | [Reliability](skills/axiomize/perspectives/reliability.md) | when things break; maintain or wait? | Weibull hazards, renewal–reward cost |
 | [SPC](skills/axiomize/perspectives/spc.md) | is this change a signal or noise? | control charts, EWMA/CUSUM, Cpk |
 | [Thermodynamic analogies](skills/axiomize/perspectives/thermodynamic.md) | stock-flow equilibria & bottlenecks | conservation discipline, resistance maps |
+| [Decision theory](skills/axiomize/perspectives/decision-theory.md) | one-shot choices under deep uncertainty | payoff matrices, maximin, EVPI |
+| [Demographic / actuarial](skills/axiomize/perspectives/demographic.md) | populations that age; liabilities | life tables, Leslie matrix, PV annuities |
+| [Spatial statistics](skills/axiomize/perspectives/spatial.md) | where patterns cluster, for real | Moran's I, LISA hotspots, kriging |
 
 Lenses **compose**: e.g., queueing theory computes the wait, an integer program schedules the staff ([example](examples/coffee-shop-staffing.md)).
 
@@ -123,7 +126,7 @@ Idea→mathematics automation is an active research area; axiomize differs in sc
 | [ORMind](https://arxiv.org/abs/2506.01326) | operations-reasoning framework | OR-specific |
 | [LLM4OPT](https://github.com/ishmael233/LLM4OPT) | survey/taxonomy of LLM-for-optimization | catalog of papers |
 
-Axiomize covers **twelve mathematical lenses** (not only optimization), adds **archetype recognition**, enforces **falsifiability and a confidence ledger**, and ships as a **standard Agent Skill** that any Claude Code / opencode / Cursor user can install by copying one folder.
+Axiomize covers **fifteen mathematical lenses** (not only optimization), adds **archetype recognition**, enforces **falsifiability and a confidence ledger**, and ships as a **standard Agent Skill** that any Claude Code / opencode / Cursor user can install by copying one folder.
 
 ## Repository layout
 

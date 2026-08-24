@@ -2,6 +2,19 @@
 
 All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
 
+## [1.3.0] - 2026-08-24
+
+### Added
+- Three new lenses: decision theory (deep uncertainty, EVPI), demographic/actuarial, spatial statistics — fifteen total
+- Benchmark runner: `benchmark_runner.py` grades produced reports against ideas.json cases automatically
+- `fit.py --json` for machine-readable calibration output
+- Local playground: Gradio UI wrapping csv_check + calibration (`playground/app.py`)
+- Example gallery page and registry submission kit in docs
+- Domain pack: project management
+
+### Fixed
+- benchmark_runner --case-list no longer requires --report
+
 ## [1.2.0] - 2026-08-24
 
 ### Added

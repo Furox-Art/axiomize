@@ -181,6 +181,7 @@ def main():
     p.add_argument("--N", type=float, default=None, help="population size (sir)")
     p.add_argument("--selftest", action="store_true", help="fit synthetic data with known truth")
     p.add_argument("--compare", action="store_true", help="fit all models on the data, rank by AIC/BIC")
+    p.add_argument("--json", action="store_true", help="emit machine-readable JSON result")
     p.add_argument("--plot", help="save fitted-curve plot to this PNG path", default=None)
     args = p.parse_args()
 
@@ -196,6 +197,20 @@ def main():
         return
     print(f"=== calibration: {args.model} on {args.data} ({header[0]}, {header[1]}) ===")
     result = fit_sir(t, y, args.N) if args.model == "sir" else fit_logistic(t, y)
+
+    if args.json:
+        import json
+        payload = {
+            "model": args.model,
+            "data": args.data,
+            "params": {k: {"value": v[0], "stderr": v[1]} for k, v in result["params"].items()},
+            "derived": {k: v[0] for k, v in result["derived"].items()},
+            "rmse": result["rmse"],
+            "diagnostics": {k: v for k, v in result["diag"].items()},
+        }
+        print(json.dumps(payload, indent=2))
+        maybe_plot(args, t, y, result)
+        return
 
     for pname, (val, err) in result["params"].items():
         report(pname, val, err)
