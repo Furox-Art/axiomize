@@ -32,7 +32,7 @@ Rules for perspective content:
 3. Include an "analysis ladder" (cheap → expensive methods) if more than one fidelity level exists.
 4. No filler prose — a domain expert should be able to build a first model from your file alone.
 
-Candidate lenses not yet covered: information theory, game theory as its own file, thermodynamic/statistical-mechanics analogies, causal inference, reliability engineering.
+Candidate lenses not yet covered: decision theory under deep uncertainty, demographic/actuarial modeling, queueing networks beyond M/M/c, spatial statistics.
 
 ## Adding worked examples (`examples/`)
 

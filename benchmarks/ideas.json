@@ -1,0 +1,70 @@
+{
+  "description": "Standard test ideas for skill-quality regression. Each entry: the prompt an agent receives, and properties a compliant report MUST exhibit. Scoring: see rubric.md.",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "id": "epidemic-threshold",
+      "prompt": "Model this idea mathematically: a new contagious disease appears in a city of 1 million people.",
+      "must_contain": ["R0", "SIR", "threshold", "falsif", "assumption"],
+      "expected_archetype": "SIR",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true
+    },
+    {
+      "id": "barista-staffing",
+      "prompt": "Model this idea mathematically: a coffee shop must decide how many baristas to schedule each hour.",
+      "must_contain": ["Erlang", "M/M/c", "integer program|ILP|optimization", "cliff|nonlinear"],
+      "expected_archetype": "M/M/c queueing",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true
+    },
+    {
+      "id": "app-adoption-ceiling",
+      "prompt": "Model this idea mathematically: our new app's signups are growing fast; how big can it get and when will growth stall?",
+      "must_contain": ["Bass|logistic", "ceiling|carrying capacity|K ", "calibrat"],
+      "expected_archetype": "Bass diffusion / logistic",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": false
+    },
+    {
+      "id": "duopoly-price-cut",
+      "prompt": "Model this idea mathematically: two cafes face each other; one considers cutting prices 20 percent.",
+      "must_contain": ["Nash|best response", "prisoner|dilemma|war", "repeated|patience|discount"],
+      "expected_archetype": "Bertrand duopoly",
+      "min_lenses_built": 1,
+      "must_reject_at_least_one": true
+    },
+    {
+      "id": "reserve-ruin",
+      "prompt": "Model this idea mathematically: is a shared insurance reserve enough to survive a bad decade of flood claims?",
+      "must_contain": ["Monte Carlo|simulation", "tail|risk", "[S]"],
+      "expected_archetype": "compound Poisson / ruin theory",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true
+    },
+    {
+      "id": "greenhouse-setpoint",
+      "prompt": "Model this idea mathematically: my greenhouse gets too cold at night for seedlings.",
+      "must_contain": ["setpoint|feedback|hysteresis", "feasib", "disturbance"],
+      "expected_archetype": "feedback control / Newton cooling",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": false
+    },
+    {
+      "id": "school-rumor-reach",
+      "prompt": "Model this idea mathematically: a rumor spreads through an 800-student high school; how far does it get by Friday?",
+      "must_contain": ["degree|hub|network", "k2|<k2>|heterogen"],
+      "expected_archetype": "rumor dynamics on networks",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true
+    },
+    {
+      "id": "ad-lift-causal",
+      "prompt": "Model this idea mathematically: users exposed to retargeting ads buy three times more; should we raise that budget?",
+      "must_contain": ["confound", "DAG|backdoor|propensity", "experiment|holdout|sensitivity"],
+      "expected_archetype": "causal identification",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true
+    }
+  ]
+}

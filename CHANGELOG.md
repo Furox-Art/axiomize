@@ -2,6 +2,20 @@
 
 All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
 
+## [1.2.0] - 2026-08-24
+
+### Added
+- Three new lenses: reliability engineering, statistical process control, thermodynamic analogies (twelve total)
+- Three new worked examples: fleet maintenance (reliability), marketing attribution (causal), sensor placement (information theory) — eight examples total
+- Benchmark suite: `benchmarks/ideas.json` with 8 standard test cases + scoring rubric
+- Domain packs: economics and ecology (alongside epidemiology and operations)
+- Beginner tutorial: `docs/tutorial.md`
+- New tool: `csv_check.py` — data quality pre-check before calibration
+- Parallel subagent wave executed for lens/example authoring; orchestrator integration pattern documented by example
+
+### Fixed
+- f-string backslash incompatibility breaking Python 3.9/3.11 in parallel_sweep.py
+
 ## [1.1.0] - 2026-08-24
 
 ### Added

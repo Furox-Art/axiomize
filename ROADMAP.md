@@ -8,17 +8,26 @@ Public plan. Checked items ship; everything here is open for contribution — se
 
 ## In progress (v1.1)
 
-- [ ] Mermaid coupling diagrams in reports
-- [ ] Glossary for basic-tier readers
-- [ ] Archetype catalog 16 → 30
-- [ ] New lenses: game theory, causal inference, information theory
-- [ ] Five new worked examples (network, control, growth-calibration, ruin risk, scheduling game)
-- [ ] fit.py: residual diagnostics + AIC/BIC model comparison
-- [ ] reports/INDEX.md auto-generation and cross-session referencing
-- [ ] Animated demo GIF
-- [ ] GitHub Pages documentation site
-- [ ] CI Python version matrix
-- [ ] Issue/PR templates
+- [x] Mermaid coupling diagrams in reports
+- [x] Glossary for basic-tier readers
+- [x] Archetype catalog 16 → 30
+- [x] New lenses: game theory, causal inference, information theory (+ reliability, SPC, thermodynamic analogies in v1.2)
+- [x] Five new worked examples (network, control, growth-calibration, ruin risk, pricing game) + fleet maintenance in v1.2
+- [x] fit.py: residual diagnostics + AIC/BIC model comparison + --compare mode
+- [x] reports/INDEX.md auto-generation and cross-session referencing
+- [x] Animated demo GIF
+- [x] GitHub Pages documentation site
+- [x] CI Python version matrix
+- [x] Issue/PR templates
+
+## Shipped in v1.2
+
+- [x] Lenses 9 → 12: reliability engineering, statistical process control, thermodynamic analogies
+- [x] Worked examples for reliability, causal inference, information theory lenses
+- [x] Benchmark suite: benchmarks/ideas.json + scoring rubric (8 standard test cases)
+- [x] Domain packs: economics, ecology (+ epidemiology, operations earlier)
+- [x] Beginner tutorial (docs/tutorial.md)
+- [x] CSV data quality pre-check tool (csv_check.py)
 
 ## Later / candidates
 
