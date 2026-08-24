@@ -6,6 +6,8 @@
 
 **Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **fifteen perspectives**, an honest comparison, runnable validation code — and what would falsify the model.
 
+![SIR epidemic curve animation](docs/sir-demo.gif)
+
 ## Why
 
 LLMs answer "how do I model X?" with a single plausible guess. Real modeling discipline is different: you decompose, extract parameters with units, attack from several mathematical lenses, compare honestly, and state falsifiable predictions. This skill enforces that discipline.

@@ -35,3 +35,8 @@ jobs:
         run: |
           python skills/axiomize/tools/parallel_sweep.py --job sweep
           python skills/axiomize/tools/parallel_sweep.py --job mc
+      - name: Benchmark regression (stored blind-test reports)
+        run: |
+          for id in epidemic-threshold barista-staffing app-adoption-ceiling duopoly-price-cut reserve-ruin greenhouse-setpoint school-rumor-reach ad-lift-causal; do
+            python skills/axiomize/tools/benchmark_runner.py --case "$id" --report "benchmarks/reports/$id.md" || exit 1
+          done
