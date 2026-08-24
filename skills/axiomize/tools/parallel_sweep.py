@@ -61,8 +61,10 @@ def job_sweep(workers):
         results = list(ex.map(sir_final_size, tasks))
     dt = time.perf_counter() - t0
 
-    print(f"=== parallel sweep ===\n{len(tasks)} independent ODE tasks on {workers} workers in {dt:.2f}s\n")
-    print(f"{'beta\\gamma':>10} " + " ".join(f"{g:>8.2f}" for g in gammas))
+    print("=== parallel sweep ===")
+    print(f"{len(tasks)} independent ODE tasks on {workers} workers in {dt:.2f}s\n")
+    header_label = "beta / gamma"
+    print(f"{header_label:>11} " + " ".join(f"{g:>8.2f}" for g in gammas))
     table = {(round(b, 3), round(g, 3)): fs for b, g, fs in results}
     for b in betas:
         row = " ".join(f"{table[(round(b,3), round(g,3))]:8.3f}" for g in gammas)

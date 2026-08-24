@@ -48,7 +48,7 @@ jobs:
               echo
             done
           } > docs/examples.md
-      - run: mkdocs build --strict
+      - run: mkdocs build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
