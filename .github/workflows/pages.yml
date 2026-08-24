@@ -38,7 +38,7 @@ jobs:
               head -n 12 "$f"
               echo
             done
-          } > docs/skill.md
+          } | sed -E 's#\]\(perspectives/#](https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize/perspectives/#g; s#\]\(templates/#](https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize/templates/#g' > docs/skill.md
           {
             echo "# Worked examples"
             for f in examples/*.md; do
