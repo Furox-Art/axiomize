@@ -152,6 +152,8 @@ Assemble the final answer using [templates/report.md](templates/report.md). Its 
 6. **What would falsify this model** — observable predictions that, if wrong, kill the model
 7. **Confidence ledger** — every major claim tagged as established / assumption / speculation
 
+**LaTeX export (research tier):** when the user wants thesis/paper-ready output, convert the final report with `tools/report_to_latex.py --input <report.md> --output <report.tex>` (add `--pdf` if a LaTeX toolchain is installed). The converter handles tables, verbatim code, math passthrough and symbol transliteration; always compile-check before delivering.
+
 **Archive rule:** after delivering the report, save it to `reports/YYYY-MM-DD-<short-slug>.md` in the working directory (create the folder if needed) using the template header verbatim (Date / Rigor level / Model in one sentence), then run `tools/index_reports.py` to rebuild `reports/INDEX.md`, and tell the user the path. Reference earlier indexed sessions when relevant ("this extends your 2026-08-24 barista model") — modeling sessions should accumulate into a searchable personal archive, not evaporate into chat scrollback.
 
 ## Hard Rules

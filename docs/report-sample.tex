@@ -1,0 +1,103 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper, margin=2.4cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\setlistdepth{9}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\setlength{\tabcolsep}{4pt}
+\begin{document}
+
+\section*{Example: Idea $\to$ Mathematical Model (Epidemic Spread)}
+Demonstration of the full workflow on a concrete idea.\\
+\subsection*{Phase 1 --- Parse}
+\textbf{Idea (user)}: "A new contagious disease appears in a city of 1M people. What happens?"\\
+\begin{itemize}
+  \item \textbf{System}: human population of the city, compartmentalized by disease status
+  \item \textbf{State}: counts of Susceptible / Infectious / Recovered individuals over time
+  \item \textbf{Inputs}: initial infections, contact patterns
+  \item \textbf{Goal}: prediction --- peak size and timing, total infected, does it die out?
+  \item \textbf{Horizon}: months, daily resolution
+\end{itemize}
+\subsection*{Phase 2 --- Decompose}
+\begin{tabular}{ll}
+\toprule
+Sub-problem & Nature \\
+\midrule
+Transmission on contact & interaction $\to$ but mass-action aggregation valid for large city $\Rightarrow$ treat as flow \\
+Recovery process & flow \\
+Population turnover (births/deaths) & flow (negligible on months horizon) \\
+\bottomrule
+\end{tabular}
+Coupling: transmission consumes susceptibles, feeds infectious; recovery drains infectious.\\
+\subsection*{Phase 3 --- Parameters}
+\begin{tabular}{lllllll}
+\toprule
+Symbol & Name & Unit & Exo/Endo & Range & Source & Sensitivity \\
+\midrule
+$\beta$ & transmission rate & 1/day & exo & 0.2--0.5 & lit. & high \\
+$\gamma$ & recovery rate & 1/day & exo & 0.05--0.2 & lit. & high \\
+I(0) & initial infected & persons & exo & 1--50 & est. & medium \\
+S(t), I(t), R(t) & compartment counts & persons & endo & $\geq$0 & derived & --- \\
+\bottomrule
+\end{tabular}
+Excluded: seasonal forcing (horizon << 1 yr), spatial structure (first pass), demographics (months horizon). Derived quantity: \textbf{R$_{0}$ = $\beta$/$\gamma$} --- threshold at R$_{0}$ = 1.\\
+\subsection*{Phase 4 --- Assumptions}
+\begin{tabular}{llll}
+\toprule
+\# & Assumption & Type & Violation consequence \\
+\midrule
+1 & Homogeneous mixing \texttt{[R]} & Structural & Overestimates early growth if network is clustered \\
+2 & Constant $\beta$, $\gamma$ in time \texttt{[S]} & Parametric & Wrong peak timing if behavior/seasonality shifts rates \\
+3 & No imports/exports \texttt{[R]} & Boundary & Misses re-seeding waves \\
+4 & Permanent immunity after recovery \texttt{[S]} & Structural & Multi-wave dynamics lost if immunity wanes \\
+\bottomrule
+\end{tabular}
+Assumptions 2 and 4 are \texttt{[S]} $\to$ included in sensitivity sweep.\\
+\subsection*{Phase 5 --- Perspectives}
+\subsubsection*{Deterministic (primary)}
+\[\textbackslash{}frac\{dS\}\{dt\} = -\textbackslash{}beta \textbackslash{}frac\{S I\}\{N\}, \textbackslash{}quad \textbackslash{}frac\{dI\}\{dt\} = \textbackslash{}beta \textbackslash{}frac\{S I\}\{N\} - \textbackslash{}gamma I, \textbackslash{}quad \textbackslash{}frac\{dR\}\{dt\} = \textbackslash{}gamma I\]\\
+Insight: sharp threshold --- epidemic iff R$_{0}$ > 1; final size equation predicts total attack rate independent of details. Blind spot: no chance of early stochastic fade-out.\\
+\subsubsection*{Stochastic (validation)}
+Continuous-time Markov chain with same rates, Gillespie simulation. Insight: with a single index case I(0)=1, extinction before major outbreak has probability $\approx$ 1/R$_{0}$ even when R$_{0}$ > 1 (for larger seeds it falls roughly as (1/R$_{0}$)\textasciicircum{}I(0)) --- invisible to ODEs. Blind spot: expensive, gives distributions not clean thresholds.\\
+\subsubsection*{Optimization (secondary)}
+Policy question layered on top: choose closure level c $\in$ [0,1] reducing $\beta$ $\to$ $\beta$(1-c), minimize economic cost k$\cdot$c$^2$ + medical cost m$\cdot$I\_peak. Insight: reveals acceptable intervention intensity trade-off. Blind spot: assumes cost curves are known.\\
+\subsubsection*{Agent-based (rejected)}
+Rejected: heterogeneity and network structure deliberately excluded in first pass; ABM adds cost without answering THIS question better. Would become relevant if assumption 1 fails validation against data.\\
+\subsection*{Phase 6 --- Comparison \& Recommendation}
+\begin{tabular}{lllll}
+\toprule
+Criterion & Det & Stoch & Opt & ABM \\
+\midrule
+Fidelity (this question) & 4 & 4 & 3 & 4 \\
+Data needs & low & low & med & high \\
+Compute cost & tiny & low & tiny & high \\
+Answers goal question & yes peak/timing & yes fade-out prob & policy layer & no overkill \\
+\bottomrule
+\end{tabular}
+\textbf{Recommendation}: deterministic SIR primary + stochastic CTMC validation. Code below implements both.\\
+\subsection*{Phase 7 --- Implementation}
+See \texttt{skills/axiomize/tools/validate.py} usage:\\
+\begin{verbatim}
+python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --I0 10 --N 1000000
+\end{verbatim}
+Outputs: peak height/timing, final size vs theoretical prediction (consistency check), R$_{0}$, sensitivity sweep over $\beta$ $\in$ [0.2, 0.5].\\
+\subsection*{Phase 8 --- Falsifiability}
+Model dies if observed data show: (a) multiple waves without behavior change (assumption 4 broken), (b) early exponential growth far from $\beta$SI/N prediction (mixing assumption broken), (c) sustained endemic plateau (waning immunity).\\
+\subsection*{Confidence Ledger}
+\begin{tabular}{lll}
+\toprule
+Claim & Type & Basis \\
+\midrule
+R$_{0}$ > 1 $\Longrightarrow$ epidemic; final-size equation & established & standard SIR theory \\
+Stochastic fade-out $\approx$ 1/R$_{0}$ for single index case & established & branching-process result \\
+$\beta$, $\gamma$ ranges and constant rates & assumption & lit. ranges; \texttt{[S]} on constancy \\
+Permanent immunity & assumption & \texttt{[S]}, sweep-covered \\
+Announcement coverage p achievable & speculation & unvalidated policy claim \\
+\bottomrule
+\end{tabular}
+
+\end{document}
