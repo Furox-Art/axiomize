@@ -1,0 +1,13 @@
+site_name: Axiomize
+site_description: Turn any idea into a rigorous mathematical model - an agent skill with nine mathematical lenses.
+repo_url: https://github.com/Furox-Art/axiomize
+theme:
+  name: material
+  palette:
+    primary: indigo
+nav:
+  - Home: index.md
+  - Workflow & lenses: skill.md
+  - Rigor ladder: rigor.md
+  - Archetypes: archetypes.md
+  - Examples: examples.md

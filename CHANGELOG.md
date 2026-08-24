@@ -2,6 +2,21 @@
 
 All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
 
+## [1.1.0] - 2026-08-24
+
+### Added
+- Three new lenses: game theory, causal inference, information theory (nine total)
+- Archetype catalog expanded 16 → 30 entries
+- Five new worked examples: network rumor, greenhouse control, startup growth (Bass + calibration), insurance ruin risk, café pricing war — network and control lenses now have dedicated examples
+- Mermaid coupling diagrams in Phase 2 and the report template
+- `fit.py`: AIC/BIC diagnostics, residual autocorrelation flag, `--compare` mode ranking models on the same data
+- `tools/index_reports.py`: rebuilds `reports/INDEX.md`; sessions now cross-reference earlier reports
+- Glossary template supporting basic-tier readers
+- GitHub Pages site (`mkdocs-material`) via Pages workflow
+- Domain packs: epidemiology, operations
+- Publishing checklist for external registries
+- CI: Python 3.9 / 3.11 / 3.13 matrix with dependency floors
+
 ## [1.0.0] - 2026-08-24
 
 First tagged release.

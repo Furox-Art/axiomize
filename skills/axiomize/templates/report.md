@@ -23,6 +23,13 @@ The deliverable of every full modeling session. Copy this skeleton, fill every s
 
 Couplings: <which sub-problems feed which>
 
+```mermaid
+graph LR
+    Sub1[nature] --> Sub3[nature]
+    Sub2[nature] --> Sub3
+    Sub3 --> Goal[goal question]
+```
+
 ## 2. Parameters
 
 <full table from templates/parameters.md — symbol, unit, exo/endo, range, source, sensitivity, used-in-lens>

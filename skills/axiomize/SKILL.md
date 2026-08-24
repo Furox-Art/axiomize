@@ -1,6 +1,6 @@
 ---
 name: axiomize
-description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
+description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control, game theory, causal inference, information theory), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
 ---
 
 # Axiomize: Idea → Rigorous Mathematical Model
@@ -44,6 +44,16 @@ Break the idea into independent sub-problems:
    - `decision` — choices under constraints (→ optimization / game theory)
    - `uncertainty` — randomness dominates (→ probability / stochastic processes)
 3. State which sub-problems couple to which.
+4. Draw the coupling map as a Mermaid graph (renders on GitHub):
+
+   ````
+   ```mermaid
+   graph LR
+       Demand[uncertainty] --> Stock[flow]
+       Reorder[decision] --> Stock
+       Stock --> Answer[goal question]
+   ```
+   ````
 
 ### Phase 3 — Parameter Table
 
@@ -74,6 +84,9 @@ Then read EVERY perspective file in `perspectives/`. For each applicable perspec
 4. [perspectives/agent-based.md](perspectives/agent-based.md) — local rules → global behavior
 5. [perspectives/network.md](perspectives/network.md) — graph structure, centrality, dynamics on networks
 6. [perspectives/control.md](perspectives/control.md) — feedback, regulation, steering to setpoint
+7. [perspectives/game-theory.md](perspectives/game-theory.md) — strategic interaction, equilibria, mechanisms
+8. [perspectives/causal-inference.md](perspectives/causal-inference.md) — intervention claims from observational data
+9. [perspectives/information-theory.md](perspectives/information-theory.md) — what can be known, transmitted, compressed
 
 Applicability rule: model from at least **two** perspectives whenever possible. A single-perspective analysis is acceptable only if the user explicitly asks for speed.
 
@@ -133,7 +146,7 @@ Assemble the final answer using [templates/report.md](templates/report.md). Its 
 6. **What would falsify this model** — observable predictions that, if wrong, kill the model
 7. **Confidence ledger** — every major claim tagged as established / assumption / speculation
 
-**Archive rule:** after delivering the report, save it to `reports/YYYY-MM-DD-<short-slug>.md` in the working directory (create the folder if needed) and tell the user the path. Modeling sessions should accumulate into a searchable personal archive, not evaporate into chat scrollback.
+**Archive rule:** after delivering the report, save it to `reports/YYYY-MM-DD-<short-slug>.md` in the working directory (create the folder if needed) using the template header verbatim (Date / Rigor level / Model in one sentence), then run `tools/index_reports.py` to rebuild `reports/INDEX.md`, and tell the user the path. Reference earlier indexed sessions when relevant ("this extends your 2026-08-24 barista model") — modeling sessions should accumulate into a searchable personal archive, not evaporate into chat scrollback.
 
 ## Hard Rules
 

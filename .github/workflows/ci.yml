@@ -8,13 +8,17 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install numpy scipy
+        run: pip install "numpy>=1.24" "scipy>=1.10"
       - name: Skill lint (frontmatter + links + compile)
         run: python skills/axiomize/tools/check_skill.py
       - name: Deterministic SIR checks
@@ -23,6 +27,10 @@ jobs:
         run: python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1 --runs 300
       - name: Queue (Erlang-C) checks
         run: python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
+      - name: Calibration selftests
+        run: |
+          python skills/axiomize/tools/fit.py --model sir --selftest
+          python skills/axiomize/tools/fit.py --model logistic --selftest
       - name: Parallel sweep engine
         run: |
           python skills/axiomize/tools/parallel_sweep.py --job sweep

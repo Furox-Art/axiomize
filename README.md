@@ -55,7 +55,7 @@ Then just ask your agent:
 
 > "Model this idea mathematically: a coffee shop wants to decide how many baristas to schedule"
 
-## The six lenses
+## The nine lenses
 
 | Lens | Answers | Signature tool |
 |------|---------|----------------|
@@ -65,6 +65,9 @@ Then just ask your agent:
 | [Agent-based](skills/axiomize/perspectives/agent-based.md) | emergence from heterogeneous local rules | parameter sweeps over N-agent sims |
 | [Network](skills/axiomize/perspectives/network.md) | who-connects-to-whom effects | centrality, R_eff = R₀·⟨k²⟩/⟨k⟩ |
 | [Control](skills/axiomize/perspectives/control.md) | how to steer & regulate | feedback laws, stability margins |
+| [Game theory](skills/axiomize/perspectives/game-theory.md) | outcomes when rivals anticipate you | Nash equilibria, price of anarchy |
+| [Causal inference](skills/axiomize/perspectives/causal-inference.md) | what happens IF we intervene | DAGs, backdoor adjustment, DiD/IV |
+| [Information theory](skills/axiomize/perspectives/information-theory.md) | what can be known or compressed | entropy, mutual information, capacity |
 
 Lenses **compose**: e.g., queueing theory computes the wait, an integer program schedules the staff ([example](examples/coffee-shop-staffing.md)).
 

@@ -46,6 +46,19 @@ def _sir_curve(t, beta, gamma, I0, N):
     return sol.y[1]
 
 
+def diagnostics(y, fitted, k):
+    resid = y - fitted
+    n = len(y)
+    rss = float(np.sum(resid ** 2))
+    aic = n * math.log(rss / n) + 2 * k
+    bic = n * math.log(rss / n) + k * math.log(n)
+    if n > 2 and np.std(resid) > 0:
+        r1 = float(np.corrcoef(resid[:-1], resid[1:])[0, 1])
+    else:
+        r1 = 0.0
+    return {"rss": rss, "n": n, "k": k, "aic": aic, "bic": bic, "lag1_autocorr": r1}
+
+
 def fit_sir(t, y, N=None):
     N = N or max(1000.0, float(y.max()) * 50)
     I0 = float(y[0])
@@ -64,6 +77,7 @@ def fit_sir(t, y, N=None):
         "rmse": rmse,
         "fitted": fitted,
         "N": N,
+        "diag": diagnostics(y, fitted, k=2),
     }
 
 
@@ -88,6 +102,7 @@ def fit_logistic(t, y):
         "derived": {"doubling_time_ln2/r_at_start": (math.log(2) / popt[0] if popt[0] > 0 else float("inf"), None)},
         "rmse": rmse,
         "fitted": fitted,
+        "diag": diagnostics(y, fitted, k=2),
     }
 
 
@@ -165,6 +180,7 @@ def main():
     p.add_argument("--data", help="CSV file: time column then observed values")
     p.add_argument("--N", type=float, default=None, help="population size (sir)")
     p.add_argument("--selftest", action="store_true", help="fit synthetic data with known truth")
+    p.add_argument("--compare", action="store_true", help="fit all models on the data, rank by AIC/BIC")
     p.add_argument("--plot", help="save fitted-curve plot to this PNG path", default=None)
     args = p.parse_args()
 
@@ -175,6 +191,9 @@ def main():
         p.error("--data is required unless --selftest")
 
     header, t, y = load_csv(args.data)
+    if args.compare:
+        compare(t, y, args)
+        return
     print(f"=== calibration: {args.model} on {args.data} ({header[0]}, {header[1]}) ===")
     result = fit_sir(t, y, args.N) if args.model == "sir" else fit_logistic(t, y)
 
@@ -183,7 +202,33 @@ def main():
     for dname, (val, _) in result["derived"].items():
         report(dname, val)
     print(f"  {'RMSE':28s} = {result['rmse']:.4g}")
+    diag = result["diag"]
+    print("  --- diagnostics ---")
+    print(f"  {'AIC':28s} = {diag['aic']:.2f}")
+    print(f"  {'BIC':28s} = {diag['bic']:.2f}")
+    ac = diag["lag1_autocorr"]
+    flag = "OK" if abs(ac) < 0.4 else "HIGH - model structure may be wrong"
+    print(f"  {'residual lag-1 autocorrelation':28s} = {ac:+.3f} ({flag})")
     maybe_plot(args, t, y, result)
+
+
+def compare(t, y, args):
+    print("=== model comparison on same data (lower AIC/BIC better) ===")
+    rows = []
+    for name, fitter in [("logistic", lambda: fit_logistic(t, y)),
+                         ("sir", lambda: fit_sir(t, y, args.N))]:
+        try:
+            res = fitter()
+            d = res["diag"]
+            rows.append((name, d["k"], d["aic"], d["bic"], d["lag1_autocorr"]))
+        except Exception as e:
+            rows.append((name, None, float("inf"), float("inf"), f"fit failed: {e}"))
+    print(f"{'model':>10} {'k':>3} {'AIC':>12} {'BIC':>12} {'resid AC(1)':>12}")
+    for name, k, aic, bic, ac in rows:
+        ac_str = f"{ac:+.3f}" if isinstance(ac, float) else str(ac)[:12]
+        print(f"{name:>10} {str(k):>3} {aic:12.2f} {bic:12.2f} {ac_str:>12}")
+    best = min(rows, key=lambda r: r[3])
+    print(f"\nBIC prefers: {best[0]}")
 
 
 if __name__ == "__main__":

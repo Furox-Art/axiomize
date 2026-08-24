@@ -1,0 +1,63 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install mkdocs-material
+      - name: Stage skill docs
+        run: |
+          cp skills/axiomize/rigor.md docs/rigor.md
+          cp skills/axiomize/archetypes.md docs/archetypes.md
+          {
+            echo "# The workflow"
+            cat skills/axiomize/SKILL.md
+            printf '\n\n# The lenses\n\n'
+            for f in skills/axiomize/perspectives/*.md; do
+              echo "## $(basename "$f" .md)"
+              echo
+              head -n 12 "$f"
+              echo
+            done
+          } > docs/skill.md
+          {
+            echo "# Worked examples"
+            for f in examples/*.md; do
+              echo "## $(basename "$f" .md)"
+              echo
+              head -n 8 "$f"
+              echo
+            done
+          } > docs/examples.md
+      - run: mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

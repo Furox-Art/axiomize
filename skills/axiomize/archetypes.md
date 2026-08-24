@@ -24,6 +24,20 @@ Rule: if two or more core features match an archetype below, START from its cano
 | Learning from data to predict | function fitting with uncertainty | Regression / Bayesian inference | posterior intervals, bias-variance |
 | Particles/agents moving under simple rules | local rules, emergent global pattern | Agent-based model / cellular automata | phase transitions, emergence criteria |
 | Quantity conserved across transformations | inflow = outflow + accumulation | Compartmental flow / Kirchhoff-style balance | conservation constraints |
+| Stable queue averages (arrivals, waits, counts) | any long-run queueing system | Little's Law: L = λ·W | universal averaging identity |
+| Two-sided matching (students↔schools, riders↔drivers) | two populations with preferences | Gale–Shapley stable matching | existence of stable matchings, strategy-proofness limits |
+| Competitors choosing locations/prices | payoff depends on rivals' positions | Hotelling competition | principle of minimum differentiation, price wars |
+| Few firms setting quantities/prices | market output affects everyone's price | Cournot / Bertrand oligopoly | Nash output levels, collusion fragility |
+| Infection that returns after recovery | temporary immunity | SIS model | endemic equilibrium, treatment thresholds |
+| Spread across connected cities/sites | patches coupled by travel | Metapopulation (multi-patch) model | invasion threshold, hub vaccination value |
+| Flow between places ∝ size and distance | migration, trade, commuting | Gravity model | calibrated flow matrices from aggregate data |
+| Consensus under peer pressure | individuals align with local majority | Ising / threshold spin models | phase transition, tipping fraction |
+| Connectivity survival under failures | remove nodes/edges until network shatters | Percolation | critical fraction f_c, giant component collapse |
+| Cycles of use → failure → replacement | repeated lifetime events with costs | Renewal–reward process | long-run cost rate formula |
+| Sequential decisions with delayed consequences | act now, see later, decide again | Markov Decision Process | Bellman optimality, policy iteration |
+| Tracking a hidden truth from noisy readings | sensor fusion, forecasting | Kalman filter | optimal linear update equations |
+| Switching regimes inferred indirectly | you observe symptoms, not the regime | Hidden Markov Model | Viterbi/forward algorithms |
+| Sizes dominated by a few huge cases | heavy tails: cities, quakes, outages | Power-law scaling | tail exponent estimation, Pareto cutoffs |
 
 ## How to use it in a session
 
