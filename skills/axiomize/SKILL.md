@@ -74,7 +74,9 @@ Write assumptions using [templates/assumptions.md](templates/assumptions.md). Ev
 
 ### Phase 5 — Multi-Perspective Modeling
 
-**First, check [archetypes.md](archetypes.md):** scan the catalog against each sub-problem from Phase 2. If two or more core features match an archetype (SIR, Bass diffusion, newsvendor, M/M/c, logistic, Lotka–Volterra...), START from that canonical model and adapt — declare the match and what you changed. Inherited closed forms become Phase 7 validation targets. If nothing matches, say "novel territory" explicitly.
+**First, check [archetypes.md](archetypes.md):** scan the catalog against each sub-problem from Phase 2. If two or more core features match an archetype (SIR, Bass diffusion, newsvendor, M/M/c, logistic, Lotka–Volterra...), START from that canonical model and adapt — declare the match and what you changed. Inherited closed forms become Phase 7 validation targets.
+
+**If nothing matches:** announce 'novel territory' and execute the seven-step protocol in [first-principles.md](first-principles.md) — analogy mining, conservation skeleton, mechanism-driven rate laws, dimensional scaffold (Buckingham π), minimal viable model, falsifier-first design, triangulated validation. Novel territory RAISES the bar: research tier demands ≥ 3 lenses from unrelated mathematical families.
 
 Then read EVERY perspective file in `perspectives/`. For each applicable perspective, build an actual model — not just "this could apply":
 

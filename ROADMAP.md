@@ -38,6 +38,12 @@ Public plan. Checked items ship; everything here is open for contribution — se
 - [x] Beginner tutorial (docs/tutorial.md)
 - [x] CSV data quality pre-check tool (csv_check.py)
 
+## Shipped in v1.5
+
+- [x] First-principles protocol for novel territory (7-step method)
+- [x] Novel-domain benchmark reports (telephone fidelity, async alignment)
+- [x] Report template: novel-territory appendix
+
 ## Later / candidates
 
 - [ ] Benchmark suite: 10 standard test ideas + scoring rubric for skill quality regression

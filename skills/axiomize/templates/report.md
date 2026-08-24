@@ -94,5 +94,13 @@ Killed by: <observations that would falsify it, mapped back to assumptions>
 - **Canonical results inherited:** <named theorems/formulas relied on instead of re-derived>
 - **Model criticism log:** <rival hypotheses each lens excluded, from Phase 5>
 
+## 10. Novel-territory appendix *(only when no archetype matched — see first-principles.md)*
+
+- **Nearest analogy:** <declared neighbor + keep / fail / unknown split>
+- **Conserved stocks:** <from Step 2 skeleton>
+- **Dimensionless groups:** <from Step 4 scaffold — these are the sweep axes>
+- **Minimum data plan:** <from Step 6 — what to measure this week>
+- **Lens convergence/divergence:** <where independent lenses agreed or split, and why that is the headline>
+
 ---
-*Generated via Axiomize workflow · rigor level: <tier> · archetypes matched: <list>*
+*Generated via Axiomize workflow · rigor level: <tier> · archetypes matched: <list or 'novel territory'>*
