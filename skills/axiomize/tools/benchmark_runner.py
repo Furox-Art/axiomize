@@ -75,6 +75,10 @@ def main():
     args = p.parse_args()
 
     cases = load_cases(args.benchmarks)
+    if args.case and args.case not in cases:
+        print(f"unknown case '{args.case}'. Available:")
+        print("\n".join(cases.keys()))
+        return 1
     if args.case_list or not args.report:
         print("\n".join(f"{cid}: {c['prompt'][:70]}" for cid, c in cases.items()))
         return 0

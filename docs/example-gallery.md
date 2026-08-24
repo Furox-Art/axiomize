@@ -1,6 +1,6 @@
 # Worked Example Gallery
 
-These examples are end-to-end demonstrations of the 8-phase workflow: each turns a plain-language idea into a calibrated mathematical model, includes rejected-lens rationales for why other perspectives were set aside, and closes with explicit falsification criteria. Rows are grouped by the primary lens demonstrated, following [the twelve lenses](../README.md#the-twelve-lenses); most examples also compose secondary lenses.
+These examples are end-to-end demonstrations of the 8-phase workflow: each turns a plain-language idea into a calibrated mathematical model, includes rejected-lens rationales for why other perspectives were set aside, and closes with explicit falsification criteria. Rows are grouped by the primary lens demonstrated, following [the fifteen lenses](../README.md#the-fifteen-lenses); most examples also compose secondary lenses.
 
 ## Deterministic
 

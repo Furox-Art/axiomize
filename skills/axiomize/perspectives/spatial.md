@@ -45,7 +45,7 @@ where `z_i` = standardized value at unit i (dimensionless), `s` = sample standar
 lambda_hat(s) = (1/h^2) * sum_i K( ||s - s_i|| / h )
 ```
 
-where `s` = query location (coordinates, km), `s_i` = observed event location i, `h` = bandwidth (km; controls smoothness — small h reproduces points, large h blurs everything), `K(u)` = bimodal kernel integrating to 1 over 2D (e.g., Gaussian), `lambda_hat` = estimated event intensity (events/km²). Choose h by cross-validation or a stated rule; report it — the map is only as honest as h.
+where `s` = query location (coordinates, km), `s_i` = observed event location i, `h` = bandwidth (km; controls smoothness — small h reproduces points, large h blurs everything), `K(u)` = bivariate kernel integrating to 1 over 2D (e.g., Gaussian), `lambda_hat` = estimated event intensity (events/km²). Choose h by cross-validation or a stated rule; report it — the map is only as honest as h.
 
 ### Kriging / Gaussian process: interpolation with honest uncertainty
 
@@ -55,7 +55,7 @@ Model the field `Z(s)` as a Gaussian process with mean m(s) and covariance `C(d)
 gamma(d) = nugget tau^2 + sill sigma^2 * (1 - exp(-d/range a))
 ```
 
-with `tau^2` = sub-grid/measurement variance at d → 0 (x²), `sigma^2` = total variance plateau (x²), `a` = correlation range (km; beyond it, sites are effectively independent). Prediction at unsampled s0: weighted average `Z_hat(s0) = sum_i lambda_i Z(s_i)` with weights lambda_i solving the kriging system; kriging variance (x²) yields sqrt → standard error map in units of x.
+with `tau^2` = nugget: sub-grid/measurement variance as d → 0 (x²), `sigma^2` = partial sill (variance contributed by spatially structured process; total sill = tau^2 + sigma^2), `a` = correlation range parameter (km; practical correlation extends to ≈ 3a for this exponential model). Prediction at unsampled s0: weighted average `Z_hat(s0) = sum_i lambda_i Z(s_i)` with weights lambda_i solving the kriging system; kriging variance (x²) yields sqrt → standard error map in units of x.
 
 ### Point-process view: clustered vs chance
 

@@ -23,7 +23,7 @@ Use when the question lives over **age structure**: pension and insurance liabil
    - Cohort table: follows one birth/exposure group through time; honest about trend but needs long data.
    - Mortality improvement means period tables understate cohort survival — apply improvement factors `q_{x,t+s} ≈ q_{x,t}·(1−r_x)^s`, with r_x the annual relative improvement rate at age x (dimensionless per year).
 3. **Leslie matrix projection** (age-structured dynamics). With age-class vector n_t (counts of lives per class, width w years):
-   - `n_{t+1} = L·n_t`; first row holds fecundities F_i (offspring per individual of class i per step), subdiagonal holds survivals P_i = w·p_{iw} (dimensionless per step)
+   - `n_{t+1} = L·n_t`; first row holds fecundities F_i (offspring per individual of class i per step), subdiagonal holds interval survival probabilities `_w p_iw` = l_{x+w}/l_x (probability of surviving from class i into i+1, dimensionless per step)
    - Dominant eigenvalue λ₁ = asymptotic growth rate per step (per year if steps are years); λ₁ > 1 growing, < 1 shrinking
    - Right eigenvector of λ₁ = stable age distribution; convergence time set by |λ₂/λ₁| (steps)
    - Migration enters as an additive vector m_t (lives per step) or extra survival terms — state which.

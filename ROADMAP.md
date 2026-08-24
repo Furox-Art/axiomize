@@ -6,7 +6,7 @@ Public plan. Checked items ship; everything here is open for contribution — se
 
 - [x] v1.0.0 — 6 lenses, archetype catalog, rigor ladder, parallel dispatch, bundled tools, CI
 
-## In progress (v1.1)
+## Shipped in v1.1
 
 - [x] Mermaid coupling diagrams in reports
 - [x] Glossary for basic-tier readers
@@ -20,6 +20,15 @@ Public plan. Checked items ship; everything here is open for contribution — se
 - [x] CI Python version matrix
 - [x] Issue/PR templates
 
+## Shipped in v1.3
+
+- [x] Lenses 12 → 15: decision theory, demographic/actuarial, spatial statistics
+- [x] Benchmark runner (benchmark_runner.py) grading reports against ideas.json
+- [x] fit.py --json machine-readable output
+- [x] Gradio playground (playground/app.py)
+- [x] Example gallery page + beginner tutorial
+- [x] Project-management domain pack
+
 ## Shipped in v1.2
 
 - [x] Lenses 9 → 12: reliability engineering, statistical process control, thermodynamic analogies
@@ -31,12 +40,10 @@ Public plan. Checked items ship; everything here is open for contribution — se
 
 ## Later / candidates
 
-- [ ] Domain packs: epidemiology, operations, economics, ecology bundles
 - [ ] Benchmark suite: 10 standard test ideas + scoring rubric for skill quality regression
 - [ ] Web playground (Gradio/Streamlit) demo deployment
 - [ ] Submission to agent-skill registries and awesome lists
 - [ ] JSON export of parameter tables for downstream tooling
-- [ ] More lenses: reliability engineering, statistical process control, thermodynamic analogies
 
 ## Non-goals
 

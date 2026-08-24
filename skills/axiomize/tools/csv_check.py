@@ -18,12 +18,22 @@ import numpy as np
 def load(path, tcol, vcol):
     with open(path, newline="", encoding="utf-8-sig") as fh:
         rows = list(csv.reader(fh))
+    if len(rows) < 2:
+        raise SystemExit(f"error: {path} has no data rows")
     header = rows[0]
     ti = header.index(tcol) if tcol in header else 0
     vi = header.index(vcol) if vcol in header else 1
     body = [r for r in rows[1:] if len(r) > max(ti, vi)]
-    t = np.array([float(r[ti]) for r in body])
-    y = np.array([float(r[vi]) for r in body])
+    if not body:
+        raise SystemExit(f"error: {path} has no parseable data rows")
+    t = np.empty(len(body))
+    y = np.empty(len(body))
+    for i, r in enumerate(body):
+        try:
+            t[i] = float(r[ti])
+            y[i] = float(r[vi])
+        except ValueError:
+            raise SystemExit(f"error: row {i + 2}: cannot parse '{r[ti]}', '{r[vi]}' as numbers")
     return header[ti], header[vi], t, y
 
 
@@ -52,7 +62,9 @@ def main():
     mad = np.median(np.abs(y - med)) or 1e-12
     mz = 0.6745 * (y - med) / mad
     outliers = int(np.sum(np.abs(mz) > args.z_outlier))
-    checks[f"few_outliers(mod-z>{args.z_outlier})"] = outliers <= max(1, int(0.05 * len(y)))
+    checks[f"no_outliers(mod-z>{args.z_outlier})"] = outliers == 0
+    if outliers:
+        print(f"WARNING: {outliers} extreme value(s) - inspect or clean before calibrating")
     checks["value_variance_not_degenerate"] = bool(np.std(y) > 1e-9)
     checks["nonnegative_values"] = bool(np.all(y >= 0))
 

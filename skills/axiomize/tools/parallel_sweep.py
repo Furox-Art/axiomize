@@ -113,6 +113,8 @@ def main():
     p.add_argument("--job", choices=["sweep", "mc"], default="sweep")
     p.add_argument("--workers", type=int, default=default_workers)
     args = p.parse_args()
+    if args.workers < 1:
+        p.error("--workers must be >= 1")
     exit(job_sweep(args.workers) if args.job == "sweep" else job_mc(args.workers))
 
 

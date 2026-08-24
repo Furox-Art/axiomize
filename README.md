@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.9%2B-informational)
 ![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)
 
-**Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **six perspectives**, an honest comparison, runnable validation code — and what would falsify the model.
+**Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **fifteen perspectives**, an honest comparison, runnable validation code — and what would falsify the model.
 
 ## Why
 
@@ -31,8 +31,9 @@ idea
  ├── 3. Parameters .......... symbol - unit - range - sensitivity
  ├── 4. Assumptions ......... each with its violation consequence
  ├── 5. Multi-perspective ...
- │        deterministic | stochastic | optimization |
- │        agent-based | network | control
+ │        deterministic | stochastic | optimization | agent-based |
+ │        network | control | game theory | causal inference |
+ │        information theory | reliability | SPC | thermodynamic
  ├── 6. Compare ............. scored table, one recommended model
  ├── 7. Implement ........... Python + sanity checks + sensitivity sweep
  └── 8. Falsifiability ...... what observation kills this model? + confidence ledger
@@ -183,7 +184,7 @@ python skills/axiomize/tools/parallel_sweep.py --job mc      # 400 CTMC runs in 
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Perspective files follow a fixed contract; PRs adding lenses (information-theoretic, thermodynamic analogies, game-theoretic...) are welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Perspective files follow a fixed contract; open candidate lenses are listed in CONTRIBUTING.md.
 
 ## License
 

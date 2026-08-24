@@ -19,7 +19,7 @@ All notable changes to Axiomize are documented here. Format follows [Keep a Chan
 
 ### Added
 - Three new lenses: reliability engineering, statistical process control, thermodynamic analogies (twelve total)
-- Three new worked examples: fleet maintenance (reliability), marketing attribution (causal), sensor placement (information theory) — eight examples total
+- Three new worked examples: fleet maintenance (reliability), marketing attribution (causal), sensor placement (information theory) — eleven examples total
 - Benchmark suite: `benchmarks/ideas.json` with 8 standard test cases + scoring rubric
 - Domain packs: economics and ecology (alongside epidemiology and operations)
 - Beginner tutorial: `docs/tutorial.md`

@@ -47,7 +47,7 @@ Excluded: teacher staff network (small), weekend gap (conservative).
 ## Phase 5 — Perspectives
 
 ### Network (primary)
-Heterogeneous mean-field: effective reproduction number R_eff = R₀·⟨k²⟩/⟨k⟩ where R₀ = β·(contact duration). Insight: **hubs dominate** — top 3% connected students drive most of the reach; R_eff computed from survey degrees, not guesses. Blind spot: needs degree data.
+Heterogeneous mean-field: effective reproduction number R_eff = R₀·⟨k²⟩/⟨k⟩ where R₀ = β·(infectious period, days). Insight: **hubs dominate** — top 3% connected students drive most of the reach; R_eff computed from survey degrees, not guesses. Blind spot: needs degree data.
 
 ### Deterministic (validation)
 Standard homogeneous SIR with β·k̄ — gives baseline Friday-reach; compared against network estimate to quantify how much structure matters. Blind spot: hides hub effect entirely.

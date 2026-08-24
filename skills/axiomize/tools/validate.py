@@ -60,7 +60,7 @@ def report_sir(args):
     print(f"Peak infected          = {I[peak_idx]:,.0f} at day {t[peak_idx]:.1f}")
     print(f"Final size (simulated) = {sim_final_size:.4f}")
     print(f"Final size (theory)    = {theory_final_size:.4f}")
-    match = abs(sim_final_size - theory_final_size) < 5e-2 or theory_final_size == 0
+    match = (sim_final_size < max(0.05, 3 * I0 / N)) if theory_final_size == 0 else abs(sim_final_size - theory_final_size) < 5e-2
     print(f"Theory match           = {match}")
 
     checks = {
@@ -141,7 +141,11 @@ def report_gillespie(args):
 
     r0 = beta / gamma
     det_final = final_size_theory(beta, gamma)
-    p_fadeout_theory = min(1.0, 1 / (1 + r0)) ** I0
+    if r0 <= 1:
+        p_fadeout_theory = 1.0
+    else:
+        q = 1 / r0
+        p_fadeout_theory = q**I0 * (1 - q) / (1 - q ** (I0 + 1))
 
     results_print = early_extinct / runs
     print("=== Gillespie stochastic SIR ===")
@@ -150,7 +154,7 @@ def report_gillespie(args):
     print(f"R0                          = {r0:.3f}")
     print(f"runs                        = {runs}, seed = {args.seed}")
     print(f"P(early fade-out)           = {results_print:.4f}")
-    print(f"theory fade-out prob        = {p_fadeout_theory:.4f}   [(1/(1+R0))^I0]")
+    print(f"theory fade-out prob        = {p_fadeout_theory:.4f}   [jump-chain, r=1/R0]")
     print(f"mean final size             = {finals.mean():.4f}  (deterministic theory: {det_final:.4f})")
     print(f"final size 5-95% interval   = [{np.percentile(finals, 5):.4f}, {np.percentile(finals, 95):.4f}]")
     major_mask = ~np.array([r["extinct_early"] for r in results])
@@ -186,8 +190,10 @@ def erlang_c(lam, mu, c):
     rho = a / c
     if rho >= 1:
         return 1.0, float("inf")
-    sum_term = sum(a**k / math.factorial(k) for k in range(c))
-    top = a**c / math.factorial(c) / (1 - rho)
+    log_terms = [k * math.log(a) - math.lgamma(k + 1) for k in range(c)]
+    m = max(log_terms)
+    sum_term = sum(math.exp(x - m) for x in log_terms)
+    top = math.exp(c * math.log(a) - math.lgamma(c + 1) - math.log1p(-rho) - m)
     p_wait = top / (sum_term + top)
     w_q_hours = p_wait / (c * mu - lam)
     return p_wait, w_q_hours
@@ -227,7 +233,7 @@ def report_queue(args):
 
     prev_w = rows[first_feasible_idx - 1][3] if first_feasible_idx > 0 else float("nan")
     print(f"\nminimal staffing c* = {feasible}  (fluid lower bound was {c_min})")
-    print(f"at c*-1 the average wait was {prev_w:.0f}+ min vs {rows[first_feasible_idx][3]:.2f} min -- the staffing cliff")
+    print(f"at c*-1 the average wait was {prev_w:.2f} min vs {rows[first_feasible_idx][3]:.2f} min -- the staffing cliff")
 
     checks = {
         "c*_above_fluid_bound": bool(feasible >= c_min),

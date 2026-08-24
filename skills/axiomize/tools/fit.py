@@ -31,9 +31,17 @@ from scipy.optimize import curve_fit
 def load_csv(path):
     with open(path, newline="", encoding="utf-8-sig") as fh:
         rows = list(csv.reader(fh))
+    if len(rows) < 3:
+        raise SystemExit(f"error: {path} needs a header plus at least 2 data rows")
     header, body = rows[0], [r for r in rows[1:] if len(r) >= 2]
-    t = np.array([float(r[0]) for r in body])
-    y = np.array([float(r[1]) for r in body])
+    t = np.empty(len(body))
+    y = np.empty(len(body))
+    for i, r in enumerate(body):
+        try:
+            t[i] = float(r[0])
+            y[i] = float(r[1])
+        except ValueError:
+            raise SystemExit(f"error: {path} row {i + 2}: cannot parse '{r[0]}', '{r[1]}' as numbers")
     return header[:2], t, y
 
 
@@ -86,8 +94,10 @@ def _logistic_curve(t, r, K, y0):
 
 
 def fit_logistic(t, y):
+    if len(t) <= 2:
+        raise SystemExit("error: logistic fit needs at least 3 data points (2 free parameters + residual df)")
     y0 = max(float(y[0]), 1e-9)
-    K_guess = float(y.max()) * 1.2
+    K_guess = float(np.clip(y.max() * 1.2, y0 * 1.01, y0 * 1e6))
 
     def model(tt, r, K):
         return _logistic_curve(tt, r, K, y0)

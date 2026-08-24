@@ -55,7 +55,7 @@ Insight: stockout risk is exponential-ish in safety stock — last units of prot
 Blind spot: doesn't say how MUCH to order.
 
 ### Optimization (primary)
-Newsvendor for order quantity: critical ratio `CR = p/(p+h)` ⇒ optimal cycle stock `Q* ≈ σ_L·√(2K/h)` adjusted by CR quantile (full `(s,Q)` policy).
+Cycle stock from EOQ: `Q = sqrt(2*K*mu_D/h)` (correctly balances ordering vs holding). Safety stock / reorder point via newsvendor critical ratio `CR = p/(p+h)` ⇒ service-level quantile z on lead-time demand: `s = mu_L + z_alpha * sigma_L`. Full policy is the classical (s,Q): order Q whenever position hits s.
 Insight: shadow price of the stockout constraint tells exactly what one avoided stockout is worth.
 Blind spot: static policy — assumes demand distribution stays put.
 

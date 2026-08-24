@@ -51,7 +51,7 @@ $$\frac{dS}{dt} = -\beta \frac{S I}{N}, \quad \frac{dI}{dt} = \beta \frac{S I}{N
 Insight: sharp threshold — epidemic iff R₀ > 1; final size equation predicts total attack rate independent of details. Blind spot: no chance of early stochastic fade-out.
 
 ### Stochastic (validation)
-Continuous-time Markov chain with same rates, Gillespie simulation. Insight: with small I(0), extinction before major outbreak has probability ≈ 1/R₀ even when R₀ > 1 — invisible to ODEs. Blind spot: expensive, gives distributions not clean thresholds.
+Continuous-time Markov chain with same rates, Gillespie simulation. Insight: with a single index case I(0)=1, extinction before major outbreak has probability ≈ 1/R₀ even when R₀ > 1 (for larger seeds it falls roughly as (1/R₀)^I(0)) — invisible to ODEs. Blind spot: expensive, gives distributions not clean thresholds.
 
 ### Optimization (secondary)
 Policy question layered on top: choose closure level c ∈ [0,1] reducing β → β(1−c), minimize economic cost k·c² + medical cost m·I_peak. Insight: reveals acceptable intervention intensity trade-off. Blind spot: assumes cost curves are known.
@@ -83,3 +83,13 @@ Outputs: peak height/timing, final size vs theoretical prediction (consistency c
 ## Phase 8 — Falsifiability
 
 Model dies if observed data show: (a) multiple waves without behavior change (assumption 4 broken), (b) early exponential growth far from βSI/N prediction (mixing assumption broken), (c) sustained endemic plateau (waning immunity).
+
+## Confidence Ledger
+
+| Claim | Type | Basis |
+|-------|------|-------|
+| R₀ > 1 ⟹ epidemic; final-size equation | established | standard SIR theory |
+| Stochastic fade-out ≈ 1/R₀ for single index case | established | branching-process result |
+| β, γ ranges and constant rates | assumption | lit. ranges; `[S]` on constancy |
+| Permanent immunity | assumption | `[S]`, sweep-covered |
+| Announcement coverage p achievable | speculation | unvalidated policy claim |

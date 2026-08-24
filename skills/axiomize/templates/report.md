@@ -1,6 +1,6 @@
 # Template: Final Model Report
 
-The deliverable of every full modeling session. Copy this skeleton, fill every section, delete nothing (write "none" where a section is empty — empty sections are information).
+The deliverable of every full modeling session. Copy this skeleton and keep the section ORDER and the non-negotiable artifacts (parameter table, assumption consequences, comparison, falsifiability, ledger). Phase-style headings (Phase 1 — ...) are an acceptable equivalent of the numbered sections below.
 
 ---
 

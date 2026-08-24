@@ -62,7 +62,7 @@ python skills/axiomize/tools/fit.py --model logistic --data weekly_signups.csv -
 python skills/axiomize/tools/fit.py --model logistic --data weekly_signups.csv --selftest
 ```
 
-Logistic is Bass's special case (p≈0); fit recovers K=M and r≈q+p·(M−A)/M locally. Checks: RMSE < 10% of range; M confidence interval finite; sweep q ∈ [0.2,0.6] → peak-week sensitivity table.
+Logistic is Bass's special case (p≈0); fit recovers K=M and an effective local rate r_eff(A) = q + p·M/A (rate rises as A shrinks — the innovation term dominates early). Checks: RMSE < 10% of range; M confidence interval finite; sweep q ∈ [0.2,0.6] → peak-week sensitivity table.
 
 ## Phase 8 — Falsifiability & Ledger
 
