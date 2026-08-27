@@ -4,6 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+# One run per ref. `pull_request` fires again on every push to a PR branch, and
+# the benchmark-regression step at the bottom replays eight stored reports, so
+# a superseded run is not cheap.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing here writes: the jobs only lint the skill and replay validators.
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -13,8 +25,8 @@ jobs:
       matrix:
         python-version: ["3.9", "3.11", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
