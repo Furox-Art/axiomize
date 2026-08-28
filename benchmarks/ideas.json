@@ -37,7 +37,7 @@
     {
       "id": "reserve-ruin",
       "prompt": "Model this idea mathematically: is a shared insurance reserve enough to survive a bad decade of flood claims?",
-      "must_contain": ["Monte Carlo|simulation", "tail|risk", "[S]"],
+      "must_contain": ["Monte Carlo|simulation", "tail|risk", "surplus|reserve|Cramer|Lundberg"],
       "expected_archetype": "compound Poisson / ruin theory",
       "min_lenses_built": 2,
       "must_reject_at_least_one": true

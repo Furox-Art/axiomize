@@ -15,7 +15,9 @@ Automated layer of [benchmarks/rubric.md](https://github.com/Furox-Art/axiomize/
 | app-adoption-ceiling | 8.8 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/app-adoption-ceiling.md) |
 | epidemic-threshold | 8.2 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/epidemic-threshold.md) |
 
-**Suite average: 9.35/10 — threshold is 16/20 combined (automated layer shown here).**
+**Suite average: 9.21/10 — threshold is 16/20 combined (automated layer shown here; 73.7/8 = 9.21, previously miscomputed as 9.35).**
+
+> **Limitation:** the automated layer checks template compliance (sections, tables, code blocks), not correctness. A deliberately nonsensical report (`R0 = beta+gamma`, beta in kg, negative population, extinction prob. 7) scores **10/10** while the genuine `epidemic-threshold` report scores 8.2. The “9.21” is therefore evidence of formatting discipline, not modeling quality; the human rubric layer is required.
 
 Qualitative notes from the same wave:
 

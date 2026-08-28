@@ -29,13 +29,45 @@ def grade(text, case):
             re.search(alt, text, re.I) is not None for alt in alternatives
         )
 
+    # Archetype: search for the full phrase, not just its first word. The old
+    # re.match(r"\w+", "M/M/c queueing") yielded "M" and matched any report
+    # containing the letter M — a degenerate check that always passed.
     archetype = case["expected_archetype"]
-    key = re.match(r"\w+", archetype).group(0) if archetype else ""
-    checks[f"archetype concept '{key}' present"] = bool(key) and re.search(key, text, re.I) is not None
+    if archetype:
+        # Split on " / " and check each alternative literally (e.g. "Bass diffusion / logistic")
+        alts = [a.strip() for a in archetype.split("/")]
+        checks[f"archetype '{archetype}' present"] = any(
+            alt.lower() in text.lower() for alt in alts if alt
+        )
+    else:
+        checks["archetype present"] = False
 
-    lenses = len(re.findall(r"^#{3,4}\s+(?:Perspective|Lens)\b.*$", text, re.M))
+    # Lens count: reports use varied heading shapes ("### Lens A:", "### Perspective:",
+    # "### Deterministic", "### 4.1 Deterministic"). The old regex only matched
+    # "Perspective" and "Lens", so epidemic-threshold and app-adoption-ceiling
+    # both scored 0 despite having 4 lenses. Count headings inside the
+    # "## 4. Perspective models" section instead, falling back to any lens-like
+    # heading elsewhere.
+    lenses = 0
+    # Try to isolate the perspective-models section
+    m = re.search(r"^##\s+4\.?\s+Perspective models.*?\n", text, re.M | re.I)
+    if m:
+        start = m.end()
+        nxt = re.search(r"^##\s+\d+\.", text[start:], re.M)
+        section = text[start : start + nxt.start()] if nxt else text[start:]
+        lenses = len(re.findall(r"^###\s+", section, re.M))
+        # Exclude non-lens subsections like "Excluded parameters" if present
+        non_lens = len(re.findall(r"^###\s+(?:Excluded|Derived)", section, re.M | re.I))
+        lenses = max(0, lenses - non_lens)
     if lenses == 0:
-        lenses = len(re.findall(r"^###\s+.*[Ll]ens", text, re.M))
+        # Fallback: any heading that looks like a lens
+        lenses = len(
+            re.findall(
+                r"^###\s+(?:Lens|Perspective|\d+\.\d+|Deterministic|Stochastic|Network|Control|Optimization|Game|Causal|Information|Reliability|Thermodynamic|Decision|Demographic|Spatial|Agent)",
+                text,
+                re.M | re.I,
+            )
+        )
     checks[f"perspectives built >= {case['min_lenses_built']} (found {lenses})"] = (
         lenses >= case["min_lenses_built"]
     )

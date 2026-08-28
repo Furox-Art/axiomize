@@ -12,7 +12,7 @@ For each case, check the produced report for:
 4. **Rejection discipline** — if `must_reject_at_least_one`, at least one lens rejected WITH a reason line
 5. **Contract artifacts** — parameter table present with Unit column non-empty; assumptions table has violation-consequence column filled; falsifiability section names observations, not vibes
 
-Score = passed checks / 5.
+Score = 10 * passed / total, where total is 8–11 depending on the case (must_contain length and whether rejection is required). Previously stated as “/5” which did not match the runner’s variable denominator; scores were therefore incomparable across cases. Human total /10 is added to automated /10 → final /20 per case.
 
 ## Human layer (rubric, score each 0–2)
 
