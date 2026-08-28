@@ -2,6 +2,46 @@
 
 All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
 
+## [1.5.0] - 2026-08-24
+
+### Added
+- First-principles protocol (`skills/axiomize/first-principles.md`) for ideas with no matching archetype: derive the model from conservation/accounting identities instead of forcing a known template
+- Two novel-domain benchmark reports exercising that path — async-alignment and telephone-fidelity — neither drawn from the archetype catalog
+- Novel-territory appendix in the report template, recording which quantities were derived rather than borrowed
+
+### Changed
+- SKILL.md routes to the first-principles protocol when archetype matching fails
+
+## [1.4.1] - 2026-08-24
+
+### Fixed
+- LaTeX converter hardening: all 11 worked examples and 8 benchmark reports now compile with zero errors
+- `texput.log`, a LaTeX build artifact, had been committed in 1.4.0; removed and `*.aux` / `*.log` / `*.out` added to `.gitignore`
+
+## [1.4.0] - 2026-08-24
+
+### Added
+- LaTeX/PDF export for reports (`skills/axiomize/tools/report_to_latex.py`): booktabs tables, verbatim code blocks, unicode transliteration
+- Sample rendered report checked in as `docs/report-sample.tex` / `.pdf`
+
+## [1.3.2] - 2026-08-24
+
+### Added
+- Animated demo embedded in the README
+- Benchmark regression wired into CI: the eight stored blind-test reports are replayed on every run, so a scoring regression fails the build
+
+## [1.3.1] - 2026-08-24
+
+### Added
+- Eight blind-test benchmark reports committed under `benchmarks/reports/` (8/8 PASS, mean score 9.35) plus `docs/benchmark-results.md` summarising them
+- Epidemiology and operations domain packs filled out
+
+### Fixed
+- QA-wave defects: fade-out theory formula, Erlang-C overflow on large offered load, `csv_check` reporting a false PASS, and `fit` bounds
+
+### Removed
+- Registry submission kit (`docs/submissions.md`) — premature
+
 ## [1.3.0] - 2026-08-24
 
 ### Added
@@ -63,4 +103,12 @@ First tagged release.
 - Three worked examples: epidemic SIR, retail inventory, coffee-shop staffing
 - GitHub Actions CI running all validation modes
 
+[1.5.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.5.0
+[1.4.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.4.1
+[1.4.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.4.0
+[1.3.2]: https://github.com/Furox-Art/axiomize/releases/tag/v1.3.2
+[1.3.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.3.1
+[1.3.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.3.0
+[1.2.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.2.0
+[1.1.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.0.0

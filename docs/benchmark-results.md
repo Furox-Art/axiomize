@@ -1,19 +1,19 @@
 # Benchmark Results
 
-Automated layer of [benchmarks/rubric.md](../benchmarks/rubric.md) applied to blind-test reports produced by independent agents (fresh memory; forbidden from reading examples/, benchmarks/, docs/, packs/).
+Automated layer of [benchmarks/rubric.md](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/rubric.md) applied to blind-test reports produced by independent agents (fresh memory; forbidden from reading examples/, benchmarks/, docs/, packs/).
 
 ## Wave: 2026-08-24 · skill version at test time: v1.3.0 content
 
 | Case | Score /10 | Verdict | Report |
 |------|-----------|---------|--------|
-| school-rumor-reach | 10.0 | PASS | [report](../benchmarks/reports/school-rumor-reach.md) |
-| greenhouse-setpoint | 10.0 | PASS | [report](../benchmarks/reports/greenhouse-setpoint.md) |
-| barista-staffing | 10.0 | PASS | [report](../benchmarks/reports/barista-staffing.md) |
-| duopoly-price-cut | 8.9 | PASS | [report](../benchmarks/reports/duopoly-price-cut.md) |
-| reserve-ruin | 8.9 | PASS | [report](../benchmarks/reports/reserve-ruin.md) |
-| ad-lift-causal | 8.9 | PASS | [report](../benchmarks/reports/ad-lift-causal.md) |
-| app-adoption-ceiling | 8.8 | PASS | [report](../benchmarks/reports/app-adoption-ceiling.md) |
-| epidemic-threshold | 8.2 | PASS | [report](../benchmarks/reports/epidemic-threshold.md) |
+| school-rumor-reach | 10.0 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/school-rumor-reach.md) |
+| greenhouse-setpoint | 10.0 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/greenhouse-setpoint.md) |
+| barista-staffing | 10.0 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/barista-staffing.md) |
+| duopoly-price-cut | 8.9 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/duopoly-price-cut.md) |
+| reserve-ruin | 8.9 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/reserve-ruin.md) |
+| ad-lift-causal | 8.9 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/ad-lift-causal.md) |
+| app-adoption-ceiling | 8.8 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/app-adoption-ceiling.md) |
+| epidemic-threshold | 8.2 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/epidemic-threshold.md) |
 
 **Suite average: 9.35/10 — threshold is 16/20 combined (automated layer shown here).**
 

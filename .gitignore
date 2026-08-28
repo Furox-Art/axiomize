@@ -6,3 +6,11 @@ __pycache__/
 *.log
 *.out
 texput.log
+
+# mkdocs output, plus the pages that the Pages workflow stages into docs/ from
+# skills/axiomize before building. Generated on every build, never authored.
+site/
+docs/rigor.md
+docs/archetypes.md
+docs/skill.md
+docs/examples.md

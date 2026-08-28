@@ -24,9 +24,17 @@ jobs:
           python-version: "3.12"
       - run: pip install mkdocs-material
       - name: Stage skill docs
+        # SKILL.md and the perspective heads are written to be browsed inside
+        # skills/axiomize/, so their relative links do not survive being
+        # concatenated into a single docs/ page. Everything that is NOT staged
+        # into docs/ (i.e. anything but rigor.md and archetypes.md) is rewritten
+        # to an absolute GitHub URL. `mkdocs build --strict` below is what keeps
+        # this list honest: a new link shape that no rule covers fails the build
+        # instead of shipping a 404 to the site.
         run: |
           cp skills/axiomize/rigor.md docs/rigor.md
           cp skills/axiomize/archetypes.md docs/archetypes.md
+          SKILL_URL='https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize'
           {
             echo "# The workflow"
             cat skills/axiomize/SKILL.md
@@ -37,7 +45,12 @@ jobs:
               head -n 12 "$f"
               echo
             done
-          } | sed -E 's#\]\(perspectives/#](https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize/perspectives/#g; s#\]\(templates/#](https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize/templates/#g' > docs/skill.md
+          } | sed -E "
+              s#\]\(perspectives/#](${SKILL_URL}/perspectives/#g
+              s#\]\(templates/#](${SKILL_URL}/templates/#g
+              s#\]\(first-principles\.md#](${SKILL_URL}/first-principles.md#g
+              s#\]\((agent-based|causal-inference|control|decision-theory|demographic|deterministic|game-theory|information-theory|network|optimization|reliability|spatial|spc|stochastic|thermodynamic)\.md#](${SKILL_URL}/perspectives/\1.md#g
+            " > docs/skill.md
           {
             echo "# Worked examples"
             for f in examples/*.md; do
@@ -47,7 +60,7 @@ jobs:
               echo
             done
           } > docs/examples.md
-      - run: mkdocs build
+      - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
