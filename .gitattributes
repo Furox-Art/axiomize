@@ -1,0 +1,18 @@
+# Store all text as LF in the repo so the same blob checks out identically
+# everywhere; git still hands the working copy the OS-preferred ending via
+# core.autocrlf where configured.
+* text=auto eol=lf
+
+# Windows launchers must keep CRLF — cmd.exe mis-parses LF-only batch files
+# in some cases, and these are the documented entry points.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Binary assets — never normalize, never diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary

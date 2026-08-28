@@ -32,10 +32,11 @@ idea
  │        + match against the archetype catalog (SIR, newsvendor, M/M/c...)
  ├── 3. Parameters .......... symbol - unit - range - sensitivity
  ├── 4. Assumptions ......... each with its violation consequence
- ├── 5. Multi-perspective ...
- │        deterministic | stochastic | optimization | agent-based |
- │        network | control | game theory | causal inference |
- │        information theory | reliability | SPC | thermodynamic
+   ├── 5. Multi-perspective ...
+│        deterministic | stochastic | optimization | agent-based |
+│        network | control | game theory | causal inference |
+│        information theory | reliability | SPC | thermodynamic |
+│        decision theory | demographic | spatial
  ├── 6. Compare ............. scored table, one recommended model
  ├── 7. Implement ........... Python + sanity checks + sensitivity sweep
  └── 8. Falsifiability ...... what observation kills this model? + confidence ledger

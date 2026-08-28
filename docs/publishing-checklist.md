@@ -4,14 +4,14 @@ Prepared texts for submitting Axiomize to skill registries and lists.
 
 ## One-liner (for lists)
 
-> axiomize — agent skill that turns any idea into a rigorous mathematical model via nine mathematical lenses, archetype matching, parallel subagent analysis, and falsifiability checks.
+> axiomize — agent skill that turns any idea into a rigorous mathematical model via fifteen mathematical lenses, archetype matching, parallel subagent analysis, and falsifiability checks.
 
 ## awesome-claude-skills style entry
 
 ```markdown
 - [axiomize](https://github.com/Furox-Art/axiomize) - Idea → mathematical model workflow:
   decomposes problems, matches canonical archetypes (SIR, newsvendor, M/M/c...),
-  models from 9 perspectives in parallel subagents, compares honestly, validates with
+  models from 15 perspectives in parallel subagents, compares honestly, validates with
   runnable Python, and reports what would falsify each model.
 ```
 
