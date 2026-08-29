@@ -88,6 +88,28 @@ def grade(text, case):
     checks["falsifiability section"] = bool(
         re.search(r"[Ff]alsif", text)
     )
+
+    # Numeric oracle (optional) — if present, the report must contain a number
+    # near the expected value after the keyword. This is the first step toward
+    # verifying correctness, not just template compliance. Example: the
+    # deliberately nonsensical R0=beta+gamma report scored 10/10 because every
+    # check was structural; a numeric oracle would have caught it.
+    if "numeric_oracle" in case:
+        oracle = case["numeric_oracle"]
+        kw = oracle["keyword"]
+        expected = float(oracle["expected"])
+        tol = float(oracle["tolerance"])
+        m = re.search(rf"{re.escape(kw)}[^0-9]*([0-9]*\.?[0-9]+)", text, re.I)
+        if m:
+            try:
+                val = float(m.group(1))
+                ok = abs(val - expected) <= tol
+            except ValueError:
+                ok = False
+        else:
+            ok = False
+        checks[f"numeric oracle {kw} ~ {expected} ±{tol}"] = ok
+
     return checks, lenses
 
 

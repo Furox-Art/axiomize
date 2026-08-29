@@ -65,6 +65,24 @@
       "expected_archetype": "causal identification",
       "min_lenses_built": 2,
       "must_reject_at_least_one": true
+    },
+    {
+      "id": "physics-pendulum-drift",
+      "prompt": "Model this idea mathematically: a damped pendulum's period drifts as amplitude decays.",
+      "must_contain": ["period|frequency|\\bT\\b", "damp|decay|Q-factor", "nonlinear|amplitude|sine"],
+      "expected_archetype": "damped harmonic oscillator",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true,
+      "numeric_oracle": {"keyword": "period", "expected": 2.0, "tolerance": 0.3}
+    },
+    {
+      "id": "chemistry-batch-yield",
+      "prompt": "Model this idea mathematically: a batch reactor's yield depends on temperature and residence time.",
+      "must_contain": ["yield|conversion", "Arrhenius|kinetics|rate", "CSTR|batch|reactor"],
+      "expected_archetype": "batch reactor kinetics",
+      "min_lenses_built": 2,
+      "must_reject_at_least_one": true,
+      "numeric_oracle": {"keyword": "yield", "expected": 0.85, "tolerance": 0.1}
     }
   ]
 }
