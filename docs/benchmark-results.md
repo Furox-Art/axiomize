@@ -33,15 +33,13 @@ Three read-only auditors attacked tools and docs:
 - **Consistency audit**: 10 HIGH findings (stale lens counts across README/mkdocs/docs after rapid expansion; phantom pack files) — all resolved; standalone epidemiology/operations packs created.
 - **Math referee**: 3 ERRORs (stochastic fade-out formula — replaced with exact jump-chain result and numerically verified 0.0500 sim vs 0.0481 theory; garbled inventory Q* formula; Leslie matrix survival wording), 5 IMPRECISE — all fixed. ~30 other formulas verified correct as written.
 
-## Pending cases (added 2026-08-28, awaiting benchmark wave)
+## Wave: 2026-08-29 · numeric oracle cases (2 new ideas, first oracle-gated wave)
 
-Two new cases with numeric oracle were added to `benchmarks/ideas.json` after the 2026-08-24 wave:
+| Case | Score /10 | Verdict | Report |
+|------|-----------|---------|--------|
+| physics-pendulum-drift | 10.0 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/physics-pendulum-drift.md) |
+| chemistry-batch-yield | 10.0 | PASS | [report](https://github.com/Furox-Art/axiomize/blob/main/benchmarks/reports/chemistry-batch-yield.md) |
 
-| Case | Prompt | Oracle |
-|------|--------|--------|
-| physics-pendulum-drift | damped pendulum's period drifts as amplitude decays | `period ~ 2.0 ±0.3` |
-| chemistry-batch-yield | batch reactor's yield depends on temperature and residence time | `yield ~ 0.85 ±0.1` |
-
-Run the next wave to populate scores: `python skills/axiomize/tools/benchmark_runner.py --case physics-pendulum-drift --report <file>`
+**New cases average: 10.0/10 · Full suite (10 cases): 93.7/10 = 9.37/10** — both contain the oracle keyword with a number inside tolerance (`period 2.01`, `yield 0.85`), so the deliberate nonsense report that previously scored 10/10 would now **FAIL** the oracle check.
 
 Reproduce any grade: `python skills/axiomize/tools/benchmark_runner.py --case <id> --report <file>`
