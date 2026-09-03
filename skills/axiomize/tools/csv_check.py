@@ -21,8 +21,27 @@ def load(path, tcol, vcol):
     if len(rows) < 2:
         raise SystemExit(f"error: {path} has no data rows")
     header = rows[0]
-    ti = header.index(tcol) if tcol in header else 0
-    vi = header.index(vcol) if vcol in header else 1
+    # Explicit column names are REQUIRED. Silently falling back to positional
+    # indices when the user supplies a name (or no name at all) hides mismatched
+    # data and hands fit.py a series the caller never asked for.
+    if tcol is None:
+        raise SystemExit(
+            f"error: --time-col is required. Header is {header}. "
+            "Pass an explicit column name so a typo fails hard instead of "
+            "silently using the wrong column."
+        )
+    if tcol not in header:
+        raise SystemExit(f"error: time column '{tcol}' not found in header: {header}")
+    ti = header.index(tcol)
+    if vcol is None:
+        raise SystemExit(
+            f"error: --value-col is required. Header is {header}. "
+            "Pass an explicit column name so a typo fails hard instead of "
+            "silently using the wrong column."
+        )
+    if vcol not in header:
+        raise SystemExit(f"error: value column '{vcol}' not found in header: {header}")
+    vi = header.index(vcol)
     body = [r for r in rows[1:] if len(r) > max(ti, vi)]
     if not body:
         raise SystemExit(f"error: {path} has no parseable data rows")
@@ -34,22 +53,31 @@ def load(path, tcol, vcol):
             y[i] = float(r[vi])
         except ValueError:
             raise SystemExit(f"error: row {i + 2}: cannot parse '{r[ti]}', '{r[vi]}' as numbers")
+    # NOTE: returns rows in file order; monotonicity is graded by main() as a
+    # data-quality check. Sorting here would hide exactly the problem this
+    # tool exists to surface.
     return header[ti], header[vi], t, y
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data", required=True)
-    p.add_argument("--time-col", default=None)
-    p.add_argument("--value-col", default=None)
+    p.add_argument("--time-col", required=True, help="name of the time column (required)")
+    p.add_argument("--value-col", required=True, help="name of the value column (required)")
     p.add_argument("--z-outlier", type=float, default=4.0, help="modified-z threshold for outliers")
     args = p.parse_args()
 
     tname, vname, t, y = load(args.data, args.time_col, args.value_col)
     print(f"=== CSV check: {args.data} ({tname}, {vname}) ===")
     checks = {}
-    order = np.argsort(t)
-    t, y = t[order], y[order]
+    # Unsorted time is a data-quality failure, not something to quietly fix:
+    # it usually means mixed sources or mangled dates, and fit.py needs the
+    # caller to notice. We do NOT sort here - sorting would mask the problem
+    # and hand fit.py reordered data the caller never validated.
+    checks["time_monotonic_increasing"] = bool(len(t) < 2 or np.all(t[:-1] <= t[1:]))
+    if not checks["time_monotonic_increasing"]:
+        bad = int(np.sum(np.diff(t) < 0))
+        print(f"FAIL: time column not sorted ({bad} backward step(s)); fix the source data")
 
     checks["no_duplicate_times"] = bool(len(np.unique(t)) == len(t))
     checks["enough_points(n>=10)"] = bool(len(t) >= 10)

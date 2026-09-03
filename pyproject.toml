@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "axiomize"
+version = "1.6.0"
+description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [
+    { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
+]
+keywords = [
+    "modeling",
+    "simulation",
+    "first-principles",
+    "calibration",
+    "sir",
+    "gillespie",
+    "monte-carlo",
+    "erlang-c",
+    "agent-skills",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+playground = [
+    "gradio>=4.0",
+    "pandas>=1.5",
+    "matplotlib>=3.7",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/Furox-Art/axiomize"
+Repository = "https://github.com/Furox-Art/axiomize"
+Issues = "https://github.com/Furox-Art/axiomize/issues"
+Documentation = "https://furox-art.github.io/axiomize/"
+
+[project.scripts]
+axiomize-validate = "axiomize.tools.validate:main"
+axiomize-fit = "axiomize.tools.fit:main"
+axiomize-csv-check = "axiomize.tools.csv_check:main"
+axiomize-benchmark = "axiomize.tools.benchmark_runner:main"
+axiomize-to-latex = "axiomize.tools.report_to_latex:main"
+axiomize-index-reports = "axiomize.tools.index_reports:main"
+axiomize-sweep = "axiomize.tools.parallel_sweep:main"
+
+# check_skill.py is intentionally NOT an entry point: it is a repo-development
+# linter that walks the filesystem around its own location, which is only
+# meaningful inside a source checkout.
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/axiomize"]
+
+# Single source of truth: the wheel is assembled from the files that already
+# live under skills/axiomize/ - nothing is duplicated into src/.
+[tool.hatch.build.targets.wheel.force-include]
+"skills/axiomize/tools" = "axiomize/tools"
+"skills/axiomize/SKILL.md" = "axiomize/SKILL.md"
+"skills/axiomize/rigor.md" = "axiomize/rigor.md"
+"skills/axiomize/archetypes.md" = "axiomize/archetypes.md"
+"skills/axiomize/first-principles.md" = "axiomize/first-principles.md"
+"skills/axiomize/perspectives" = "axiomize/perspectives"
+"skills/axiomize/templates" = "axiomize/templates"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "dist",
+    "site",
+]

@@ -18,7 +18,7 @@ from scipy.integrate import solve_ivp
 
 
 def sir_rhs(t, y, beta, gamma, N):
-    S, I, R = y
+    S, I, _R = y
     return [
         -beta * S * I / N,
         beta * S * I / N - gamma * I,
@@ -48,14 +48,16 @@ def run_sir(beta, gamma, I0, N, days=180):
 def report_sir(args):
     beta, gamma, I0, N = args.beta, args.gamma, args.I0, args.N
     r0 = beta / gamma
-    sol = run_sir(beta, gamma, I0, N)
+    days = args.days
+    sol = run_sir(beta, gamma, I0, N, days)
     t, S, I, R = sol.t, *sol.y
 
     peak_idx = int(np.argmax(I))
     sim_final_size = R[-1] / N
     theory_final_size = final_size_theory(beta, gamma)
 
-    print(f"=== SIR validation ===")
+    print("=== SIR validation ===")
+    print(f"horizon                = {args.days} days  (final-size theory is the t->infinity limit)")
     print(f"R0                     = {r0:.3f}  ({'outbreak' if r0 > 1 else 'dies out'})")
     print(f"Peak infected          = {I[peak_idx]:,.0f} at day {t[peak_idx]:.1f}")
     print(f"Final size (simulated) = {sim_final_size:.4f}")
@@ -77,7 +79,7 @@ def report_sir(args):
         print("\n--- sensitivity sweep over beta ---")
         print(f"{'beta':>6} {'R0':>7} {'peak':>14} {'peak day':>9} {'final size':>11}")
         for b in np.linspace(0.2, 0.5, 7):
-            s = run_sir(b, gamma, I0, N)
+            s = run_sir(b, gamma, I0, N, args.days)
             i = s.y[1]
             pi = int(np.argmax(i))
             print(f"{b:6.3f} {b/gamma:7.2f} {i[pi]:14,.0f} {s.t[pi]:9.1f} {s.y[2][-1]/N:11.4f}")
@@ -141,16 +143,24 @@ def report_gillespie(args):
 
     r0 = beta / gamma
     det_final = final_size_theory(beta, gamma)
-    if r0 <= 1:
-        p_fadeout_theory = 1.0
+    # P(chain hits 0 before ever exceeding I0) for the early-phase jump chain,
+    # where each event is an infection with odds r = gamma/beta = 1/R0 against.
+    # Gambler's ruin between 0 and I0+1 starting at I0 gives
+    # r^I0*(1-r)/(1-r^(I0+1)), rewritten as (r-1)/(r - r^-I0) so it stays
+    # finite for large I0 or extreme r. Valid for EVERY R0 > 0: subcritical
+    # chains can still briefly grow past I0 before dying, so the fade-out
+    # probability is NOT 1 when R0 <= 1; at the critical point R0 = 1 the
+    # limit is 1/(I0+1) (e.g. I0=1 -> first jump decides, exactly 1/2).
+    r = 1.0 / r0
+    if abs(r - 1.0) < 1e-9:
+        p_fadeout_theory = 1.0 / (I0 + 1.0)
     else:
-        q = 1 / r0
-        p_fadeout_theory = q**I0 * (1 - q) / (1 - q ** (I0 + 1))
+        p_fadeout_theory = (r - 1.0) / (r - r ** (-I0))
 
     results_print = early_extinct / runs
     print("=== Gillespie stochastic SIR ===")
-    print(f"(exact CTMC simulation; N kept small for tractability)")
-    print(f"fade-out := chain dies before ever exceeding its initial size")
+    print("(exact CTMC simulation; N kept small for tractability)")
+    print("fade-out := chain dies before ever exceeding its initial size")
     print(f"R0                          = {r0:.3f}")
     print(f"runs                        = {runs}, seed = {args.seed}")
     print(f"P(early fade-out)           = {results_print:.4f}")
@@ -201,7 +211,6 @@ def erlang_c(lam, mu, c):
 
 def report_queue(args):
     lam, mu, target_min = args.lam, args.mu, args.target_wait
-    target_h = target_min / 60.0
 
     c_min = max(1, math.ceil(lam / mu))
     print("=== M/M/c queue staffing (Erlang-C) ===")

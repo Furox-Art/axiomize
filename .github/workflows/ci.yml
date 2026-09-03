@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 # One run per ref. `pull_request` fires again on every push to a PR branch, and
-# the benchmark-regression step at the bottom replays eight stored reports, so
-# a superseded run is not cheap.
+# the benchmark-regression step at the bottom replays every stored report
+# listed in benchmarks/ideas.json, so a superseded run is not cheap.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -30,13 +30,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install "numpy>=1.24" "scipy>=1.10"
+        # Tracked manifest so a clean environment installs exactly what the
+        # tools import - keeps CI and local runs from drifting apart.
+        run: pip install -r requirements-test.txt
+      - name: Run test suite
+        # pytest is listed in requirements-test.txt so a clean environment
+        # has it. Fails the build on any regression in validate/fit/csv_check.
+        run: pytest tests/ -v
       - name: Skill lint (frontmatter + links + compile)
         run: python skills/axiomize/tools/check_skill.py
       - name: Deterministic SIR checks
         run: python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1
       - name: Stochastic (Gillespie) checks
         run: python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1 --runs 300
+      - name: Stochastic subcritical/critical regression (fade-out theory)
+        # R0=0.5, I0=1: theory 2/3 (first-jump exact); R0=1, I0=3: theory 1/4.
+        # The old code asserted fade-out probability 1.0 for every R0 <= 1.
+        run: |
+          python skills/axiomize/tools/validate.py --model gillespie --beta 0.05 --gamma 0.1 --I0 1 --N 10000 --runs 400
+          python skills/axiomize/tools/validate.py --model gillespie --beta 0.1 --gamma 0.1 --I0 3 --N 10000 --runs 400
       - name: Queue (Erlang-C) checks
         run: python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
       - name: Calibration selftests
@@ -48,7 +60,11 @@ jobs:
           python skills/axiomize/tools/parallel_sweep.py --job sweep
           python skills/axiomize/tools/parallel_sweep.py --job mc
       - name: Benchmark regression (stored blind-test reports)
+        # Case ids come straight from ideas.json, so every case runs and the
+        # list can never silently fall behind the cases that exist.
         run: |
-          for id in epidemic-threshold barista-staffing app-adoption-ceiling duopoly-price-cut reserve-ruin greenhouse-setpoint school-rumor-reach ad-lift-causal; do
+          ids="$(python -c "import json; print(' '.join(c['id'] for c in json.load(open('benchmarks/ideas.json', encoding='utf-8'))['cases']))")"
+          echo "grading cases: $ids"
+          for id in $ids; do
             python skills/axiomize/tools/benchmark_runner.py --case "$id" --report "benchmarks/reports/$id.md" || exit 1
           done

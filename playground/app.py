@@ -15,24 +15,49 @@ import sys
 from pathlib import Path
 
 import gradio as gr
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp
-from scipy.optimize import curve_fit
 
-TOOLS = Path(__file__).resolve().parent / "skills" / "axiomize" / "tools"
+def _find_tools():
+    """Locate skills/axiomize/tools next to this file, falling back to the
+    working directory (the `gradio app.py` launcher copies the file to a temp
+    dir, which breaks a __file__-only path).
+
+    Also checks src/axiomize/tools (the installed wheel layout) so the
+    playground works after `pip install axiomize` without a source checkout."""
+    here = Path(__file__).resolve()
+    candidates = [
+        here.parent.parent / "skills" / "axiomize" / "tools",  # source checkout
+        here.parent.parent / "src" / "axiomize" / "tools",     # wheel layout
+        Path.cwd() / "skills" / "axiomize" / "tools",          # run from repo root
+        Path.cwd() / "src" / "axiomize" / "tools",             # run from repo root (wheel)
+    ]
+    for cand in candidates:
+        if (cand / "fit.py").is_file():
+            return cand
+    raise SystemExit(
+        f"error: cannot find skills/axiomize/tools (looked in: "
+        f"{', '.join(str(c) for c in candidates)}). "
+        f"Run me from the axiomize repo: python playground/app.py"
+    )
+
+
+TOOLS = _find_tools()
 sys.path.insert(0, str(TOOLS))
 
-from fit import fit_sir, fit_logistic  # noqa: E402
+from fit import fit_logistic, fit_sir  # noqa: E402
 
 
-def analyze(csv_file, model):
+def analyze(csv_file, model, N):
+    if csv_file is None:
+        return None, "Upload a CSV first (time column first, value second)."
     try:
         df = pd.read_csv(csv_file.name)
-    except Exception as e:
+    except (OSError, pd.errors.ParserError) as e:
         return None, f"CSV read failed: {e}"
     if df.shape[1] < 2:
         return None, "Need at least two columns: time, observed value."
@@ -42,9 +67,23 @@ def analyze(csv_file, model):
     t, y = t[order], y[order]
     notes = [f"rows: {len(t)}"]
 
+    if model == "sir":
+        # fit_sir treats N as mandatory (population size is not inferable from
+        # case counts), so the UI must refuse before calling it.
+        try:
+            n_val = int(N)
+        except (TypeError, ValueError):
+            return None, "SIR needs a whole-number population N (required)."
+        if n_val <= 0:
+            return None, "SIR needs N > 0."
+        if n_val <= float(y.max()):
+            return None, f"SIR needs N > max observed value ({y.max():g}); got N={n_val}."
+    else:
+        n_val = None
+
     try:
-        result = fit_sir(t, y) if model == "sir" else fit_logistic(t, y)
-    except Exception as e:
+        result = fit_sir(t, y, N=n_val) if model == "sir" else fit_logistic(t, y)
+    except Exception as e:  # UI must never crash on a bad fit
         return None, f"Fit failed: {e}. Try csv_check first; SIR needs N >> max(y)."
 
     for k, (v, err) in result["params"].items():
@@ -69,10 +108,12 @@ with gr.Blocks(title="Axiomize playground") as demo:
     with gr.Row():
         file_in = gr.File(label="CSV", file_types=[".csv"])
         model_in = gr.Radio(["sir", "logistic"], value="logistic", label="model")
+    with gr.Row():
+        N_in = gr.Number(label="Population N (required for SIR)", value=100000, precision=0)
     btn = gr.Button("Calibrate")
     plot_out = gr.Image(label="fit")
     text_out = gr.Textbox(label="parameters & diagnostics", lines=8)
-    btn.click(analyze, inputs=[file_in, model_in], outputs=[plot_out, text_out])
+    btn.click(analyze, inputs=[file_in, model_in, N_in], outputs=[plot_out, text_out])
 
 if __name__ == "__main__":
     demo.launch()

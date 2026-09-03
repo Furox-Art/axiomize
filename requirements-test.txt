@@ -1,0 +1,19 @@
+# Axiomize dependency manifest — install with: pip install -r requirements-test.txt
+#
+# CI installs this file verbatim (.github/workflows/ci.yml), so keep it in sync
+# with what the code actually imports. There is no other dependency source of
+# truth; do not add entries here for tools nothing imports.
+
+# Required by skills/axiomize/tools (fit.py, validate.py, parallel_sweep.py
+# import scipy; csv_check.py imports numpy). Everything else in the skill's
+# tools is stdlib-only.
+numpy>=1.24
+scipy>=1.10
+
+# Test runner — CI runs `pytest` to execute the test suite. Without this the
+# test job fails immediately with "pytest: command not found" before any test
+# is collected.
+pytest>=8.0
+
+# Playground only (playground/app.py) — not needed for the tools or CI:
+#   pip install pandas matplotlib gradio
