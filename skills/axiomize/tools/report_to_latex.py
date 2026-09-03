@@ -165,6 +165,35 @@ def neutralize_text_macros(math_latex):
     return math_latex.replace(r"\text{", "{")
 
 
+# TeX primitives that allow file/system access — must never reach pdflatex.
+DANGEROUS_MACROS = frozenset({
+    "input", "include", "includeonly",
+    "write", "openout", "openin", "closeout", "closein", "read",
+    "immediate", "catcode", "def", "gdef", "edef", "xdef",
+    "directlua", "luadirect", "luaexec",
+    "special", "write18", "inputlineno", "scantokens",
+})
+
+
+def neutralize_dangerous_macros(latex, dropped=None):
+    """Replace file/system-access TeX macros with a harmless placeholder.
+
+    Returns the sanitized string and records each blocked macro in
+    ``dropped`` (a set, created if not given) so callers can report it.
+    """
+    if dropped is None:
+        dropped = set()
+
+    def _repl(m):
+        name = m.group(1)
+        if name.lower() in DANGEROUS_MACROS:
+            dropped.add(f"blocked \\{name}")
+            return f"[blocked-{name}]"
+        return m.group(0)
+
+    return re.sub(r"\\([A-Za-z]+)", _repl, latex)
+
+
 def inline(text, dropped):
     spans = []
 
@@ -173,10 +202,10 @@ def inline(text, dropped):
         return f"\x00{len(spans) - 1}\x00"
 
     text = re.sub(r"\$\$(.+?)\$\$",
-                  lambda m: stash("\\[" + neutralize_text_macros(sanitize_math(m.group(1), dropped)) + "\\]"),
+                  lambda m: stash("\\[" + neutralize_dangerous_macros(neutralize_text_macros(sanitize_math(m.group(1), dropped)), dropped) + "\\]"),
                   text, flags=re.S)
     text = re.sub(r"\$(?![\d,])((?:[^$\n\\]|\\.)+?)\$",
-                  lambda m: stash("$" + neutralize_text_macros(sanitize_math(m.group(1), dropped)) + "$"),
+                  lambda m: stash("$" + neutralize_dangerous_macros(neutralize_text_macros(sanitize_math(m.group(1), dropped)), dropped) + "$"),
                   text)
 
     text = esc_map(text, dropped)
@@ -232,7 +261,7 @@ def convert(md_text):
 
         if display_buf is not None:
             if stripped == "$$":
-                out.append("\\[" + neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)) + "\\]")
+                out.append("\\[" + neutralize_dangerous_macros(neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)), dropped) + "\\]")
                 display_buf = None
             else:
                 display_buf.append(stripped)
@@ -249,7 +278,7 @@ def convert(md_text):
             close_lists()
             out.extend(flush_table(table_buf, dropped))
             table_buf = []
-            out.append("\\[" + neutralize_text_macros(sanitize_math(inner, dropped)) + "\\]")
+            out.append("\\[" + neutralize_dangerous_macros(neutralize_text_macros(sanitize_math(inner, dropped)), dropped) + "\\]")
             continue
 
         if stripped.startswith("```"):
@@ -303,7 +332,7 @@ def convert(md_text):
 
     out.extend(flush_table(table_buf, dropped))
     if display_buf is not None:
-        out.append("\\[" + neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)) + "\\]")
+        out.append("\\[" + neutralize_dangerous_macros(neutralize_text_macros(sanitize_math(" ".join(display_buf), dropped)), dropped) + "\\]")
         print("warning: unclosed $$ block at end of input - auto-closed")
     close_lists()
     out.append(POSTAMBLE)
