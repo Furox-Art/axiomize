@@ -10,6 +10,18 @@
 numpy>=1.24
 scipy>=1.10
 
+# Required by the PHASE 1 scientific engine (src/axiomize/tools/symbolic).
+sympy>=1.12
+
+# Required by the PHASE 2+ engine (fitting, network, logic, control,
+# optimization, statistics adapters under src/axiomize/).
+networkx>=3.0
+statsmodels>=0.14
+z3-solver>=4.12
+control>=0.10
+cvxpy>=1.5
+casadi>=3.6
+
 # Test runner — CI runs `pytest` to execute the test suite. Without this the
 # test job fails immediately with "pytest: command not found" before any test
 # is collected.

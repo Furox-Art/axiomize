@@ -40,9 +40,20 @@ classifiers = [
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
+    "sympy>=1.12",
+    "networkx>=3.0",
+    "statsmodels>=0.14",
+    "z3-solver>=4.12",
+    "control>=0.10",
+    "cvxpy>=1.5",
+    "casadi>=3.6",
 ]
 
 [project.optional-dependencies]
+full = [
+    "pymc>=5.0",
+    "jax>=0.4",
+]
 playground = [
     "gradio>=4.0",
     "pandas>=1.5",
@@ -61,6 +72,7 @@ Issues = "https://github.com/Furox-Art/axiomize/issues"
 Documentation = "https://furox-art.github.io/axiomize/"
 
 [project.scripts]
+axiomize = "axiomize.cli:main"
 axiomize-validate = "axiomize.tools.validate:main"
 axiomize-fit = "axiomize.tools.fit:main"
 axiomize-csv-check = "axiomize.tools.csv_check:main"
@@ -95,3 +107,21 @@ exclude = [
     "dist",
     "site",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+
+# Third-party scientific wheels ship without stubs; probe them at runtime
+# instead of type-checking their internals.
+[[tool.mypy.overrides]]
+module = [
+    "sympy.*", "scipy.*", "numpy.*", "networkx.*", "statsmodels.*",
+    "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["casadi", "casadi.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+ignore_errors = true

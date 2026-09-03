@@ -119,6 +119,28 @@ CSV format: time column first, observed values second (`day,infected`). Both mod
 
 Each mode prints internal-consistency checks (conservation laws, bounds, monotonicity, theory match) — the same checks Phase 7 demands from every model the skill produces.
 
+## Scientific engine (v1.6+)
+
+Beyond the skill workflow, Axiomize ships a real scientific engine: a tool
+router, SymPy/SciPy/cvxpy/CasADi/Z3/NetworkX/control adapters, fitting,
+uncertainty, cross-validation, falsification and portable run state.
+CLI, MCP and REST call the same core services (`API v1`):
+
+```bash
+pip install axiomize          # solver stack included (numpy/scipy/sympy/...)
+axiomize solve --N 1000000 --json out.json
+axiomize validate --N 1000000
+axiomize tools                # live availability of every backend
+axiomize capabilities         # machine-readable capability map
+axiomize benchmark            # 12-case scientific suite
+axiomize serve --port 8765    # REST API v1
+axiomize mcp                  # MCP server over stdio
+```
+
+Optional heavy backends: `pip install axiomize[full]` (PyMC, JAX).
+FEniCS/paid solvers stay optional adapters and report `TOOL_UNAVAILABLE`
+when absent. Agent integration guide: `docs/integrations.md`.
+
 ## Related work
 
 Idea→mathematics automation is an active research area; axiomize differs in scope and delivery format:

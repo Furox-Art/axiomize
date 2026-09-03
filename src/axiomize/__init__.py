@@ -19,4 +19,4 @@ The skill documents (SKILL.md, perspectives/, templates/) ship inside the
 ``import axiomize, pathlib; pathlib.Path(axiomize.__file__).parent``.
 """
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"

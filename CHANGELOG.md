@@ -2,6 +2,36 @@
 
 All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
 
+## [Unreleased]
+
+### Added (PHASE 1 scientific engine core)
+
+- `ScientificTool` standard interface (`src/axiomize/tools/base.py`): name, capabilities, availability(), validate_input(), execute(), validate_output(), metadata()
+- SymPy symbolic adapter (`tools/symbolic/`): simplify, derivatives, Jacobian, equation equivalence, analytic final-size, singularities; bare `beta`/`gamma` correctly parse as symbols, not special functions
+- SciPy numerical adapter (`tools/numerical/`): SIR solver that always reports conservation error and ODE residual; solver-agreement check; brentq final-size
+- Rule-based Scientific Tool Router (`routing/`): problem signals → structured tool decision; only truly installed tools are selected, otherwise explicit TOOL_UNAVAILABLE/degraded fallback
+- Dimensional analysis layer (`validation/`): mandatory unit registry; `metre + second` raises instead of computing; ValidationStatus enum (PASS/WARNING/FAIL/CONFLICT/INCONCLUSIVE/TOOL_UNAVAILABLE/UNVERIFIED)
+- Execution sandbox (`execution/`): timeout, private workdir, captured streams, seed, tool versions, no shell
+- Portable RunState (`runs/`): run.json + manifest.json with input hash, versions, timestamps
+- 26 new engine tests (`tests/test_engine_phase1.py`); `sympy` added to runtime deps and test requirements
+
+### Added (PHASES 2-10 scientific engine completion)
+
+- Cross-validation module with CONFLICT semantics (never silently picks a side)
+- Provenance enum (9 levels incl. ASSUMED_FOR_DEMONSTRATION) + candidate-model records
+- Fitting engine (bounded least squares, AIC/BIC, residual flags, BIC model comparison, SIR/logistic fitters)
+- Uncertainty module (6 classes, CIs, Monte Carlo propagation) + dependency-free Metropolis-Hastings Bayesian sampler (PyMC probed, honestly reported missing)
+- Z3 constraint verification, executable falsifiers, local + Monte Carlo sensitivity
+- Network SIR on graphs, PID closed-loop analysis, FTCS heat solver with CFL guard (FEniCS adapter reports TOOL_UNAVAILABLE)
+- cvxpy/CasADi/statsmodels adapters; SCS (`cds`) cross-validation backend
+- Shared application services + `axiomize` CLI + stdio MCP server + REST API v1 + capability discovery
+- Provider abstraction (echo + OpenAI-compatible) + portable run bundles (zip)
+- 12-case scientific benchmark suite (`tests/test_benchmark_suite.py`); `docs/integrations.md` agent guide
+
+### Fixed
+
+- `__version__` 1.5.0 → 1.6.0 to match pyproject.toml
+
 ## [1.5.0] - 2026-08-24
 
 ### Added
