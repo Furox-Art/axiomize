@@ -165,7 +165,7 @@ def neutralize_text_macros(math_latex):
     return math_latex.replace(r"\text{", "{")
 
 
-# TeX primitives that allow file/system access — must never reach pdflatex.
+# TeX primitives that allow file/system access, must never reach pdflatex.
 DANGEROUS_MACROS = frozenset({
     "input", "include", "includeonly",
     "write", "openout", "openin", "closeout", "closein", "read",

@@ -1,7 +1,7 @@
 # Climate Pack
 Curated pointers for climate / energy / decarbonization modeling sessions.
 
-## Scope — What belongs here
+## Scope: What belongs here
 | Sub-domain | Phenomena | State variables | Typical goal |
 |---|---|---|---|
 | Energy balance | radiative forcing, EBM, feedbacks | T [K], F [W/m2] | warming, ECS |
@@ -12,13 +12,13 @@ Out of scope: full GCM CFD, NWP weather, IAM political negotiation.
 Scale rule: 0-D EBM when global mean suffices; promote spatial.md for gradients.
 
 ## Archetypes
-### A1 — Zero-D Energy Balance Model
+### A1: Zero-D Energy Balance Model
 **When:** global-mean T response to forcing with feedback.
 $$C dT/dt = F(t) - lambda T \tag{A1a}$$
 $$F2x=3.7 W/m2,\ ECS=F2x/lambda \tag{A1b}$$
 Symbols: C [J/m2/K] ~8, lambda [W/m2/K] 1.0-1.5, ECS [K] ~3.
 Sources: North 1981; IPCC AR6 Ch.7.
-### A2 — Kaya + Carbon Budget
+### A2: Kaya + Carbon Budget
 **When:** emissions drivers and warming from cumulative carbon.
 $$E=P*g*e*f \tag{A2a}$$
 $$dT~TCRE*sum E,\ TCRE~0.45K/1000GtCO2 \tag{A2b}$$
@@ -39,10 +39,10 @@ python skills/axiomize/tools/validate.py --model ebm --ecs 3.0
 # sweep lambda 0.8-1.5, TCRE 0.35-0.55
 ```
 ## Domain gotchas
-- ECS != TCR — transient lags ECS by decades (ocean inertia)
+- ECS != TCR, transient lags ECS by decades (ocean inertia)
 - Airborne fraction 0.4-0.6; constant-AF overstates after 2050
 - Discount rate r=3% vs 7% flips mitigation sign
-- Mean warming misses tail extremes — variance matters
+- Mean warming misses tail extremes, variance matters
 ## Typical falsifiers
 GMST trend outside EBM envelope at fixed lambda; AF outside 0.3-0.7 decade.
 Observed LCOE learning curve breaks Kaya cost assumption.

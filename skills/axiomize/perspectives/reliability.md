@@ -14,13 +14,13 @@ Use when the question lives over **failure times**: MTBF targets, warranty reser
 2. **Weibull lifetime** with shape β and scale η: hazard h(t) = (β/η)(t/η)^(β−1).
    - β < 1 → infant mortality (hazard decreasing)
    - β = 1 → reduces to exponential
-   - β > 1 → wear-out (hazard increasing) — preventive maintenance only makes sense here
+   - β > 1 → wear-out (hazard increasing), preventive maintenance only makes sense here
 3. **System reliability from component structure:**
    - Series: R_sys = Π R_i (every part must survive)
    - Parallel/redundant: R_sys = 1 − Π(1 − R_i)
    - k-of-n majority variants for graceful degradation
-4. **Renewal–reward long-run cost rate:** replace preventively at age t_p:
-   L(t_p) = [c_p + c_f·F(t_p)] / ∫₀^tp S(t)dt — minimize over t_p where c_f ≫ c_p is the corrective cost including downtime.
+4. **Renewal, reward long-run cost rate:** replace preventively at age t_p:
+   L(t_p) = [c_p + c_f·F(t_p)] / ∫₀^tp S(t)dt, minimize over t_p where c_f ≫ c_p is the corrective cost including downtime.
 
 ## Standard Analysis Output
 

@@ -1,8 +1,8 @@
-# Biology Pack — Population, Community, Ecology & Molecular Kinetics
+# Biology Pack: Population, Community, Ecology & Molecular Kinetics
 
-Curated pointers for biology modeling sessions where quantities obey conservation of individuals / biomass / molecules, saturating functional responses, and compartmental flows. Covers regimes where equations are **literal** mass-balance ODEs — distinct from the *analogy* lens `skills/axiomize/perspectives/thermodynamic.md:1`.
+Curated pointers for biology modeling sessions where quantities obey conservation of individuals / biomass / molecules, saturating functional responses, and compartmental flows. Covers regimes where equations are **literal** mass-balance ODEs, distinct from the *analogy* lens `skills/axiomize/perspectives/thermodynamic.md:1`.
 
-## Scope — What belongs here
+## Scope: What belongs here
 
 | Sub-domain | Phenomena | State variables | Typical goal |
 |---|---|---|---|
@@ -17,7 +17,7 @@ Scale rule: mean-field ODE holds when $N\gtrsim100$; when $N\lesssim100$ or $[E]
 
 ## Archetypes
 
-### A1 — Logistic Growth (with Harvest & Allee)
+### A1: Logistic Growth (with Harvest & Allee)
 
 $$ \frac{dN}{dt} = rN\left(1-\frac{N}{K}\right) $$
 $$ N(t)=\frac{K}{1+Ce^{-rt}},\quad C=\frac{K-N_0}{N_0} $$
@@ -36,7 +36,7 @@ Fixed points: $N^*=0,K$ (logistic); $K(1-h/r)$ (harvest); $0,A,K$ (Allee). MSY $
 
 Sources: Verhulst 1838; Murray Ch.1-2; Kot Ch.2; Schaefer 1954.
 
-### A2 — Lotka–Volterra Competition & Predation
+### A2: Lotka, Volterra Competition & Predation
 
 $$ \frac{dN_i}{dt}=r_iN_i\left(1-\frac{N_i+\sum_{j\neq i}\alpha_{ij}N_j}{K_i}\right) $$
 
@@ -48,14 +48,14 @@ $$ f_I(N)=aN,\quad f_{II}(N)=\frac{aN}{1+ahN},\quad f_{III}(N)=\frac{aN^2}{1+ahN
 |---|---|---|---|
 | $a$ | attack rate | area/predator/time | $a=1/h_{search}$ |
 | $h$ | handling time | time/prey | saturation scale |
-| $e$ | conversion efficiency | – | $0<e\ll1$ |
+| $e$ | conversion efficiency | , | $0<e\ll1$ |
 | $m$ | predator mortality | 1/time | |
 
 Coexistence iff $\alpha_{12}\alpha_{21}<1$ and $K_2/\alpha_{21}>K_1>K_2\alpha_{12}$.
 
 Sources: Lotka 1925; Volterra 1926; Holling 1959; Rosenzweig & MacArthur 1963.
 
-### A3 — SIR / SEIR
+### A3: SIR / SEIR
 
 $$ \frac{dS}{dt}=-\beta\frac{SI}{N},\quad \frac{dI}{dt}=\beta\frac{SI}{N}-\gamma I,\quad \frac{dR}{dt}=\gamma I $$
 
@@ -65,7 +65,7 @@ Early exponential $I(t)\approx I_0 e^{\gamma(R_0-1)t}$; peak when $S=N/R_0$.
 
 Sources: Kermack & McKendrick 1927; Anderson & May Ch.2,6.
 
-### A4 — Michaelis–Menten / Hill
+### A4: Michaelis, Menten / Hill
 
 $$ v=\frac{V_{max}[S]}{K_m+[S]},\quad V_{max}=k_{cat}[E]_0 $$
 
@@ -76,7 +76,7 @@ $$ v=\frac{V_{max}[S]^n}{K_{half}^n+[S]^n},\quad r(S)=r_{max}\frac{[S]}{K_s+[S]}
 | $[S]$ | substrate conc. | mM | |
 | $V_{max}$ | maximal velocity | conc/time | $=k_{cat}[E]_0$ |
 | $K_m$ | Michaelis constant | same as [S] | $[S]$ at $v=V_{max}/2$ |
-| $n_H$ | Hill coefficient | – | cooperativity |
+| $n_H$ | Hill coefficient | , | cooperativity |
 
 QSSA validity: $[S]_0\gg[E]_0$ and $t\gg(k_1[S]_0+k_{-1}+k_{cat})^{-1}$.
 
@@ -95,7 +95,7 @@ Composition rule: build ≥2 lenses; deterministic + stochastic is highest-value
 
 ## Worked mini-example
 
-**Idea:** "Invasive carp 200 fish in 50 ha lake with $K\approx5000$, $r=0.6$/yr, removal $h=0.15$/yr — will they establish?"
+**Idea:** "Invasive carp 200 fish in 50 ha lake with $K\approx5000$, $r=0.6$/yr, removal $h=0.15$/yr, will they establish?"
 
 - Deterministic A1c: $N^*=K(1-h/r)=3750$ stable → establishes.
 - Allee audit A1e: if $A=300$, $N_0<A$ → deterministic predicts extinction.

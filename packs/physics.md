@@ -1,8 +1,8 @@
-# Physics Pack — Classical Mechanics, Thermodynamics & Statistical Physics
+# Physics Pack: Classical Mechanics, Thermodynamics & Statistical Physics
 
-Curated pointers for physics modeling sessions where quantities obey conservation laws, constitutive transport relations, and statistical equilibria. Covers regimes where equations are **literal** (Newton, Fourier, ideal gas, Langevin) — distinct from the *analogy* lens `skills/axiomize/perspectives/thermodynamic.md:1` which borrows thermodynamic structure for social systems.
+Curated pointers for physics modeling sessions where quantities obey conservation laws, constitutive transport relations, and statistical equilibria. Covers regimes where equations are **literal** (Newton, Fourier, ideal gas, Langevin), distinct from the *analogy* lens `skills/axiomize/perspectives/thermodynamic.md:1` which borrows thermodynamic structure for social systems.
 
-## Scope — What belongs here
+## Scope: What belongs here
 
 | Sub-domain | Phenomena | State variables | Typical goal |
 |---|---|---|---|
@@ -17,7 +17,7 @@ Scale rule: classical pack assumes continuum holds. When $N\lesssim100$ particle
 
 ## Archetypes
 
-### A1 — Damped (and driven) harmonic oscillator / Pendulum
+### A1: Damped (and driven) harmonic oscillator / Pendulum
 
 **When:** any restoring force $\propto$ displacement near equilibrium.
 
@@ -31,7 +31,7 @@ $$\frac{d^2\theta}{dt^2} + 2\gamma\,\frac{d\theta}{dt} + \omega_0^2\sin\theta = 
 | $b$ | viscous damping coeff. | kg/s = N·s/m | $b=2m\gamma$ |
 | $\gamma$ | damping rate | 1/s | amplitude $e^{-\gamma t}$ |
 | $k$ | stiffness | N/m | $\omega_0=\sqrt{k/m}$ |
-| $Q=\omega_0/(2\gamma)$ | quality factor | – | rings before decay |
+| $Q=\omega_0/(2\gamma)$ | quality factor | , | rings before decay |
 | $\omega_d=\sqrt{\omega_0^2-\gamma^2}$ | damped frequency | rad/s | $T_d=2\pi/\omega_d$ |
 | $E=\tfrac12 m\dot x^2+\tfrac12 kx^2$ | mechanical energy | J | decays $e^{-2\gamma t}$ |
 
@@ -39,7 +39,7 @@ Underdamped: $x(t)=A e^{-\gamma t}\cos(\omega_d t+\phi)$; Pendulum correction $T
 
 Sources: French *Vibrations and Waves* Ch.3-4; Taylor *Classical Mechanics* Ch.5; Marion & Thornton §3.6.
 
-### A2 — Heat transport (Fourier + heat equation)
+### A2: Heat transport (Fourier + heat equation)
 
 $$\mathbf{q} = -k\,\nabla T \tag{A2a}$$
 $$\frac{\partial T}{\partial t} = \alpha\,\nabla^2 T,\quad \alpha \equiv \frac{k}{\rho c_p} \tag{A2b}$$
@@ -50,7 +50,7 @@ Groups: Biot $Bi=hL_c/k$ (uniform-$T$ iff $Bi<0.1$), Fourier $Fo=\alpha t/L^2$.
 
 Sources: Incropera et al. *Fundamentals of Heat and Mass Transfer* Eq.1.1, Ch.5.
 
-### A3 — Equilibrium thermodynamics
+### A3: Equilibrium thermodynamics
 
 $$pV = nR_u T = Nk_BT,\quad dU = \delta Q - p\,dV \tag{A3a,b}$$
 $$pV^\gamma=\text{const (adiabatic)},\quad \Delta S=n c_v\ln(T_2/T_1)+nR_u\ln(V_2/V_1) \tag{A3c}$$
@@ -59,7 +59,7 @@ $R_u=8.314$ J/mol/K, $k_B=1.38e-23$ J/K, $c_p-c_v=R_u$.
 
 Sources: Callen *Thermodynamics* Ch.2-5; Kittel & Kroemer Ch.3.
 
-### A4 — Statistical fluctuations (Langevin / Boltzmann)
+### A4: Statistical fluctuations (Langevin / Boltzmann)
 
 $$m\frac{dv}{dt} = -\gamma v + \xi(t),\quad \langle\xi(t)\xi(t')\rangle=2\gamma k_B T\,\delta(t-t') \tag{A4a}$$
 $$p(E)\propto e^{-E/k_BT},\quad D=k_BT/\gamma \tag{A4b}$$

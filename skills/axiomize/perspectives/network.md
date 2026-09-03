@@ -4,7 +4,7 @@ Use when **who-interacts-with-whom** matters as much as how much they interact: 
 
 ## When Applicable
 
-- Phase 2 found `interaction` structure AND contacts are heterogeneous/clustered (homogeneous mixing assumption fails — see assumptions template)
+- Phase 2 found `interaction` structure AND contacts are heterogeneous/clustered (homogeneous mixing assumption fails, see assumptions template)
 - Questions like: which node matters most? where does it spread / break? effect of removing targeted nodes/edges?
 - Populations too large or structured for ABM, but mixing is clearly non-uniform
 
@@ -13,11 +13,11 @@ Use when **who-interacts-with-whom** matters as much as how much they interact: 
 ### Statics: graph as object
 Represent as `G = (V, E)`; summarize by degree distribution P(k), clustering C, average path length L, community structure.
 - Centrality for importance ranking: degree (local influence), betweenness (bottlenecks), eigenvector/PageRank (global influence), k-core (robust cores).
-- Percolation: remove nodes/edges at fraction f — find critical f_c where giant component collapses (network resilience).
+- Percolation: remove nodes/edges at fraction f, find critical f_c where giant component collapses (network resilience).
 
 ### Dynamics ON networks
 Compartmental processes where transition rates depend on neighbors' states:
-- SIS/SIR on networks: effective reproduction number becomes `R_eff = R₀ · ⟨k²⟩/⟨k⟩` — hubs inflate outbreak risk beyond the mean-field prediction.
+- SIS/SIR on networks: effective reproduction number becomes `R_eff = R₀ · ⟨k²⟩/⟨k⟩`, hubs inflate outbreak risk beyond the mean-field prediction.
 - Threshold models (adoption): node activates when fraction of active neighbors > θ.
 - Cascade/failure propagation: load redistribution after node removal.
 
@@ -38,8 +38,8 @@ Analysis methods ladder (cheap→expensive):
 ## Strengths / Blind Spots
 
 - (+) Captures heterogeneity & clustering cheaply; yields actionable targeting (whom to vaccinate/influence/inspect)
-- (-) Needs real network data (often unavailable — then state this and fall back to synthetic graphs with stated P(k)); temporal network changes usually ignored; dynamics parameters still come from other lenses
+- (-) Needs real network data (often unavailable, then state this and fall back to synthetic graphs with stated P(k)); temporal network changes usually ignored; dynamics parameters still come from other lenses
 
 ---
 
-**See also:** pairs naturally with [deterministic](deterministic.md) (your R₀ becomes R_eff = R₀·⟨k²⟩/⟨k⟩) and [agent-based](agent-based.md) (ABM on the actual graph). No worked example yet — see [CONTRIBUTING](../../../CONTRIBUTING.md) to add one.
+**See also:** pairs naturally with [deterministic](deterministic.md) (your R₀ becomes R_eff = R₀·⟨k²⟩/⟨k⟩) and [agent-based](agent-based.md) (ABM on the actual graph). No worked example yet, see [CONTRIBUTING](../../../CONTRIBUTING.md) to add one.

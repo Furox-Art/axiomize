@@ -16,9 +16,9 @@ Cournot/Bertrand oligopoly · Hotelling location · Nash bargaining · newsvendo
 
 ## Domain gotchas (feed into Phase 4 as candidate assumptions)
 - Elasticities are regime-dependent: a price cut test in one quarter rarely transfers
-- Competitor reaction is the rule, not the exception — naive optimization misleads (see café example)
+- Competitor reaction is the rule, not the exception, naive optimization misleads (see café example)
 - Revenue ≠ cash flow timing; horizon choice changes sign of recommendations
-- Aggregation hides segment structure — check for two-population mixtures before trusting one demand curve
+- Aggregation hides segment structure, check for two-population mixtures before trusting one demand curve
 
 ## Typical falsifiers
 Price experiment outcomes contradicting fitted elasticity sign; market-share stability where model predicts churn.

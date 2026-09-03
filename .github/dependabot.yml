@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Only github-actions. There is no pip manifest in this repo — the two
+  # Only github-actions. There is no pip manifest in this repo , the two
   # runtime packages the validators need (numpy, scipy) are installed inline
   # by the CI step, so there is nothing for the pip ecosystem to watch.
   - package-ecosystem: "github-actions"

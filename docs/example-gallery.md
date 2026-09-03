@@ -13,7 +13,7 @@ These examples are end-to-end demonstrations of the 8-phase workflow: each turns
 
 | Example | Primary lens(es) | Domain | One-line takeaway |
 |---|---|---|---|
-| [Insurance Ruin Risk](https://github.com/Furox-Art/axiomize/blob/main/examples/insurance-ruin.md) | Stochastic | Insurance / risk | For rare-event solvency questions, deterministic averages are useless — ruin probability is a tail property that only a stochastic model can price. |
+| [Insurance Ruin Risk](https://github.com/Furox-Art/axiomize/blob/main/examples/insurance-ruin.md) | Stochastic | Insurance / risk | For rare-event solvency questions, deterministic averages are useless , ruin probability is a tail property that only a stochastic model can price. |
 | [Retail Inventory Under Uncertain Demand](https://github.com/Furox-Art/axiomize/blob/main/examples/supply-chain-inventory.md) | Stochastic (+ optimization, control) | Retail operations | Demand randomness converts a restocking question into an (s,Q) policy built from newsvendor logic plus safety stock. |
 
 ## Optimization
@@ -32,19 +32,19 @@ These examples are end-to-end demonstrations of the 8-phase workflow: each turns
 
 | Example | Primary lens(es) | Domain | One-line takeaway |
 |---|---|---|---|
-| [Greenhouse Night Temperature](https://github.com/Furox-Art/axiomize/blob/main/examples/control-greenhouse.md) | Control | Agriculture / building systems | Keeping temperature above a setpoint against disturbances is a feedback problem — heater policy follows from the control view, not from prediction alone. |
+| [Greenhouse Night Temperature](https://github.com/Furox-Art/axiomize/blob/main/examples/control-greenhouse.md) | Control | Agriculture / building systems | Keeping temperature above a setpoint against disturbances is a feedback problem , heater policy follows from the control view, not from prediction alone. |
 
 ## Game theory
 
 | Example | Primary lens(es) | Domain | One-line takeaway |
 |---|---|---|---|
-| [Two Cafés Pricing War](https://github.com/Furox-Art/axiomize/blob/main/examples/cafe-pricing-war.md) | Game theory | Economics / competition | A 20% price cut looks profitable when rivals are frozen — game theory reveals the rival's response term that single-actor optimization cannot see. |
+| [Two Cafés Pricing War](https://github.com/Furox-Art/axiomize/blob/main/examples/cafe-pricing-war.md) | Game theory | Economics / competition | A 20% price cut looks profitable when rivals are frozen , game theory reveals the rival's response term that single-actor optimization cannot see. |
 
 ## Causal inference
 
 | Example | Primary lens(es) | Domain | One-line takeaway |
 |---|---|---|---|
-| [Marketing Attribution](https://github.com/Furox-Art/axiomize/blob/main/examples/marketing-attribution.md) | Causal inference | Digital marketing | Users who see retargeting ads buying 3x more is selection, not effect — backdoor confounding must be adjusted before spending follows. |
+| [Marketing Attribution](https://github.com/Furox-Art/axiomize/blob/main/examples/marketing-attribution.md) | Causal inference | Digital marketing | Users who see retargeting ads buying 3x more is selection, not effect , backdoor confounding must be adjusted before spending follows. |
 
 ## Information theory
 

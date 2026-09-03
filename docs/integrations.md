@@ -56,4 +56,4 @@ axiomize reproduce runs/<id>
 
 A run (`run.json` + `manifest.json`) can be zipped, moved to another
 machine, and inspected by another agent. Start in one agent, continue
-in another — the science, not the chat, carries the state.
+in another , the science, not the chat, carries the state.

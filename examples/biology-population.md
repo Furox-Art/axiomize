@@ -2,18 +2,18 @@
 
 Demonstrates Monod-coupled logistic + LV grazing + bistable switch.
 
-## Phase 0 — Rigor Level
+## Phase 0: Rigor Level
 
-**Rigor: standard.** Plain summary: *Lake algae's carrying capacity follows dissolved P via Michaelis-Menten; lake tips when loading exceeds ~4–5 mg P m⁻² day⁻¹, and cutting fertilizer a little does not clear bloom due to hysteresis.*
+**Rigor: standard.** Plain summary: *Lake algae's carrying capacity follows dissolved P via Michaelis-Menten; lake tips when loading exceeds ~4-5 mg P m⁻² day⁻¹, and cutting fertilizer a little does not clear bloom due to hysteresis.*
 
-## Phase 1 — Parse
+## Phase 1: Parse
 
 - System: lake epilimnion + dissolved P + algae $A$ + zooplankton $Z$ + inflow/outflow
 - State: $[P]$ [µg P/L], $A$ [mg Chl-a/m³], $Z$ [ind/L]
 - Goal: critical loading $I_{crit}$, hysteresis width $\Delta I$, fractional reduction $u$ needed
 - Horizon: weeks to one season, daily resolution
 
-## Phase 2 — Decompose
+## Phase 2: Decompose
 
 | # | Sub-problem | Nature | Archetype |
 |---|---|---|---|
@@ -31,21 +31,21 @@ graph LR
     A --> Recycle --> P
 ```
 
-## Phase 3 — Parameters
+## Phase 3: Parameters
 
 | Symbol | Name | Unit | Range | Sensitivity |
 |---|---|---|---|---|
-| $I$ | external P loading | mg P m⁻² day⁻¹ | 1–8 | high |
-| $s$ | flushing + sedimentation | 1/day | 0.02–0.15 | high |
-| $\mu_{max}$ | max algal growth | 1/day | 0.4–1.2 | high |
-| $K_p$ | half-saturation | µg P/L | 5–25 | high |
-| $K_{max}$ | max capacity | mg Chl-a/m³ | 40–100 | med |
-| $\rho$ | recycle fraction | – | 0.2–0.6 | high |
-| $g$ | grazer clearance | L/(ind·day) | 0.01–0.1 | med |
+| $I$ | external P loading | mg P m⁻² day⁻¹ | 1-8 | high |
+| $s$ | flushing + sedimentation | 1/day | 0.02-0.15 | high |
+| $\mu_{max}$ | max algal growth | 1/day | 0.4-1.2 | high |
+| $K_p$ | half-saturation | µg P/L | 5-25 | high |
+| $K_{max}$ | max capacity | mg Chl-a/m³ | 40-100 | med |
+| $\rho$ | recycle fraction | , | 0.2-0.6 | high |
+| $g$ | grazer clearance | L/(ind·day) | 0.01-0.1 | med |
 
 Derived: $K(P)=K_{max}P/(K_p+P)$, $r(P)=\mu_{max}P/(K_p+P)-loss$, $R_{pot}=K(P)/A_{graze}$.
 
-## Phase 4 — Assumptions
+## Phase 4: Assumptions
 
 | # | Assumption | Type | Violation consequence |
 |---|---|---|---|
@@ -57,14 +57,14 @@ Derived: $K(P)=K_{max}P/(K_p+P)$, $r(P)=\mu_{max}P/(K_p+P)-loss$, $R_{pot}=K(P)/
 
 Load-bearing: 3,5,6 flip $I_{crit}$.
 
-## Phase 5 — Perspectives
+## Phase 5: Perspectives
 
 ### Deterministic (primary)
 
 $$dP/dt= I - sP - u\mu(P)A + \rho mA$$
 $$dA/dt= r(P)A(1-A/K(P))- gZA/(1+ghA)-mA$$
 
-Saddle-node at $I_{crit}$ where $\det J=0$; bistable $I\in[I_{back},I_{forward}]$ (≈2.5–4.8).
+Saddle-node at $I_{crit}$ where $\det J=0$; bistable $I\in[I_{back},I_{forward}]$ (≈2.5-4.8).
 
 **Unique insight:** closed-form $I_{crit}\approx s K_p K_{crit}/(K_{max}-K_{crit})$ and hysteresis width $\propto\rho K_{max}/s$.
 
@@ -80,7 +80,7 @@ Patch system $dA_i/dt = ... + \sum D_{ij}(A_j-A_i)$, Moran's $I$ on Chl-a field,
 
 State $x=[P,A]^T$, $u$ fractional runoff reduction, linearize at clear steady, LQR cost, feasibility $u\ge1- I_{back}/I_{current}$.
 
-## Phase 6 — Comparison
+## Phase 6: Comparison
 
 | Criterion | Det | Stoch | Spatial | Ctrl |
 |---|---|---:|---:|---:|---:|
@@ -90,7 +90,7 @@ State $x=[P,A]^T$, $u$ fractional runoff reduction, linearize at clear steady, L
 
 Recommendation: deterministic primary + stochastic mandatory near threshold + spatial hotspot audit.
 
-## Phase 7 — Implementation
+## Phase 7: Implementation
 
 ```python
 import numpy as np
@@ -107,7 +107,7 @@ def rhs(t,y,I):
 
 Validation: dimensional, bounds $A\in[0,K(P)]$, steady residual <1e-6, forward/backward hysteresis gap $\Delta I\approx2.0$.
 
-## Phase 8 — Falsifiability
+## Phase 8: Falsifiability
 
 Dies if:
 - Bloom clears within days after small $I$ cut of ~10% (kills hysteresis)

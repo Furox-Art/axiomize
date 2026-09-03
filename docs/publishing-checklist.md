@@ -4,7 +4,7 @@ Prepared texts for submitting Axiomize to skill registries and lists.
 
 ## One-liner (for lists)
 
-> axiomize — agent skill that turns any idea into a rigorous mathematical model via fifteen mathematical lenses, archetype matching, parallel subagent analysis, and falsifiability checks.
+> axiomize , agent skill that turns any idea into a rigorous mathematical model via fifteen mathematical lenses, archetype matching, parallel subagent analysis, and falsifiability checks.
 
 ## awesome-claude-skills style entry
 
@@ -17,10 +17,10 @@ Prepared texts for submitting Axiomize to skill registries and lists.
 
 ## Where to submit
 
-1. awesome-claude-code / awesome-claude-skills lists — PR with entry above
-2. opencode community showcases — link repo + one worked example
-3. r/ClaudeAI, r/LocalLLaMA — post with GIF demo and the epidemic example as story
-4. Hacker News — "Show HN: I taught my coding agent mathematical modeling discipline"
+1. awesome-claude-code / awesome-claude-skills lists , PR with entry above
+2. opencode community showcases , link repo + one worked example
+3. r/ClaudeAI, r/LocalLLaMA , post with GIF demo and the epidemic example as story
+4. Hacker News , "Show HN: I taught my coding agent mathematical modeling discipline"
 
 ## Before submitting
 

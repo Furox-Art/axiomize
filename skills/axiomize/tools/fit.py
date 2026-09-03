@@ -71,7 +71,7 @@ def fit_sir(t, y, N=None):
     if N is None:
         raise SystemExit(
             "error: --N is required for SIR fit. Population size cannot be inferred from "
-            "case counts alone — fabricating N as 50*max(y) silently returned R0=1.25 on "
+            "case counts alone, fabricating N as 50*max(y) silently returned R0=1.25 on "
             "synthetic N=100000, beta=0.35, gamma=0.12 data where truth is R0=2.92 (57% error). "
             "Pass --N <population> explicitly."
         )
@@ -194,7 +194,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", choices=["sir", "logistic"], default="sir")
     p.add_argument("--data", help="CSV file: time column then observed values")
-    p.add_argument("--N", type=float, default=None, help="population size (sir) — required")
+    p.add_argument("--N", type=float, default=None, help="population size (sir), required")
     p.add_argument("--selftest", action="store_true", help="fit synthetic data with known truth")
     p.add_argument("--compare", action="store_true", help="fit all models on the data, rank by AIC/BIC")
     p.add_argument("--json", action="store_true", help="emit machine-readable JSON result")

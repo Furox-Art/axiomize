@@ -1,6 +1,6 @@
 # Perspective: Thermodynamic Analogies (Flows, Stocks, and Limits)
 
-> **Status: ANALOGY LENS.** This perspective imports structure from thermodynamics — conservation, potential-driven flow, gradient decay — as a source of hypotheses about social and economic systems. Physics laws do not transfer automatically: verify every borrowed law against the target system before trusting any conclusion reached with it. The analogy suggests; it never proves.
+> **Status: ANALOGY LENS.** This perspective imports structure from thermodynamics, conservation, potential-driven flow, gradient decay, as a source of hypotheses about social and economic systems. Physics laws do not transfer automatically: verify every borrowed law against the target system before trusting any conclusion reached with it. The analogy suggests; it never proves.
 
 ## When Applicable
 
@@ -45,13 +45,13 @@ With capacitance, substitute `dS_i/dt = C_i * dV_i/dt` to get an ODE system in p
 
 ### 2. Entropy-style dispersion argument
 
-Claim shape: without maintained gradients, stocks disperse — market shares equalize, attention spreads, talent diffuses toward lower-pressure regions. This is why incentives decay: a differential advantage drives flow, the flow erodes the very difference driving it, and the advantage self-extinguishes unless continuously paid for.
+Claim shape: without maintained gradients, stocks disperse, market shares equalize, attention spreads, talent diffuses toward lower-pressure regions. This is why incentives decay: a differential advantage drives flow, the flow erodes the very difference driving it, and the advantage self-extinguishes unless continuously paid for.
 
 Formalize for one maintained gradient `Delta_V = V_a - V_b > 0` between high side `a` and low side `b`, with channel conductance `G_ab` and effective capacitance `C_eff = d(Delta_V)/d(S_a - S_b)`:
 
 `C_eff * d(Delta_V)/dt = m(t) - G_ab * Delta_V`
 
-where `m(t)` `[S/time]` is the maintenance flow propping up side `a` (ad spend, wage premium, subsidy). Steady state `Delta_V* = m/G_ab`, relaxation time `tau = C_eff/G_ab`. Read backwards: set `m = 0` and the gradient decays exponentially with time constant `tau` — the analog of heat flow ending at temperature equality. Dispersion is free; gradients are rented.
+where `m(t)` `[S/time]` is the maintenance flow propping up side `a` (ad spend, wage premium, subsidy). Steady state `Delta_V* = m/G_ab`, relaxation time `tau = C_eff/G_ab`. Read backwards: set `m = 0` and the gradient decays exponentially with time constant `tau`, the analog of heat flow ending at temperature equality. Dispersion is free; gradients are rented.
 
 ### 3. Near-equilibrium linear response caveat
 
@@ -78,15 +78,15 @@ all G_xy in [S/(time*potential)]
 ```
 
 3. Steady-state solution: all fluxes `J_ij*` and potentials `V_i*`; total dissipation `Phi*`; bottleneck identified as the channel carrying the largest `Phi` share or the smallest conductance on the critical path
-4. Dominant relaxation time `tau = R_eq * C_eq`, where `R_eq`, `C_eq` are the equivalent resistance and capacitance seen from the perturbed reservoir — the answer to "how long until prices, arrears, or backlogs settle"
-5. **Breakdown statement** (mandatory): list explicitly where the analogy breaks — agents optimize and anticipate, rerouting before gradients form, unlike molecules; potentials may fail to be state functions (price depends on expectations, not local stock alone); flows can create their own gradients (network effects reverse dispersion). Any conclusion resting on an unverified borrowed law is recorded as hypothesis, not result.
+4. Dominant relaxation time `tau = R_eq * C_eq`, where `R_eq`, `C_eq` are the equivalent resistance and capacitance seen from the perturbed reservoir, the answer to "how long until prices, arrears, or backlogs settle"
+5. **Breakdown statement** (mandatory): list explicitly where the analogy breaks, agents optimize and anticipate, rerouting before gradients form, unlike molecules; potentials may fail to be state functions (price depends on expectations, not local stock alone); flows can create their own gradients (network effects reverse dispersion). Any conclusion resting on an unverified borrowed law is recorded as hypothesis, not result.
 
 ## Strengths / Blind Spots
 
-- (+) Imposes conservation discipline — sinks and leaks become explicit terms, catching accounting errors other lenses tolerate
+- (+) Imposes conservation discipline, sinks and leaks become explicit terms, catching accounting errors other lenses tolerate
 - (+) Reveals bottlenecks as resistances: total throughput is bounded by the minimal-conductance channel regardless of everything else
 - (+) Fast equilibrium intuition: relaxation times fall out of `R*C`, giving back-of-envelope settling times
-- (-) Social systems violate equipartition — stocks do not spread evenly over accessible states (power-law wealth distributions persist indefinitely) — and violate the intensive/extensive split (doubling a team does not double its "pressure")
+- (-) Social systems violate equipartition, stocks do not spread evenly over accessible states (power-law wealth distributions persist indefinitely), and violate the intensive/extensive split (doubling a team does not double its "pressure")
 - (-) Observed flows can run against current potential differences (speculation buys high expecting higher), which heat never does
 - (-) The analogy is a hypothesis generator, not proof: conclusions must be re-verified in another lens before entering a report; mark every borrowed law `[S]` in the assumptions checklist until verified
 

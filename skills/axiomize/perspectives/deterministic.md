@@ -6,7 +6,7 @@ Use when the system is dominated by **accumulating flows**: populations, concent
 
 - Phase 2 classified the core as `flow`
 - Individual randomness averages out (large numbers)
-- The question is about trends, equilibria, thresholds — not fluctuations
+- The question is about trends, equilibria, thresholds, not fluctuations
 
 ## Model Forms
 
@@ -28,7 +28,7 @@ Checklist for building it:
 ## Standard Analysis Output
 
 1. Fixed points and their stability
-2. Threshold conditions (the critical value of a parameter where behavior flips — e.g., R₀ = 1)
+2. Threshold conditions (the critical value of a parameter where behavior flips, e.g., R₀ = 1)
 3. Long-run behavior (converge? oscillate? diverge?)
 4. Phase portrait description if 2D
 
@@ -39,4 +39,4 @@ Checklist for building it:
 
 ---
 
-**See also:** worked example using this lens as primary — [epidemic SIR](../../../examples/epidemic-sir.md) · templates: [parameter table](../templates/parameters.md), [assumptions](../templates/assumptions.md)
+**See also:** worked example using this lens as primary, [epidemic SIR](../../../examples/epidemic-sir.md) · templates: [parameter table](../templates/parameters.md), [assumptions](../templates/assumptions.md)

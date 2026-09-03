@@ -1,6 +1,6 @@
 # Perspective: Optimization & Equilibrium (Decisions Under Constraints)
 
-Use when someone is **choosing** — allocating resources, designing a policy, setting prices — or when multiple actors' choices interact.
+Use when someone is **choosing**, allocating resources, designing a policy, setting prices, or when multiple actors' choices interact.
 
 ## When Applicable
 
@@ -20,7 +20,7 @@ subject to  g_i(x) ≤ b_i  ← every real constraint listed
 Checklist:
 1. Decision variables: what CAN be chosen? (with units)
 2. Objective: ONE scalar. If multiple objectives exist → weighted sum (state weights) or Pareto analysis.
-3. Constraints: physical, budgetary, logical. Missing constraints produce absurd optima — always sanity-check the solution.
+3. Constraints: physical, budgetary, logical. Missing constraints produce absurd optima, always sanity-check the solution.
 4. Solver choice: linear → `scipy.optimize.linprog`; smooth nonlinear → `minimize`; integer/mixed → `milp`.
 
 ### Dynamic optimization
@@ -30,11 +30,11 @@ Choices over time: optimal control (` Pontryagin`) or dynamic programming (Bellm
 Multiple actors, each optimizing against others:
 1. Players, strategies, payoffs per combination.
 2. Find Nash equilibria (best-response intersections).
-3. KEY QUESTION: does equilibrium hurt everyone? (tragedy of the commons / price war) — compare Nash payoff vs cooperative optimum.
+3. KEY QUESTION: does equilibrium hurt everyone? (tragedy of the commons / price war), compare Nash payoff vs cooperative optimum.
 
 ## Standard Analysis Output
 
-1. Formal problem statement (variables, objective, constraints — all with units)
+1. Formal problem statement (variables, objective, constraints, all with units)
 2. Optimal solution + active constraints (which constraints bind?)
 3. Shadow prices / dual values: what is one more unit of each scarce resource worth?
 4. Sensitivity: how much can parameters move before the solution changes?
@@ -47,4 +47,4 @@ Multiple actors, each optimizing against others:
 
 ---
 
-**See also:** worked examples — [retail inventory](../../../examples/supply-chain-inventory.md) ((s,Q) policy), [coffee shop](../../../examples/coffee-shop-staffing.md) (staffing ILP fed by Erlang-C waits — lenses composing). Templates: [parameter table](../templates/parameters.md)
+**See also:** worked examples, [retail inventory](../../../examples/supply-chain-inventory.md) ((s,Q) policy), [coffee shop](../../../examples/coffee-shop-staffing.md) (staffing ILP fed by Erlang-C waits, lenses composing). Templates: [parameter table](../templates/parameters.md)

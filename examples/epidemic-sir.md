@@ -2,17 +2,17 @@
 
 Demonstration of the full workflow on a concrete idea.
 
-## Phase 1 — Parse
+## Phase 1: Parse
 
 **Idea (user)**: "A new contagious disease appears in a city of 1M people. What happens?"
 
 - **System**: human population of the city, compartmentalized by disease status
 - **State**: counts of Susceptible / Infectious / Recovered individuals over time
 - **Inputs**: initial infections, contact patterns
-- **Goal**: prediction — peak size and timing, total infected, does it die out?
+- **Goal**: prediction, peak size and timing, total infected, does it die out?
 - **Horizon**: months, daily resolution
 
-## Phase 2 — Decompose
+## Phase 2: Decompose
 
 | Sub-problem | Nature |
 |---|---|
@@ -22,18 +22,18 @@ Demonstration of the full workflow on a concrete idea.
 
 Coupling: transmission consumes susceptibles, feeds infectious; recovery drains infectious.
 
-## Phase 3 — Parameters
+## Phase 3: Parameters
 
 | Symbol | Name | Unit | Exo/Endo | Range | Source | Sensitivity |
 |--------|------|------|----------|-------|--------|-------------|
-| β | transmission rate | 1/day | exo | 0.2–0.5 | lit. | high |
-| γ | recovery rate | 1/day | exo | 0.05–0.2 | lit. | high |
-| I(0) | initial infected | persons | exo | 1–50 | est. | medium |
-| S(t), I(t), R(t) | compartment counts | persons | endo | ≥0 | derived | — |
+| β | transmission rate | 1/day | exo | 0.2-0.5 | lit. | high |
+| γ | recovery rate | 1/day | exo | 0.05-0.2 | lit. | high |
+| I(0) | initial infected | persons | exo | 1-50 | est. | medium |
+| S(t), I(t), R(t) | compartment counts | persons | endo | ≥0 | derived | , |
 
-Excluded: seasonal forcing (horizon << 1 yr), spatial structure (first pass), demographics (months horizon). Derived quantity: **R₀ = β/γ** — threshold at R₀ = 1.
+Excluded: seasonal forcing (horizon << 1 yr), spatial structure (first pass), demographics (months horizon). Derived quantity: **R₀ = β/γ**, threshold at R₀ = 1.
 
-## Phase 4 — Assumptions
+## Phase 4: Assumptions
 
 | # | Assumption | Type | Violation consequence |
 |---|-----------|------|----------------------|
@@ -44,14 +44,14 @@ Excluded: seasonal forcing (horizon << 1 yr), spatial structure (first pass), de
 
 Assumptions 2 and 4 are `[S]` → included in sensitivity sweep.
 
-## Phase 5 — Perspectives
+## Phase 5: Perspectives
 
 ### Deterministic (primary)
 $$\frac{dS}{dt} = -\beta \frac{S I}{N}, \quad \frac{dI}{dt} = \beta \frac{S I}{N} - \gamma I, \quad \frac{dR}{dt} = \gamma I$$
-Insight: sharp threshold — epidemic iff R₀ > 1; final size equation predicts total attack rate independent of details. Blind spot: no chance of early stochastic fade-out.
+Insight: sharp threshold, epidemic iff R₀ > 1; final size equation predicts total attack rate independent of details. Blind spot: no chance of early stochastic fade-out.
 
 ### Stochastic (validation)
-Continuous-time Markov chain with same rates, Gillespie simulation. Insight: with a single index case I(0)=1, extinction before major outbreak has probability ≈ 1/R₀ even when R₀ > 1 (for larger seeds it falls roughly as (1/R₀)^I(0)) — invisible to ODEs. Blind spot: expensive, gives distributions not clean thresholds.
+Continuous-time Markov chain with same rates, Gillespie simulation. Insight: with a single index case I(0)=1, extinction before major outbreak has probability ≈ 1/R₀ even when R₀ > 1 (for larger seeds it falls roughly as (1/R₀)^I(0)), invisible to ODEs. Blind spot: expensive, gives distributions not clean thresholds.
 
 ### Optimization (secondary)
 Policy question layered on top: choose closure level c ∈ [0,1] reducing β → β(1−c), minimize economic cost k·c² + medical cost m·I_peak. Insight: reveals acceptable intervention intensity trade-off. Blind spot: assumes cost curves are known.
@@ -59,7 +59,7 @@ Policy question layered on top: choose closure level c ∈ [0,1] reducing β →
 ### Agent-based (rejected)
 Rejected: heterogeneity and network structure deliberately excluded in first pass; ABM adds cost without answering THIS question better. Would become relevant if assumption 1 fails validation against data.
 
-## Phase 6 — Comparison & Recommendation
+## Phase 6: Comparison & Recommendation
 
 | Criterion | Det | Stoch | Opt | ABM |
 |-----------|-----|-------|-----|-----|
@@ -70,7 +70,7 @@ Rejected: heterogeneity and network structure deliberately excluded in first pas
 
 **Recommendation**: deterministic SIR primary + stochastic CTMC validation. Code below implements both.
 
-## Phase 7 — Implementation
+## Phase 7: Implementation
 
 See `skills/axiomize/tools/validate.py` usage:
 
@@ -80,7 +80,7 @@ python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --I0
 
 Outputs: peak height/timing, final size vs theoretical prediction (consistency check), R₀, sensitivity sweep over β ∈ [0.2, 0.5].
 
-## Phase 8 — Falsifiability
+## Phase 8: Falsifiability
 
 Model dies if observed data show: (a) multiple waves without behavior change (assumption 4 broken), (b) early exponential growth far from βSI/N prediction (mixing assumption broken), (c) sustained endemic plateau (waning immunity).
 

@@ -1,10 +1,10 @@
 # Roadmap
 
-Public plan. Checked items ship; everything here is open for contribution — see CONTRIBUTING.md.
+Public plan. Checked items ship; everything here is open for contribution, see CONTRIBUTING.md.
 
 ## Shipped
 
-- [x] v1.0.0 — 6 lenses, archetype catalog, rigor ladder, parallel dispatch, bundled tools, CI
+- [x] v1.0.0, 6 lenses, archetype catalog, rigor ladder, parallel dispatch, bundled tools, CI
 
 ## Shipped in v1.1
 

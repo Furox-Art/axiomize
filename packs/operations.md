@@ -3,7 +3,7 @@
 Curated pointers for operations / logistics / service-operations modeling sessions.
 
 ## Archetypes that dominate here
-newsvendor/(s,Q) inventory · M/M/c queueing + Little's Law · LP/ILP scheduling · renewal–reward maintenance · Erlang loss
+newsvendor/(s,Q) inventory · M/M/c queueing + Little's Law · LP/ILP scheduling · renewal, reward maintenance · Erlang loss
 
 ## Lens priorities
 1. Optimization (staffing, ordering, routing decisions)
@@ -18,9 +18,9 @@ newsvendor/(s,Q) inventory · M/M/c queueing + Little's Law · LP/ILP scheduling
 Erlang-C staffing cliffs (`validate.py --model queue`) · Monte Carlo service levels · `csv_check.py` then `fit.py --model logistic` on demand series
 
 ## Domain gotchas
-- Utilization near 1 breaks every average — queues explode nonlinearly
+- Utilization near 1 breaks every average, queues explode nonlinearly
 - Lead-time VARIANCE hurts more than lead-time mean
-- Cost curves are guessed `[S]` assumptions — sweep them, never trust point estimates
+- Cost curves are guessed `[S]` assumptions, sweep them, never trust point estimates
 - Integer constraints matter at small scale; LP relaxations lie for 3 servers
 
 ## Typical falsifiers

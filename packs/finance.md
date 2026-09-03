@@ -1,7 +1,7 @@
 # Finance Pack
 Curated pointers for finance / portfolio / risk modeling sessions.
 
-## Scope — What belongs here
+## Scope: What belongs here
 | Sub-domain | Phenomena | State variables | Typical goal |
 |---|---|---|---|
 | Asset pricing | returns, CAPM, factor premia | price P, return R | expected return, alpha |
@@ -13,13 +13,13 @@ Scale rule: mean-variance when N assets < 1000; promote stochastic.md for tails.
 
 ## Archetypes
 
-### A1 — Markowitz Mean-Variance Portfolio
+### A1: Markowitz Mean-Variance Portfolio
 **When:** allocation across risky assets with return-risk tradeoff.
 $$\min_w w^T Sigma w \quad s.t.\ w^T mu >= mu*,\ sum w=1 \tag{A1a}$$
 $$w* ~ Sigma^{-1} mu,\ Sharpe = (mu_p - r_f)/sigma_p \tag{A1b}$$
 Symbols: w weights, mu expected returns, Sigma covariance, r_f risk-free.
 Sources: Markowitz 1952; Sharpe 1964; Bodie Kane Marcus Ch.7.
-### A2 — GBM + Black-Scholes + Kelly
+### A2: GBM + Black-Scholes + Kelly
 **When:** price dynamics, option pricing, growth-optimal sizing.
 $$dS = mu S dt + sigma S dW,\ S(t)=S0 exp((mu-0.5 sigma^2)t+sigma W) \tag{A2a}$$
 $$C=S N(d1)-K e^{-rT} N(d2),\ f*=(bp-q)/b \tag{A2b}$$
@@ -41,9 +41,9 @@ python skills/axiomize/tools/validate.py --model portfolio --risk 0.15
 # sweep mu +/-20%, sigma 0.15-0.40, r_f 0-0.05
 ```
 ## Domain gotchas
-- Mu is noisy — estimation error dominates optimization (Michaud critique)
+- Mu is noisy, estimation error dominates optimization (Michaud critique)
 - Volatility clustering breaks GBM iid; fat tails kill normal VaR
-- Correlation spikes in crises — diversification vanishes when needed
+- Correlation spikes in crises, diversification vanishes when needed
 - Leverage + Kelly without fraction caps guarantees ruin
 ## Typical falsifiers
 Realized Sharpe persistently below predicted after costs; out-of-sample w* underperforms equal weight.

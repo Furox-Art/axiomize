@@ -1,18 +1,18 @@
-# Example: Drone Hover in Wind — Control
+# Example: Drone Hover in Wind: Control
 
 Demonstrates control primary + stochastic + optimization + SPC on literal engineering system.
 
-## Phase 0 — Rigor Level
+## Phase 0: Rigor Level
 
-**Rigor: standard.** Plain summary: *Quadrotor hover is double-integrator — without feedback any gust makes it drift. PID/LQR with ~45° phase margin and thrust margin >1.3× weight keeps altitude within ±0.2 m in 2 m/s RMS wind.*
+**Rigor: standard.** Plain summary: *Quadrotor hover is double-integrator, without feedback any gust makes it drift. PID/LQR with ~45° phase margin and thrust margin >1.3× weight keeps altitude within ±0.2 m in 2 m/s RMS wind.*
 
-## Phase 1 — Parse
+## Phase 1: Parse
 
 - System: quadrotor + 4 rotors + IMU/baro + wind field.
 - State: altitude $z$ [m], velocity $v=\dot z$ [m/s], thrust $T$ [N]; wind $w$ [N].
 - Goal: regulate $z\to z_{set}$ despite gusts; metrics $T_s$, overshoot $M_p$, $P(|z-z_{set}|>0.2)$.
 
-## Phase 2 — Decompose
+## Phase 2: Decompose
 
 | # | Sub-problem | Nature | Archetype |
 |---|---|---|---|
@@ -30,21 +30,21 @@ graph LR
     Dyn --> Sensor --> Cmd
 ```
 
-## Phase 3 — Parameters
+## Phase 3: Parameters
 
 | Symbol | Name | Unit | Range | Sensitivity |
 |---|---|---|---|---|
-| $m$ | mass | kg | 0.8–2.5 (1.5 nom) | high |
-| $\tau_m$ | motor lag | s | 0.05–0.15 | high |
-| $T_{max}$ | max thrust | N | 18–30 | high |
-| $b$ | aero drag | N·s/m | 0.1–0.6 | medium |
+| $m$ | mass | kg | 0.8-2.5 (1.5 nom) | high |
+| $\tau_m$ | motor lag | s | 0.05-0.15 | high |
+| $T_{max}$ | max thrust | N | 18-30 | high |
+| $b$ | aero drag | N·s/m | 0.1-0.6 | medium |
 | $K_p,K_i,K_d$ | PID gains | N/m, N/(m·s), N·s/m | tuned | high |
-| $\sigma_w$ | wind RMS | N | 1–4 | high |
-| $\tau_w$ | wind correlation | s | 1–5 | high |
+| $\sigma_w$ | wind RMS | N | 1-4 | high |
+| $\tau_w$ | wind correlation | s | 1-5 | high |
 
 Derived: hover $T_{hov}=mg\approx14.7$ N; margin $M_T=T_{max}/T_{hov}$; closed-loop $A_{cl}$.
 
-## Phase 4 — Assumptions
+## Phase 4: Assumptions
 
 | # | Assumption | Type | Violation consequence |
 |---|---|---|---|
@@ -57,7 +57,7 @@ Derived: hover $T_{hov}=mg\approx14.7$ N; margin $M_T=T_{max}/T_{hov}$; closed-l
 
 Load-bearing: 3,4,6.
 
-## Phase 5 — Perspectives
+## Phase 5: Perspectives
 
 ### Control (primary)
 
@@ -83,7 +83,7 @@ Pareto $J$ vs $P_{viol}$; shadow price $y^*_{T}\approx-0.18$.
 
 EWMA $\lambda=0.20$ on residuals, Weibull $\beta\approx2.1$, $\eta\approx520$h, $A=0.996$ per motor.
 
-## Phase 6 — Comparison
+## Phase 6: Comparison
 
 | Criterion | PID | LQR | Stochastic | SPC |
 |---|---|---:|---:|---:|---:|
@@ -93,7 +93,7 @@ EWMA $\lambda=0.20$ on residuals, Weibull $\beta\approx2.1$, $\eta\approx520$h, 
 
 Recommendation: LQR/PID primary + stochastic MC validation + SPC EWMA.
 
-## Phase 7 — Implementation
+## Phase 7: Implementation
 
 ```python
 import numpy as np
@@ -108,7 +108,7 @@ P=solve_continuous_are(A,B,Q,R); K=(1/R[0,0])*B.T@P
 
 Validation: $T_{hov}=mg$, $A_{cl}$ Hurwitz, $P_{viol}$ inside $3\sigma$ of closed-form OU variance.
 
-## Phase 8 — Falsifiability
+## Phase 8: Falsifiability
 
 Dies if:
 - Step $M_p>30\%$ despite $PM\ge45°$ (kills delay-free)

@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.9%2B-informational)
 ![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)
 
-**Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **fifteen perspectives**, an honest comparison, runnable validation code — and what would falsify the model.
+**Turn any idea into a rigorous mathematical model.** An [Agent Skill](https://github.com/anthropics/skills) for AI coding agents (Claude Code, opencode, Cursor, ...) that takes a vague idea and returns formal mathematics: decomposed sub-problems, active parameter tables, models from **fifteen perspectives**, an honest comparison, runnable validation code , and what would falsify the model.
 
 ![SIR epidemic curve animation](docs/sir-demo.gif)
 
@@ -14,11 +14,11 @@ LLMs answer "how do I model X?" with a single plausible guess. Real modeling dis
 
 ## Three rigor levels
 
-The same workflow serves a curious beginner and a thesis chapter — you pick the depth:
+The same workflow serves a curious beginner and a thesis chapter , you pick the depth:
 
-- **basic** — *"just tell me quickly"* → top parameters, 2 lenses, informal math, plain words
+- **basic** , *"just tell me quickly"* → top parameters, 2 lenses, informal math, plain words
 - **standard** *(default)* → the full 8-phase discipline
-- **research** — *"rigorous / for my thesis"* → ≥ 3 lenses + model criticism, dimensionless reduction (Buckingham π), uncertainty quantification, reproducibility statement
+- **research** , *"rigorous / for my thesis"* → ≥ 3 lenses + model criticism, dimensionless reduction (Buckingham π), uncertainty quantification, reproducibility statement
 
 Whatever the tier, every report opens with a **plain-language summary** (≤ 5 sentences, no jargon) and follows an **escalation rule**: if a quick run hits a threshold or lenses disagree, that sub-problem is automatically promoted one level deeper. See [`skills/axiomize/rigor.md`](skills/axiomize/rigor.md).
 
@@ -72,7 +72,7 @@ Then just ask your agent:
 | [Game theory](skills/axiomize/perspectives/game-theory.md) | outcomes when rivals anticipate you | Nash equilibria, price of anarchy |
 | [Causal inference](skills/axiomize/perspectives/causal-inference.md) | what happens IF we intervene | DAGs, backdoor adjustment, DiD/IV |
 | [Information theory](skills/axiomize/perspectives/information-theory.md) | what can be known or compressed | entropy, mutual information, capacity |
-| [Reliability](skills/axiomize/perspectives/reliability.md) | when things break; maintain or wait? | Weibull hazards, renewal–reward cost |
+| [Reliability](skills/axiomize/perspectives/reliability.md) | when things break; maintain or wait? | Weibull hazards, renewal, reward cost |
 | [SPC](skills/axiomize/perspectives/spc.md) | is this change a signal or noise? | control charts, EWMA/CUSUM, Cpk |
 | [Thermodynamic analogies](skills/axiomize/perspectives/thermodynamic.md) | stock-flow equilibria & bottlenecks | conservation discipline, resistance maps |
 | [Decision theory](skills/axiomize/perspectives/decision-theory.md) | one-shot choices under deep uncertainty | payoff matrices, maximin, EVPI |
@@ -115,9 +115,9 @@ python skills/axiomize/tools/fit.py --model sir --data mycases.csv --plot fit.pn
 python skills/axiomize/tools/fit.py --model logistic --data adoption.csv
 ```
 
-CSV format: time column first, observed values second (`day,infected`). Both models ship with `--selftest` modes that recover known ground truth from noisy synthetic data — the same honesty standard we demand from the models themselves.
+CSV format: time column first, observed values second (`day,infected`). Both models ship with `--selftest` modes that recover known ground truth from noisy synthetic data , the same honesty standard we demand from the models themselves.
 
-Each mode prints internal-consistency checks (conservation laws, bounds, monotonicity, theory match) — the same checks Phase 7 demands from every model the skill produces.
+Each mode prints internal-consistency checks (conservation laws, bounds, monotonicity, theory match) , the same checks Phase 7 demands from every model the skill produces.
 
 ## Scientific engine (v1.6+)
 
@@ -188,7 +188,7 @@ skills/axiomize/tools/    # bundled with the skill itself
 
 Phase 5 doesn't have to run lenses one-by-one. On runtimes with a subagent tool (Claude Code, opencode), the skill **freezes** the shared context (idea, decomposition, parameter table, assumptions), fills `templates/subagent-brief.md` once per applicable lens, and dispatches all briefs **in a single message** so they execute concurrently:
 
-- each subagent sees exactly ONE perspective — independence kills anchoring bias between lenses
+- each subagent sees exactly ONE perspective , independence kills anchoring bias between lenses
 - coupled sub-problems stay in one brief; conflicts surface as explicit `ASSUMPTION CONFLICT` flags to resolve at merge time
 - no subagent support? graceful sequential fallback, noted in the report
 
@@ -201,11 +201,11 @@ python skills/axiomize/tools/parallel_sweep.py --job mc      # 400 CTMC runs in 
 
 ## Design principles
 
-1. **No symbol undefined** — every equation comes with every term defined.
-2. **Units or it didn't happen** — parameters carry units; dimensionless is a deliberate choice.
-3. **Two lenses minimum** — one perspective is a guess; two are an argument.
-4. **Assumptions have consequences** — if you can't say what breaks when it's violated, you haven't examined it.
-5. **Falsifiability required** — a model that can't be wrong isn't a model.
+1. **No symbol undefined** , every equation comes with every term defined.
+2. **Units or it didn't happen** , parameters carry units; dimensionless is a deliberate choice.
+3. **Two lenses minimum** , one perspective is a guess; two are an argument.
+4. **Assumptions have consequences** , if you can't say what breaks when it's violated, you haven't examined it.
+5. **Falsifiability required** , a model that can't be wrong isn't a model.
 
 ## Contributing
 

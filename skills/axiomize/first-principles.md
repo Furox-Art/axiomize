@@ -1,10 +1,10 @@
 # First-Principles Protocol (Novel Territory Mode)
 
-When NO archetype matches, most attempts fail by either freezing (no template exists) or faking it (force-fit SIR). This protocol builds well from zero. It is not weaker than archetype mode — it is stricter.
+When NO archetype matches, most attempts fail by either freezing (no template exists) or faking it (force-fit SIR). This protocol builds well from zero. It is not weaker than archetype mode, it is stricter.
 
-Announce: 'No canonical archetype matches — engaging first-principles protocol.' Then execute all seven steps IN ORDER.
+Announce: 'No canonical archetype matches, engaging first-principles protocol.' Then execute all seven steps IN ORDER.
 
-## Step 1 — Analogy Mining (never skip)
+## Step 1: Analogy Mining (never skip)
 
 Nothing is truly unprecedented. Find the NEAREST neighbor even at low match:
 
@@ -14,15 +14,15 @@ Nothing is truly unprecedented. Find the NEAREST neighbor even at low match:
 
 Rule: a 60% analogy used honestly beats a 0% analogy pretended away.
 
-## Step 2 — Conservation Skeleton
+## Step 2: Conservation Skeleton
 
 Every system conserves or accumulates SOMETHING: people, money, items, energy, information, time. Build the balance equation first:
 
     d(stock)/dt = inflow − outflow + production − consumption
 
-Name the conserved quantities BEFORE choosing any dynamics. If you cannot name a single stock, you have not understood the system yet — go back to Phase 1.
+Name the conserved quantities BEFORE choosing any dynamics. If you cannot name a single stock, you have not understood the system yet, go back to Phase 1.
 
-## Step 3 — Mechanism → Rate Laws
+## Step 3: Mechanism → Rate Laws
 
 For each coupling between stocks ask: what PHYSICALLY drives this rate?
 
@@ -34,17 +34,17 @@ For each coupling between stocks ask: what PHYSICALLY drives this rate?
 
 Justify each choice in one sentence from the domain, not from convenience.
 
-## Step 4 — Dimensional Scaffold
+## Step 4: Dimensional Scaffold
 
 Before trusting ANY equation, run Buckingham π: list parameters and units, form the dimensionless groups, and require your equations to relate groups, not raw units. This kills most invented formulas instantly and reveals which dimensionless combinations actually govern behavior (they become the sensitivity sweep axes).
 
-## Step 5 — Minimal Viable Model
+## Step 5: Minimal Viable Model
 
 Build the SMALLEST model whose output could still answer the goal question. Every additional term must be justified by a falsifier that demands it. Novel models die from complexity, not simplicity.
 
-## Step 6 — Falsifier-First Design
+## Step 6: Falsifier-First Design
 
-No literature exists to validate against — so design the measurement WITH the model:
+No literature exists to validate against, so design the measurement WITH the model:
 
 1. What data could you collect THIS WEEK that would test the core claim?
 2. Which parameter is cheapest to estimate first?
@@ -52,7 +52,7 @@ No literature exists to validate against — so design the measurement WITH the 
 
 Write these into the report's falsifiability section as commitments, not wishes.
 
-## Step 7 — Triangulated Validation
+## Step 7: Triangulated Validation
 
 With no archetype, agreement between independently built lenses is the ONLY validity signal available:
 

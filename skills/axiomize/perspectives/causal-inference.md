@@ -5,7 +5,7 @@ Use when the goal is an **intervention claim** ("X causes Y", "this policy will 
 ## When Applicable
 
 - The user's question is counterfactual: "what happens IF we change X?"
-- Data are observational (no experiment) — or experiments are partial/expensive
+- Data are observational (no experiment), or experiments are partial/expensive
 - Warning sign this lens matters: someone is about to fit a regression and call the coefficient an "effect"
 
 ## Model Forms
@@ -17,17 +17,17 @@ Use when the goal is an **intervention claim** ("X causes Y", "this policy will 
 
 ## Standard Analysis Output
 
-1. The DAG itself — every arrow defended in one sentence
+1. The DAG itself, every arrow defended in one sentence
 2. Identification statement: estimand → adjustment set → estimator
-3. Effect estimate WITH uncertainty interval and unit interpretation ("+12 min sleep per 1h less screen [95% CI 4–20]")
+3. Effect estimate WITH uncertainty interval and unit interpretation ("+12 min sleep per 1h less screen [95% CI 4-20]")
 4. Assumption stress test: parallel trends plot / instrument first-stage strength / confounder robustness bound
 5. Scope statement: population and regime where the effect transfers
 
 ## Strengths / Blind Spots
 
 - (+) Converts "associated" into actionable intervention logic; exposes exactly which assumption carries the causal weight
-- (-) Observational identification is fragile — conclusions are only as strong as untestable assumptions; no method rescues a wrong DAG
+- (-) Observational identification is fragile, conclusions are only as strong as untestable assumptions; no method rescues a wrong DAG
 
 ---
 
-**See also:** guards every other lens — [deterministic](deterministic.md) rate constants fitted on observational data inherit these caveats · pairs with templates [assumptions](../templates/assumptions.md) (causal claims are `[S]` until identified)
+**See also:** guards every other lens, [deterministic](deterministic.md) rate constants fitted on observational data inherit these caveats · pairs with templates [assumptions](../templates/assumptions.md) (causal claims are `[S]` until identified)

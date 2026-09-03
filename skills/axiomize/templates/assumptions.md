@@ -10,18 +10,18 @@ Copy this table into every modeling session. Every assumption MUST have a violat
 
 ## Assumption types
 
-- **Structural** — about system architecture (who interacts with whom, what flows exist)
-- **Parametric** — about parameter values/constancy (rates constant in time)
-- **Boundary** — about what's excluded from the system (imports ignored)
-- **Regime** — about operating range (linear response, no capacity limits hit)
+- **Structural**, about system architecture (who interacts with whom, what flows exist)
+- **Parametric**, about parameter values/constancy (rates constant in time)
+- **Boundary**, about what's excluded from the system (imports ignored)
+- **Regime**, about operating range (linear response, no capacity limits hit)
 
 ## Quality bar
 
 Each assumption should be classified:
 
-- `[E]` Established — supported by evidence/literature
-- `[R]` Reasonable — defensible simplification, standard in the field
-- `[S]` Speculative — convenient fiction; flag for sensitivity testing
+- `[E]` Established, supported by evidence/literature
+- `[R]` Reasonable, defensible simplification, standard in the field
+- `[S]` Speculative, convenient fiction; flag for sensitivity testing
 
 Rule: every `[S]` assumption must appear in the Phase 7 sensitivity sweep.
 

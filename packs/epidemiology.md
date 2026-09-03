@@ -12,14 +12,14 @@ SIR/SIS/SEIR compartmental · metapopulation patches · percolation (vaccination
 4. Causal inference (intervention effect claims from observational data)
 
 ## Examples to imitate
-[epidemic SIR](../examples/epidemic-sir.md) · [network rumor](../examples/network-rumor.md) — same mathematics, behavioral variant
+[epidemic SIR](../examples/epidemic-sir.md) · [network rumor](../examples/network-rumor.md), same mathematics, behavioral variant
 
 ## Tools pattern
 `validate.py --model gillespie` for fade-out checks · `fit.py --model sir` on case series (mind reporting delays)
 
 ## Domain gotchas
 - Reporting delays and case ascertainment corrupt time series before any model sees them
-- Behavior changes are endogenous to awareness — β is rarely constant
+- Behavior changes are endogenous to awareness, β is rarely constant
 - R₀ is regime- and population-dependent; quoting it without context is meaningless
 - Homogeneous-mixing conclusions overestimate reach in clustered contact networks
 

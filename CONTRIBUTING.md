@@ -30,7 +30,7 @@ Rules for perspective content:
 1. Every equation symbol must be defined inline.
 2. Units are mandatory where dimensional.
 3. Include an "analysis ladder" (cheap → expensive methods) if more than one fidelity level exists.
-4. No filler prose — a domain expert should be able to build a first model from your file alone.
+4. No filler prose, a domain expert should be able to build a first model from your file alone.
 
 Candidate lenses not yet covered: queueing networks beyond M/M/c, survival analysis with competing risks beyond reliability scope.
 
@@ -45,7 +45,7 @@ Follow the 8-phase structure exactly as in `examples/epidemic-sir.md`. Requireme
 
 ## Extending `skills/axiomize/tools/validate.py`
 
-Every new model mode must print sanity checks and exit non-zero when they fail. Accepted checks: conservation laws, bounds/monotonicity, agreement with a closed-form theory result (within stated tolerance), or distributional consistency across Monte Carlo runs. CI runs all modes — keep default parameters under ~60s total runtime.
+Every new model mode must print sanity checks and exit non-zero when they fail. Accepted checks: conservation laws, bounds/monotonicity, agreement with a closed-form theory result (within stated tolerance), or distributional consistency across Monte Carlo runs. CI runs all modes, keep default parameters under ~60s total runtime.
 
 ## Style
 

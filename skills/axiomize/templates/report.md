@@ -1,6 +1,6 @@
 # Template: Final Model Report
 
-The deliverable of every full modeling session. Copy this skeleton and keep the section ORDER and the non-negotiable artifacts (parameter table, assumption consequences, comparison, falsifiability, ledger). Phase-style headings (Phase 1 — ...) are an acceptable equivalent of the numbered sections below.
+The deliverable of every full modeling session. Copy this skeleton and keep the section ORDER and the non-negotiable artifacts (parameter table, assumption consequences, comparison, falsifiability, ledger). Phase-style headings (Phase 1, ...) are an acceptable equivalent of the numbered sections below.
 
 ---
 
@@ -11,7 +11,7 @@ The deliverable of every full modeling session. Copy this skeleton and keep the 
 **Model in one sentence:** <"This idea reduces to a ___-type system with ___">
 
 **Plain-language summary** *(≤ 5 sentences, required at every tier)*:
-<what happens, what we recommend, and the single number/threshold that matters most — no jargon>
+<what happens, what we recommend, and the single number/threshold that matters most, no jargon>
 
 ---
 
@@ -32,13 +32,13 @@ graph LR
 
 ## 2. Parameters
 
-<full table from templates/parameters.md — symbol, unit, exo/endo, range, source, sensitivity, used-in-lens>
+<full table from templates/parameters.md, symbol, unit, exo/endo, range, source, sensitivity, used-in-lens>
 
 Excluded: <what you left out and why>
 
 ## 3. Assumptions
 
-<table from templates/assumptions.md — with [E]/[R]/[S] class and violation consequence>
+<table from templates/assumptions.md, with [E]/[R]/[S] class and violation consequence>
 
 Load-bearing assumptions: <the ones that flip conclusions if wrong>
 
@@ -54,7 +54,7 @@ Unique insight: <what ONLY this view reveals>
 Blind spot: <what this view cannot see>
 ```
 
-Rejected lenses (one line each): <lens> — <why not worth its cost here>.
+Rejected lenses (one line each): <lens>, <why not worth its cost here>.
 
 ## 5. Comparison
 
@@ -63,7 +63,7 @@ Rejected lenses (one line each): <lens> — <why not worth its cost here>.
 | Criterion | Lens A | Lens B | ... |
 |-----------|--------|--------|-----|
 
-**Recommendation:** <primary model> (+ <secondary, for validation>) — justified by the scores.
+**Recommendation:** <primary model> (+ <secondary, for validation>), justified by the scores.
 
 ## 6. Implementation & validation
 
@@ -71,7 +71,7 @@ Rejected lenses (one line each): <lens> — <why not worth its cost here>.
 # runnable reference code OR tool invocation
 ```
 
-Sanity checks run: <conservation / bounds / theory-match / distributional — PASS status>
+Sanity checks run: <conservation / bounds / theory-match / distributional. PASS status>
 Sensitivity sweep: <top-2 sensitive parameters, what moved>
 
 ## 7. Predictions & falsifiability
@@ -94,12 +94,12 @@ Killed by: <observations that would falsify it, mapped back to assumptions>
 - **Canonical results inherited:** <named theorems/formulas relied on instead of re-derived>
 - **Model criticism log:** <rival hypotheses each lens excluded, from Phase 5>
 
-## 10. Novel-territory appendix *(only when no archetype matched — see first-principles.md)*
+## 10. Novel-territory appendix *(only when no archetype matched: see first-principles.md)*
 
 - **Nearest analogy:** <declared neighbor + keep / fail / unknown split>
 - **Conserved stocks:** <from Step 2 skeleton>
-- **Dimensionless groups:** <from Step 4 scaffold — these are the sweep axes>
-- **Minimum data plan:** <from Step 6 — what to measure this week>
+- **Dimensionless groups:** <from Step 4 scaffold, these are the sweep axes>
+- **Minimum data plan:** <from Step 6, what to measure this week>
 - **Lens convergence/divergence:** <where independent lenses agreed or split, and why that is the headline>
 
 ---

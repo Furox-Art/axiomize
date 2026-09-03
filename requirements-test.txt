@@ -1,4 +1,4 @@
-# Axiomize dependency manifest — install with: pip install -r requirements-test.txt
+# Axiomize dependency manifest , install with: pip install -r requirements-test.txt
 #
 # CI installs this file verbatim (.github/workflows/ci.yml), so keep it in sync
 # with what the code actually imports. There is no other dependency source of
@@ -22,10 +22,10 @@ control>=0.10
 cvxpy>=1.5
 casadi>=3.6
 
-# Test runner — CI runs `pytest` to execute the test suite. Without this the
+# Test runner , CI runs `pytest` to execute the test suite. Without this the
 # test job fails immediately with "pytest: command not found" before any test
 # is collected.
 pytest>=8.0
 
-# Playground only (playground/app.py) — not needed for the tools or CI:
+# Playground only (playground/app.py) , not needed for the tools or CI:
 #   pip install pandas matplotlib gradio

@@ -22,22 +22,22 @@ Type a real question in your own words:
 
 The skill announces its rigor level (**standard** unless you say otherwise) and starts an 8-phase workflow. You will see, in order:
 
-- **Parse** — it restates your idea and asks a targeting question if your goal is vague ("do you want to PREDICT churn, DECIDE on actions, or CONTROL retention to a target?")
-- **Decompose** — your idea split into 3–7 sub-problems, each tagged flow / interaction / decision / uncertainty, with a coupling diagram
-- **Parameter table** — every quantity that matters, with units and realistic ranges
-- **Assumptions** — each one tagged Established / Reasonable / Speculative, with what breaks if it's wrong
-- **Multiple models** — independent analyses from different mathematical angles (a probability view, an optimization view, ...)
-- **Comparison table** — the lenses scored against YOUR goal question; one winner recommended
-- **Code + validation** — runnable Python with sanity checks that PASS or FAIL visibly
-- **Falsifiability** — what future observation would prove this model wrong
+- **Parse** , it restates your idea and asks a targeting question if your goal is vague ("do you want to PREDICT churn, DECIDE on actions, or CONTROL retention to a target?")
+- **Decompose** , your idea split into 3-7 sub-problems, each tagged flow / interaction / decision / uncertainty, with a coupling diagram
+- **Parameter table** , every quantity that matters, with units and realistic ranges
+- **Assumptions** , each one tagged Established / Reasonable / Speculative, with what breaks if it's wrong
+- **Multiple models** , independent analyses from different mathematical angles (a probability view, an optimization view, ...)
+- **Comparison table** , the lenses scored against YOUR goal question; one winner recommended
+- **Code + validation** , runnable Python with sanity checks that PASS or FAIL visibly
+- **Falsifiability** , what future observation would prove this model wrong
 
 ## 3. Control the depth
 
 | You say | You get |
 |---------|---------|
-| "just quickly" | basic — top parameters, plain words, 5-minute answer |
-| *(nothing)* | standard — the full discipline |
-| "this is for my thesis" | research — model criticism, uncertainty intervals, reproducibility notes |
+| "just quickly" | basic , top parameters, plain words, 5-minute answer |
+| *(nothing)* | standard , the full discipline |
+| "this is for my thesis" | research , model criticism, uncertainty intervals, reproducibility notes |
 
 Change anytime mid-session by saying **deeper** or **quicker**.
 
@@ -45,17 +45,17 @@ Change anytime mid-session by saying **deeper** or **quicker**.
 
 Every report has:
 
-1. **Plain-language summary** at the top — ≤ 5 sentences anyone can follow. Start here.
-2. **Confidence ledger** near the bottom — every claim tagged established / assumption / speculation. Never trust a speculation-tagged claim for a big decision.
+1. **Plain-language summary** at the top , ≤ 5 sentences anyone can follow. Start here.
+2. **Confidence ledger** near the bottom , every claim tagged established / assumption / speculation. Never trust a speculation-tagged claim for a big decision.
 
 ## 5. Keep your archive
 
-The session saves `reports/YYYY-MM-DD-your-topic.md` and maintains an index. Next month, ask "does this change my earlier barista report?" — the skill cross-references your own history.
+The session saves `reports/YYYY-MM-DD-your-topic.md` and maintains an index. Next month, ask "does this change my earlier barista report?" , the skill cross-references your own history.
 
 ## 6. Give it data (optional but powerful)
 
 Have a CSV of observations? The skill calibrates parameters from it instead of guessing:
 
-> Here's monthly_signups.csv — fit the growth model to real numbers.
+> Here's monthly_signups.csv , fit the growth model to real numbers.
 
 You get fitted values WITH confidence intervals and honest fit-quality scores.

@@ -1,8 +1,8 @@
-# Engineering Pack — Control, Queueing, Reliability & Optimization
+# Engineering Pack: Control, Queueing, Reliability & Optimization
 
 Curated pointers for engineering modeling sessions where quantities obey feedback regulation, stochastic congestion, lifetime hazard, and constrained resource allocation.
 
-## Scope — What belongs here
+## Scope: What belongs here
 
 | Sub-domain | Phenomena | State variables | Typical goal |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Out of scope: full FEA/CFD beyond lumped, chemically reacting flow, quantum sens
 
 ## Archetypes
 
-### A1 — PID / State-space Control + LQR
+### A1: PID / State-space Control + LQR
 
 $$u(t) = K_p e(t) + K_i \int_0^t e(\tau)\,d\tau + K_d \frac{de(t)}{dt}$$
 
@@ -36,9 +36,9 @@ $A_{cl}=A-BK$, stability iff $\Re\{\lambda_i(A_{cl})\}<0$; $T_s\approx4/(\zeta\o
 | $Q,R$ | state/effort weights | $1/[x^2]$, $1/[u^2]$ | design knob |
 | $PM,GM$ | phase/gain margin | deg, dB | robustness |
 
-Sources: Ogata Ch.3,8; Åström & Murray Ch.3–6; `skills/axiomize/perspectives/control.md:1`.
+Sources: Ogata Ch.3,8; Åström & Murray Ch.3-6; `skills/axiomize/perspectives/control.md:1`.
 
-### A2 — M/M/c Queue + Little's Law + Erlang-C
+### A2: M/M/c Queue + Little's Law + Erlang-C
 
 $$a = \lambda/\mu,\quad \rho = a/c = \lambda/(c\mu) < 1$$
 
@@ -50,15 +50,15 @@ $$L = \lambda W,\quad E[W_q] = \frac{C(c,a)}{c\mu - \lambda},\quad P(W_q>t)=C(c,
 |---|---|---|---|
 | $\lambda$ | arrival rate | jobs/s | Poisson if $C_a=1$ |
 | $\mu$ | service rate per server | jobs/s | $1/\mu = E[S]$ |
-| $c$ | servers | – | staffing decision |
-| $\rho$ | utilization | – | need $<1$ |
+| $c$ | servers | , | staffing decision |
+| $\rho$ | utilization | , | need $<1$ |
 | $W_q,W$ | wait in queue/system | s | $W$ includes service |
 
 Dimensionless groups: $\rho$, $a$, $c_a^2$, $c_s^2$.
 
-Sources: Gross–Thompson Ch.3–4; Hillier & Lieberman Ch.17; Ross Ch.8.
+Sources: Gross,Thompson Ch.3-4; Hillier & Lieberman Ch.17; Ross Ch.8.
 
-### A3 — Weibull Reliability + Block Diagrams
+### A3: Weibull Reliability + Block Diagrams
 
 $$h(t)=\frac{\beta}{\eta}\left(\frac{t}{\eta}\right)^{\beta-1},\quad S(t)=\exp[-(t/\eta)^\beta]$$
 
@@ -72,14 +72,14 @@ Optimum $t_p^*$ iff $\beta>1$ and $c_f\gg c_p$.
 
 | Symbol | Name | Unit | Notes |
 |---|---|---|---|
-| $\beta$ | Weibull shape | – | drives policy |
+| $\beta$ | Weibull shape | , | drives policy |
 | $\eta$ | scale (char. life) | h | $S(\eta)=e^{-1}$ |
 | $h(t)$ | hazard rate | 1/time | $h\uparrow$ iff $\beta>1$ |
 | $t_p$ | preventive age | h | decision |
 
 Sources: Meeker & Escobar Ch.4; Modarres Ch.3,7; `perspectives/reliability.md:15`.
 
-### A4 — LP / ILP + Dual & Shadow Prices
+### A4: LP / ILP + Dual & Shadow Prices
 
 $$\max_{\mathbf{x}} c^T\mathbf{x}\ \text{s.t.}\ A\mathbf{x}\le \mathbf{b},\ \mathbf{x}\ge0$$
 
@@ -109,7 +109,7 @@ Sources: Bertsimas & Tsitsiklis Ch.4; Wolsey Ch.2.
 
 ## Worked mini-example
 
-**Idea:** "Call center with $\lambda=60$/h, $\mu=20$/h, promise $E[W_q]\le2$ min — how many agents?"
+**Idea:** "Call center with $\lambda=60$/h, $\mu=20$/h, promise $E[W_q]\le2$ min, how many agents?"
 
 - Deterministic fluid: $\lceil a\rceil =\lceil3\rceil=3$ (ignores randomness).
 - Queue A2: $c=4\Rightarrow C(4,3)=0.509$, $E[W_q]=0.509/(80-60)=0.025$h=1.53 min ✓

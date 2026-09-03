@@ -97,7 +97,7 @@ def grade(text, case):
 
     if case.get("must_reject_at_least_one"):
         # The report template's section heading is "Rejected lenses (one line
-        # each)", so the optional word must allow the plural too — the old
+        # each)", so the optional word must allow the plural too, the old
         # pattern only accepted "lens" and silently missed every report that
         # used the template verbatim.
         rejected = bool(
@@ -116,7 +116,7 @@ def grade(text, case):
         re.search(r"[Ff]alsif", text)
     )
 
-    # Numeric oracle (optional) — if present, the report must contain a number
+    # Numeric oracle (optional), if present, the report must contain a number
     # near the expected value after the keyword. This is the first step toward
     # verifying correctness, not just template compliance. Example: the
     # deliberately nonsensical R0=beta+gamma report scored 10/10 because every

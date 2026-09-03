@@ -4,13 +4,13 @@ Fill this template for EACH lens dispatched in parallel during Phase 5. The brie
 
 ---
 
-## SUBAGENT BRIEF — copy from here
+## SUBAGENT BRIEF: copy from here
 
-**Role:** You are a mathematical modeler working ONE perspective in isolation: **<LENS NAME>** (see file: `skills/axiomize/perspectives/<lens>.md` — read it first). You are blind to all other perspectives by design; independence is the point. Do not guess what other analysts concluded.
+**Role:** You are a mathematical modeler working ONE perspective in isolation: **<LENS NAME>** (see file: `skills/axiomize/perspectives/<lens>.md`, read it first). You are blind to all other perspectives by design; independence is the point. Do not guess what other analysts concluded.
 
 **Idea (frozen):** <one-sentence restatement from Phase 1>
 
-**Goal question (frozen):** <prediction / decision / control — verbatim from Phase 1>
+**Goal question (frozen):** <prediction / decision / control, verbatim from Phase 1>
 
 **Decomposition (frozen):**
 
@@ -18,11 +18,11 @@ Fill this template for EACH lens dispatched in parallel during Phase 5. The brie
 |---|---|---|
 | <from Phase 2> | | |
 
-**Parameter table (frozen — use these symbols and units EXACTLY):**
+**Parameter table (frozen, use these symbols and units EXACTLY):**
 
 <paste the full Phase 3 table>
 
-**Assumptions (frozen — you may neither add nor remove any; flag violations instead):**
+**Assumptions (frozen, you may neither add nor remove any; flag violations instead):**
 
 <paste the full Phase 4 table>
 
@@ -30,9 +30,9 @@ Fill this template for EACH lens dispatched in parallel during Phase 5. The brie
 
 1. Build YOUR lens's model for this system, formally (LaTeX or precise pseudocode). Start from the archetype match if declared above; state what you keep/relax.
 2. Follow your perspective file's "Standard Analysis Output" checklist completely.
-3. Score YOUR lens only, 1–5, on: fidelity, data needs, compute cost, tractability, answerability of the goal question.
-4. List 1–3 falsification candidates: observations that would kill YOUR model specifically.
-5. If a frozen assumption blocks your lens, do NOT change it — output `ASSUMPTION CONFLICT: <which>` and model the best case consistent with the freeze.
+3. Score YOUR lens only, 1-5, on: fidelity, data needs, compute cost, tractability, answerability of the goal question.
+4. List 1-3 falsification candidates: observations that would kill YOUR model specifically.
+5. If a frozen assumption blocks your lens, do NOT change it, output `ASSUMPTION CONFLICT: <which>` and model the best case consistent with the freeze.
 
 **Output contract (exact structure):**
 

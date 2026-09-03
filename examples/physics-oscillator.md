@@ -1,19 +1,19 @@
-# Example: Damped Pendulum Clock — How Much Time Is Lost?
+# Example: Damped Pendulum Clock: How Much Time Is Lost?
 
 Demonstrates deterministic primary + stochastic + thermodynamic + control secondary on a literal physics system.
 
-## Phase 0 — Rigor Level
+## Phase 0: Rigor Level
 
-**Rigor: standard.** Plain summary: *A pendulum clock loses time because its swing slows when it swings wider, when its rod expands in heat, and when air drag steals energy. For a 1 m steel pendulum at ~2 s period, each costs 0.1–1 s/day.*
+**Rigor: standard.** Plain summary: *A pendulum clock loses time because its swing slows when it swings wider, when its rod expands in heat, and when air drag steals energy. For a 1 m steel pendulum at ~2 s period, each costs 0.1-1 s/day.*
 
-## Phase 1 — Parse
+## Phase 1: Parse
 
-**Idea:** "A damped pendulum clock loses time — how much and why?"
+**Idea:** "A damped pendulum clock loses time, how much and why?"
 - System: bob + rod + air + escapement drive
 - State: angle $\theta(t)$ [rad], velocity $\dot\theta$ [rad/s], length $L(T)$ [m], amplitude $\theta_0$ [rad]
 - Goal: daily rate $\Delta t_{day}$ [s/day] + design fix
 
-## Phase 2 — Decompose
+## Phase 2: Decompose
 
 | # | Sub-problem | Nature | Archetype |
 |---|---|---|---|
@@ -31,22 +31,22 @@ graph LR
     S3 --> S1
 ```
 
-## Phase 3 — Parameters
+## Phase 3: Parameters
 
 | Symbol | Name | Unit | Range | Sensitivity |
 |---|---|---|---|---|
-| $L_0$ | rod length | m | 0.5–1.5 | high |
+| $L_0$ | rod length | m | 0.5-1.5 | high |
 | $g$ | gravity | m/s² | 9.81 | high |
-| $\gamma$ | damping rate | 1/s | 0.001–0.02 | high |
-| $\theta_0$ | peak amplitude | rad | 0.03–0.20 | high |
+| $\gamma$ | damping rate | 1/s | 0.001-0.02 | high |
+| $\theta_0$ | peak amplitude | rad | 0.03-0.20 | high |
 | $\alpha_L$ | expansion coeff. | 1/K | steel 12e-6, Invar 1.3e-6 | high |
-| $Q$ | quality factor | – | 50–500 | — |
+| $Q$ | quality factor | , | 50-500 | , |
 
 Excluded: buoyancy, suspension flexure, radiation.
 
 Derived: $\delta= (T_d-T_0)/T_0$, $\Delta t_{day}=86400\delta$, $\delta_\gamma=1/(8Q^2)$, $\delta_\theta=\theta_0^2/16$, $\delta_L=0.5\alpha_L\Delta T$.
 
-## Phase 4 — Assumptions
+## Phase 4: Assumptions
 
 | # | Assumption | Type | Violation consequence |
 |---|---|---|---|
@@ -57,7 +57,7 @@ Derived: $\delta= (T_d-T_0)/T_0$, $\Delta t_{day}=86400\delta$, $\delta_\gamma=1
 | 5 | Fixed energy per cycle drive | [S] | Phase slip changes $\delta$ |
 | 6 | $T$ varies slowly $\tau_{therm}\gg T_0$ | [E] | Parametric modulation |
 
-## Phase 5 — Perspectives
+## Phase 5: Perspectives
 
 ### Deterministic (primary)
 
@@ -85,7 +85,7 @@ State-space $A=[0 1; -\omega_0^2 -2\gamma]$, $u=-Kx$ LQR, feasibility $u_{max}\g
 
 Rejected: network/spatial, game-theory, agent-based.
 
-## Phase 6 — Comparison
+## Phase 6: Comparison
 
 | Criterion | Deterministic | Thermodynamic | Stochastic | Control |
 |---|---:|---:|---:|---:|
@@ -96,7 +96,7 @@ Rejected: network/spatial, game-theory, agent-based.
 
 Recommendation: deterministic primary + stochastic validation + thermodynamic audit + control check.
 
-## Phase 7 — Implementation
+## Phase 7: Implementation
 
 ```python
 import numpy as np
@@ -110,7 +110,7 @@ sol=solve_ivp(f,[0,20],[theta0,0.0],t_eval=np.linspace(0,20,200001),rtol=1e-10,a
 
 Validation: dimensional check, $dE/dt=-bL^2\dot\theta^2\le0$, $T_d$ within 5e-4 of $2\pi/\omega_d$.
 
-## Phase 8 — Falsifiability
+## Phase 8: Falsifiability
 
 Dies if:
 - $T_d$ decreases with $\theta_0$ (kills small-angle)
