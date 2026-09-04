@@ -169,3 +169,62 @@ def test_heavy_discovery_and_experiment_design_require_approval() -> None:
         "horizon": 2.0,
     })
     assert design["status"] == "APPROVAL_REQUIRED"
+
+
+def test_general_model_cli_surface(tmp_path, capsys) -> None:
+    from axiomize.cli import main
+
+    request = tmp_path / "model.json"
+    request.write_text(json.dumps({
+        "model_ir": decay_model(k=0.5).to_dict(),
+        "t_span": [0.0, 2.0],
+        "points": 30,
+    }), encoding="utf-8")
+    rc = main(["model", "--action", "simulate", "--input-json", str(request)])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "PASS"
+    assert payload["states"]["x"][-1] == pytest.approx(np.exp(-1.0), rel=5e-5)
+
+
+def test_general_model_mcp_surface() -> None:
+    from axiomize.server import mcp_server
+
+    names = {item["name"] for item in mcp_server.list_tools()}
+    assert "axiomize.model_simulate" in names
+    out = mcp_server._call_tool("axiomize.model_simulate", {
+        "model_ir": decay_model(k=0.5).to_dict(),
+        "t_span": [0.0, 1.0],
+        "points": 20,
+    })
+    assert out["status"] == "PASS"
+
+
+def test_general_model_rest_surface() -> None:
+    import threading
+    import urllib.request
+
+    from axiomize.server.rest_server import start_server
+
+    server = start_server("127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        body = json.dumps({
+            "model_ir": decay_model(k=0.5).to_dict(),
+            "t_span": [0.0, 1.0],
+            "points": 20,
+        }).encode("utf-8")
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{server.server_address[1]}/v1/simulate",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        assert payload["status"] == "PASS"
+        assert payload["family"] == "ode"
+    finally:
+        server.shutdown()
+        server.server_close()
