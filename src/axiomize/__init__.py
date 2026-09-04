@@ -1,11 +1,13 @@
-"""Axiomize: rigorous first-principles modeling skill pack.
+"""Axiomize: adaptive rigorous first-principles modeling skill pack.
 
-Turns a vague idea into formal mathematics: sub-problem decomposition,
-parameter tables with units, models from 15+ mathematical perspectives,
-honest comparison, runnable validation, and falsifiable predictions.
+Turns a vague idea into multiple formal mathematical candidates, clarifies
+missing mechanisms, compares models honestly, validates with scientific tools,
+quantifies uncertainty and sensitivity, produces testable hypotheses and keeps
+runs reproducible while extra agent/provider consumption remains user-controlled.
 
 CLI entry points installed with the package::
 
+    axiomize            adaptive intake + scientific engine CLI
     axiomize-validate   deterministic/stochastic/queue model validators
     axiomize-fit        calibrate SIR / logistic models to CSV data
     axiomize-csv-check  data-quality pre-check before calibrating
@@ -14,9 +16,8 @@ CLI entry points installed with the package::
     axiomize-sweep      parallel parameter sweeps / Monte Carlo
     axiomize-index-reports  build an index over produced reports
 
-The skill documents (SKILL.md, perspectives/, templates/) ship inside the
-``axiomize`` package for agent loaders; browse them with
-``import axiomize, pathlib; pathlib.Path(axiomize.__file__).parent``.
+The skill documents (SKILL.md, adaptive-workflow.md, perspectives/, templates/)
+ship inside the ``axiomize`` package for agent loaders.
 """
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
