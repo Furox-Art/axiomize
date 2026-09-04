@@ -1,168 +1,237 @@
 ---
 name: axiomize
-description: Transforms any idea, problem, or real-world phenomenon into a rigorous mathematical model. Decomposes the idea into sub-problems, matches known modeling archetypes, extracts active parameters into structured tables, models the system from multiple mathematical perspectives (deterministic, stochastic, optimization, agent-based, network, control, game theory, causal inference, information theory, reliability, SPC, thermodynamic analogies, decision theory, demographic, spatial), compares the resulting models, and delivers a standardized report with runnable Python code and falsifiability criteria. Use when the user wants to formalize, model, simulate, or mathematically analyze a concept, process, system, or hypothesis.
+description: Transforms vague ideas, real-world problems and scientific hypotheses into rigorous mathematical models. Clarifies missing mechanisms in plain language, recommends weak/medium/strong depth, builds and compares multiple candidate models, fits and validates them with scientific tools, quantifies uncertainty and sensitivity, produces visualizations and testable hypotheses, and records reproducible runs while keeping extra agent/API consumption under explicit user control.
 ---
 
 # Axiomize: Idea → Rigorous Mathematical Model
 
-Turn vague ideas into formal mathematical models through disciplined decomposition and multi-perspective analysis.
+Turn an idea into multiple testable mathematical models, compare them honestly, validate them with real tools, and state what could make them wrong.
 
-## Core Workflow
+Before starting, read and obey:
 
-Follow ALL phases in order. Never skip a phase. Show intermediate outputs to the user.
+- [adaptive-workflow.md](adaptive-workflow.md) — authoritative interaction, honesty, data, hypothesis, visualization, reproducibility and consumption rules.
+- [rigor.md](rigor.md) — weak / medium / strong depth ladder.
+- [archetypes.md](archetypes.md) — canonical model matches.
+- [first-principles.md](first-principles.md) — novel-mechanism path when no archetype fits.
 
-### Phase 0: Set Rigor Level
+If an older instruction conflicts with `adaptive-workflow.md`, the adaptive workflow wins.
 
-Pick **basic**, **standard** (default), or **research** using the signals table in [rigor.md](rigor.md), announce it in your first line, and offer: *"say 'deeper' or 'quicker' anytime."* The ladder defines what each phase requires at each level, basic stays light but honest, research adds model criticism, dimensionless reduction, uncertainty quantification and reproducibility. Whatever the tier, the final answer opens with a plain-language summary (≤ 5 sentences).
+## Phase 0 — Clarify the idea and choose depth
 
-### Phase 1: Parse the Idea
+Recommend **weak**, **medium**, or **strong** and give one short reason. The user may override it.
 
-Restate the idea in one sentence. Then extract:
+Clarify the idea before model construction. Extract:
 
-- **System**: What is the thing being modeled? What are its boundaries?
-- **State**: What quantities change over time / space / across entities?
-- **Inputs**: What drives or perturbs the system?
-- **Goal**: What question must the model answer? (prediction? explanation? optimization? control?)
-- **Horizon**: Time scale and spatial scale that matter.
+- **system boundary** — what is inside/outside the model;
+- **state** — what changes over time, space or entities;
+- **inputs/drivers** — what perturbs the system;
+- **goal** — predict, explain, optimize or control;
+- **measurable outcome** — what observation tells us whether the model works;
+- **horizon** — relevant time/spatial scale;
+- **mechanism** — what is believed to cause the effect.
 
-If any of these is unclear, ask the user BEFORE proceeding, but ask like a modeler, not generically:
+Ask missing core questions in the style the user prefers: one-by-one or all-at-once. If no preference is known, ask one short question at a time.
 
-- Vague goal → "Do you want to PREDICT what happens, DECIDE what to do, or CONTROL it to a target?" (this single question routes the whole session)
-- No quantities named → "What would you MEASURE to know this is working?"
-- No scale given → "Over what time period? At what size?"
+If the **mechanism is unclear**, say that explicitly and resolve it before treating one mechanism as fact. Candidate mechanisms may be carried forward separately if the uncertainty itself is scientifically meaningful.
 
-Never proceed on an idea where neither system boundary nor goal question can be stated.
+Optional missing information may be estimated when useful, but every estimate must be labeled as an assumption with uncertainty.
 
-### Phase 2: Decompose
+## Phase 1 — Decompose and identify data needs
 
-Break the idea into independent sub-problems:
+Break the problem into 2-7 coupled sub-problems depending on depth. Classify each as one or more of:
 
-1. List 3-7 sub-problems (e.g., "spread of influence" → population dynamics + interaction rules + external shocks).
-2. For each sub-problem classify its nature:
-   - `flow`, quantity accumulating over time (→ differential/difference equations)
-   - `interaction`, entities affecting each other (→ networks / agent-based)
-   - `decision`, choices under constraints (→ optimization / game theory)
-   - `uncertainty`, randomness dominates (→ probability / stochastic processes)
-3. State which sub-problems couple to which.
-4. Draw the coupling map as a Mermaid graph (renders on GitHub):
+- `flow` — accumulation/dynamics;
+- `interaction` — networks/agents/entities affecting each other;
+- `decision` — choices under constraints;
+- `uncertainty` — stochastic variation dominates;
+- `causal` — intervention/cause-effect claim;
+- `spatial` — location/geometry matters.
 
-   ````
-   ```mermaid
-   graph LR
-       Demand[uncertainty] --> Stock[flow]
-       Reorder[decision] --> Stock
-       Stock --> Answer[goal question]
-   ```
-   ````
+Draw a Mermaid coupling graph when useful.
 
-### Phase 3: Parameter Table
+Before quantitative claims, state:
 
-Extract every active parameter using the template in [templates/parameters.md](templates/parameters.md):
+1. what data are required;
+2. which missing data matter most;
+3. what can be measured directly vs inferred.
+
+When public data lookup is available and relevant, use it as part of the requested workflow. Check source reliability, reconcile conflicting sources, and flag stale data. Do not repeatedly search without a material reason.
+
+## Phase 2 — Parameters, assumptions and provenance
+
+Build the active parameter table using [templates/parameters.md](templates/parameters.md):
 
 | Symbol | Name | Unit | Type | Range | Source | Sensitivity |
 |--------|------|------|------|-------|--------|-------------|
 
 Rules:
 
-- Mark each parameter as **exogenous** (given) or **endogenous** (model output).
-- Estimate sensitivity qualitatively (low/med/high): "if this doubles, does the answer change wildly?"
-- Explicitly list parameters you deliberately EXCLUDE and why (dimension reduction).
+- define every symbol and unit;
+- distinguish exogenous vs endogenous quantities;
+- record measured / fitted / literature / assumed / speculative provenance;
+- rank expected sensitivity;
+- state which parameters were excluded and why;
+- strong mode: identify dimensionless groups and practical identifiability.
 
-### Phase 4: Assumptions
+Write assumptions using [templates/assumptions.md](templates/assumptions.md). Every assumption must include its **violation consequence**: what fails if reality violates it.
 
-Write assumptions using [templates/assumptions.md](templates/assumptions.md). Every assumption must have a **violation consequence**, what breaks in the model if reality violates it.
+## Phase 3 — Build multiple candidate models
 
-### Phase 5: Multi-Perspective Modeling
+First scan [archetypes.md](archetypes.md). If a canonical model matches at least two core features, adapt it and state exactly what was inherited and changed.
 
-**First, check [archetypes.md](archetypes.md):** scan the catalog against each sub-problem from Phase 2. If two or more core features match an archetype (SIR, Bass diffusion, newsvendor, M/M/c, logistic, Lotka, Volterra...), START from that canonical model and adapt, declare the match and what you changed. Inherited closed forms become Phase 7 validation targets.
+If no archetype fits, use [first-principles.md](first-principles.md): mechanism → conservation/accounting structure → rate laws → dimensions → minimal model → falsifiers → validation.
 
-**If nothing matches:** announce 'novel territory' and execute the seven-step protocol in [first-principles.md](first-principles.md), analogy mining, conservation skeleton, mechanism-driven rate laws, dimensional scaffold (Buckingham π), minimal viable model, falsifier-first design, triangulated validation. Novel territory RAISES the bar: research tier demands ≥ 3 lenses from unrelated mathematical families.
+Read the relevant files in `perspectives/` and build actual candidates, not name-drops. Available lenses include deterministic, stochastic, optimization, agent-based, network, control, game theory, causal inference, information theory, reliability, SPC, thermodynamic analogies, decision theory, demographic/actuarial and spatial statistics.
 
-Then read EVERY perspective file in `perspectives/`. For each applicable perspective, build an actual model, not just "this could apply":
+Default behavior:
 
-1. [perspectives/deterministic.md](perspectives/deterministic.md). ODEs, difference equations, compartmental models
-2. [perspectives/stochastic.md](perspectives/stochastic.md), random variables, Markov chains, Monte Carlo
-3. [perspectives/optimization.md](perspectives/optimization.md), objective functions, constraints, equilibria
-4. [perspectives/agent-based.md](perspectives/agent-based.md), local rules → global behavior
-5. [perspectives/network.md](perspectives/network.md), graph structure, centrality, dynamics on networks
-6. [perspectives/control.md](perspectives/control.md), feedback, regulation, steering to setpoint
-7. [perspectives/game-theory.md](perspectives/game-theory.md), strategic interaction, equilibria, mechanisms
-8. [perspectives/causal-inference.md](perspectives/causal-inference.md), intervention claims from observational data
-9. [perspectives/information-theory.md](perspectives/information-theory.md), what can be known, transmitted, compressed
-10. [perspectives/reliability.md](perspectives/reliability.md), failure times, maintenance economics, availability
-11. [perspectives/spc.md](perspectives/spc.md), detecting process change vs common-cause noise
-12. [perspectives/thermodynamic.md](perspectives/thermodynamic.md), stock-flow analogies with explicit break points
-13. [perspectives/decision-theory.md](perspectives/decision-theory.md), choosing under deep uncertainty, EVPI
-14. [perspectives/demographic.md](perspectives/demographic.md), aging populations, actuarial liabilities
-15. [perspectives/spatial.md](perspectives/spatial.md), hotspots, clustering, spatial interpolation
+- build **multiple defensible candidates** whenever possible;
+- weak: usually ≥2 lightweight candidates;
+- medium: ≥2 formal candidates;
+- strong: ≥3 independent lenses when the problem justifies them.
 
-Applicability rule: model from at least **two** perspectives whenever possible. A single-perspective analysis is acceptable only if the user explicitly asks for speed.
+### Subagent / parallel execution guard
 
-### Parallel Dispatch Protocol
+Do **not** automatically spawn subagents merely because the runtime supports them.
 
-If the runtime supports subagents (Claude Code `Task` tool, opencode `task` tool, equivalent), Phase 5 MUST run in parallel:
+Parallel subagents are allowed only when the user explicitly requested/allowed additional agents or subtasks. When allowed, freeze the shared Phase 0-2 context and give each lens an independent brief from [templates/subagent-brief.md](templates/subagent-brief.md).
 
-1. **Freeze first.** Phases 1-4 are completed and FROZEN before any dispatch: idea statement, goal question, decomposition, parameter table, assumptions. Frozen inputs go into every brief verbatim.
-2. **Select lenses** (≥ 2 applicable). Sub-problems marked *coupled* in Phase 2 stay inside one brief, never split coupled dynamics across agents.
-3. **Dispatch simultaneously**: fill [templates/subagent-brief.md](templates/subagent-brief.md) once per lens and send ALL briefs in a single message so they execute concurrently. Each brief is self-contained; subagents see no other lens's output (independence prevents anchoring bias between lenses).
-4. **Merge**: collect blocks verbatim → resolve every `ASSUMPTION CONFLICT` yourself and document resolutions → deduplicate overlapping insights → proceed to Phase 6 with the collected scores.
+Without permission, run the candidate analyses through the current agent and local scientific tools. Do not multiply provider/API calls silently.
 
-Fallback (no subagent support): run the same briefs sequentially through your own context, in the order listed above, and note in the report that independence was sequential rather than parallel.
+## Phase 4 — Data quality, fitting and computation
 
-For each perspective output:
+If observed data exist:
 
-```
-### Perspective: <name>
-Model: <equations / rules, written formally in LaTeX>
-Why it fits: <one sentence tied to Phase 2 classification>
-Key insight this lens reveals: <what ONLY this view shows>
-Blind spots: <what this view cannot see>
-```
+1. inspect data quality before fitting;
+2. preserve the original data;
+3. clean invalid/malformed data only with an audit trail;
+4. state every transformation;
+5. compare original vs cleaned results when feasible;
+6. prominently flag conclusions that materially depend on cleaning.
 
-### Phase 6: Compare & Recommend
+Fit each plausible candidate rather than fitting only the favorite model. Use appropriate established tools:
 
-Build a comparison table:
+- NumPy / SciPy for numerical work;
+- statsmodels for statistical models;
+- scikit-learn when its model family is appropriate;
+- SymPy for symbolic checks;
+- cvxpy / CasADi for optimization;
+- NetworkX for graph models;
+- control for control systems;
+- Z3 / Lean for logic or formal claims when applicable;
+- PyMC/JAX when strong Bayesian/automatic-differentiation work is justified and available.
 
-| Criterion | Det | Stoch | Opt | ABM | Net | Ctrl |
-|-----------|-----|-------|-----|-----|-----|------|
+Never trust a solver's `success=True` by itself. Check conservation laws, residuals, dimensions, bounds, stability/convergence and domain constraints as applicable.
 
-Criteria (score 1-5): fidelity to reality, data requirements, computational cost, analytical tractability, answerability of the user's goal question. Only include columns for perspectives you actually built; mark rejected ones with a one-line rejection reason under the table.
+For statistical candidates, report fit quality and parameter uncertainty. Compare with evidence such as residual diagnostics, AIC/BIC or out-of-sample performance when valid for the candidate class.
 
-Recommend ONE primary model (+ optionally one secondary for validation). Justify with the table, not vibes.
+## Phase 5 — Compare, rank and reject
 
-### Phase 7: Implement & Validate
+Do not force a single universal winner.
 
-Generate runnable Python for the recommended model:
+Rank the strongest **2-3 candidates** and explain:
 
-- Use `numpy`/`scipy.integrate.solve_ivp` for ODEs, `numpy` RNG for stochastic, `scipy.optimize` for optimization, plain loops/dataclasses for agent-based.
-- Parameter values: use literature-typical defaults, clearly marked as placeholders.
-- **If the user has real data** (CSV of observations), calibrate instead of guessing: `tools/fit.py --model <sir|logistic> --data <file>` returns fitted parameters with confidence intervals and derived quantities (R₀, K...). Report both fit quality (RMSE) and parameter uncertainty.
-- Then validate with `tools/validate.py` (dimensional checks, sanity bounds, conservation laws).
-- Run a sensitivity sweep on the 2 highest-sensitivity parameters from Phase 3.
-- When matplotlib is available, produce a plot of the model behavior (`--plot`) and reference it in the report.
-- Present results as: predicted behavior summary + plot description + limitations.
+- why candidate 1 ranks above candidate 2/3;
+- which assumptions drive the ranking;
+- under which conditions each candidate becomes the better model;
+- what important effect each model captures or misses;
+- why rejected candidates were rejected.
 
-### Phase 8: Deliverable Format
+Use explicit criteria: fidelity, data requirements, identifiability, computational cost, analytical tractability, validation evidence and ability to answer the user's actual goal.
 
-Assemble the final answer using [templates/report.md](templates/report.md). Its non-negotiable elements:
+If tools or models disagree, expose the conflict. Investigate whether the cause is assumptions, data, numerical method, stochasticity, approximation, identifiability or implementation error. Never average conflicts away merely to produce one answer.
 
-1. **One-line model statement** ("The idea reduces to a SIR-type system with reinfection")
-2. Assumptions & parameter tables
-3. All perspective models (formal notation)
-4. Comparison table + recommendation
-5. Code + validation results
-6. **What would falsify this model**, observable predictions that, if wrong, kill the model
-7. **Confidence ledger**, every major claim tagged as established / assumption / speculation
+## Phase 6 — Error search, uncertainty, sensitivity and falsification
 
-**LaTeX export (research tier):** when the user wants thesis/paper-ready output, convert the final report with `tools/report_to_latex.py --input <report.md> --output <report.tex>` (add `--pdf` if a LaTeX toolchain is installed). The converter handles tables, verbatim code, math passthrough and symbol transliteration; always compile-check before delivering.
+Actively try to break the result before presenting it.
 
-**Archive rule:** after delivering the report, save it to `reports/YYYY-MM-DD-<short-slug>.md` in the working directory (create the folder if needed) using the template header verbatim (Date / Rigor level / Model in one sentence), then run `tools/index_reports.py` to rebuild `reports/INDEX.md`, and tell the user the path. Reference earlier indexed sessions when relevant ("this extends your 2026-08-24 barista model"), modeling sessions should accumulate into a searchable personal archive, not evaporate into chat scrollback.
+For important conclusions, use an appropriate confidence label:
+
+- **certain**;
+- **strong probability**;
+- **medium confidence**;
+- **low confidence**.
+
+State:
+
+- remaining uncertainties and why they remain;
+- the model's validity domain;
+- conditions that invalidate it;
+- observable falsifiers;
+- major risks/failure modes.
+
+Rank the variables that most affect the result. For high-impact variables, show concrete sensitivity scenarios when computable.
+
+Use Matplotlib for standard plots when available. Produce 3D visualizations when they materially improve understanding. Visualize model structure and variable interactions, not only the final number. Use directed dependency/coupling graphs when useful.
+
+## Phase 7 — Hypotheses and empirical test plan
+
+For empirical domains such as engineering, biology, physics and chemistry, translate the selected models into explicit testable hypotheses.
+
+State:
+
+- hypothesis;
+- expected observation if it is true;
+- observation that would refute it;
+- data/measurement required;
+- concrete experiment/test design.
+
+If real testing is costly, dangerous or destructive, run simulation/virtual testing first when possible.
+
+If a hypothesis fails, investigate why. Generate and rank the strongest 2-3 alternative hypotheses, state what evidence would distinguish them, and reject weak hypotheses with explicit reasons.
+
+Repeating the **entire** analysis with independent alternative methods is user-controlled: do it only when the user asks or has already granted permission for that extra work.
+
+## Phase 8 — Reproducibility and delivery
+
+Record enough state to reproduce the work:
+
+- problem definition;
+- input data references and original/cleaned transformations;
+- parameters and provenance;
+- assumptions;
+- candidate and selected models;
+- equations;
+- solver settings;
+- random seeds;
+- tools/library versions;
+- validation/conflict results;
+- uncertainty and sensitivity results;
+- generated artifacts.
+
+Use `RunState` when operating through the Python engine.
+
+Deliver the result in two layers:
+
+1. **plain-language summary** — short and direct;
+2. **technical detail** — equations, evidence, validation, uncertainty and reproducibility.
+
+The user controls how much technical detail is shown.
+
+Offer a stronger rerun when more tools/checks would materially improve confidence. Do not end with a generic "now you should do X" that hands workflow management back to the user.
+
+## Consumption and autonomy rules
+
+Axiomize manages the requested analysis, but it is not allowed to silently expand the bill or workload.
+
+Explicit permission is required before:
+
+- spawning new agents/subtasks;
+- repeating the whole analysis with alternative methods;
+- adding extra paid/provider calls beyond the selected workflow.
+
+Local deterministic computation, validation, plotting and report generation that are already part of the requested analysis may proceed without an extra permission prompt.
 
 ## Hard Rules
 
 - NEVER present an equation without defining every symbol.
-- NEVER skip Phase 5 multi-perspective analysis silently, if reducing scope, say so explicitly.
-- ALWAYS state units for parameters.
-- ALWAYS open the final deliverable with a plain-language summary, regardless of tier.
-- If the idea is purely qualitative (no measurable quantity exists), say so and propose the closest measurable proxy instead of inventing fake precision.
-- Distinguish clearly between: established science, reasonable assumption, pure speculation.
+- ALWAYS state units where units exist.
+- NEVER hide mechanism uncertainty.
+- NEVER turn an assumption into a fake fact.
+- ALWAYS compare multiple plausible models when possible.
+- ALWAYS state why a model is preferred or rejected.
+- ALWAYS disclose unresolved conflicts and uncertainty.
+- ALWAYS state what could falsify or invalidate the model.
+- NEVER discard original data during cleaning.
+- NEVER silently multiply agent/API/model calls.
+- If no measurable quantity exists, say so and propose the closest measurable proxy instead of inventing precision.
