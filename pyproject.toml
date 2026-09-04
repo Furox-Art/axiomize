@@ -9,7 +9,7 @@ description = "Turn any idea into a rigorous mathematical model - agent skill pa
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
 ]
@@ -30,7 +30,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
