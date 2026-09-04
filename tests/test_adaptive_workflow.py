@@ -13,6 +13,8 @@ sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.application.services import intake_service, workflow_policy_service
 from axiomize.data.quality import clean_numeric_xy
+from axiomize.runs.compare import compare_run_states
+from axiomize.runs.state import RunState
 from axiomize.visualization.plots import plot_dependency_graph, plot_sensitivity, plot_surface_3d
 from axiomize.workflow.policy import RigorLevel, default_policy, recommend_rigor
 
@@ -144,3 +146,19 @@ def test_visualization_helpers_create_files(tmp_path: Path) -> None:
         tmp_path / "graph.png",
     )
     assert graph.is_file() and graph.stat().st_size > 0
+
+
+def test_run_diff_explains_parameter_and_tool_version_changes() -> None:
+    before = RunState(parameters={"beta": 0.3}, solver_settings={"rtol": 1e-6}, results={"y": 1.0})
+    after = RunState(parameters={"beta": 0.4}, solver_settings={"rtol": 1e-6}, results={"y": 1.5})
+    diff = compare_run_states(
+        before,
+        after,
+        before_manifest={"tool_versions": {"scipy": "1.10.0"}},
+        after_manifest={"tool_versions": {"scipy": "1.11.0"}},
+    )
+    assert diff["same_input_hash"] is False
+    assert "parameters" in diff["differences"]
+    assert "tool_versions" in diff["differences"]
+    assert "model parameters changed" in diff["likely_reasons"]
+    assert "software/tool versions changed" in diff["likely_reasons"]
