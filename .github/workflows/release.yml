@@ -38,6 +38,9 @@ jobs:
           python -m pip install --force-reinstall dist/*.whl
           axiomize --help
           axiomize tools
+          axiomize capabilities
+          axiomize policy
+          axiomize intake "A city wants to reduce traffic congestion"
 
   publish:
     needs: preflight
