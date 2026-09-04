@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/pypi-release-trigger"
+
+concurrency:
+  group: pypi-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install test and build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+          pip install build twine
+      - name: Run tests
+        run: pytest tests/ -q
+      - name: Build distributions
+        run: python -m build
+      - name: Validate distributions
+        run: python -m twine check dist/*
+      - name: Smoke-test built wheel
+        run: |
+          python -m pip install --force-reinstall dist/*.whl
+          axiomize --help
+          axiomize tools
+
+  publish:
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Resolve package metadata
+        id: meta
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import pathlib, tomllib
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          print(f"name={data['project']['name']}")
+          print(f"version={data['project']['version']}")
+          PY
+      - name: Check whether version already exists on PyPI
+        id: gate
+        shell: bash
+        run: |
+          if curl -sfL "https://pypi.org/pypi/${{ steps.meta.outputs.name }}/${{ steps.meta.outputs.version }}/json" > /dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Detect API token fallback
+        id: auth
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -n "$PYPI_TOKEN" ]; then echo "has_token=true" >> "$GITHUB_OUTPUT"; else echo "has_token=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Build distributions
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Publish to PyPI with trusted publishing
+        id: trusted_publish
+        if: steps.gate.outputs.skip != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
+      - name: Publish to PyPI with API token fallback
+        id: token_publish
+        if: steps.gate.outputs.skip != 'true' && steps.trusted_publish.outcome != 'success' && steps.auth.outputs.has_token == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+        continue-on-error: true
+      - name: Verify PyPI publication
+        if: steps.gate.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://pypi.org/pypi/${{ steps.meta.outputs.name }}/${{ steps.meta.outputs.version }}/json"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -sfL "$url" > /dev/null; then exit 0; fi
+            sleep 10
+          done
+          echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
+          echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"
+          exit 1
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.meta.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
