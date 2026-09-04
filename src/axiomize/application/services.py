@@ -197,3 +197,30 @@ def workflow_policy_service(payload: dict[str, Any] | None = None) -> dict[str, 
         "policy": policy.to_dict(),
         "rigor_recommendation": recommend_rigor(payload.get("signals")),
     }
+
+
+def clean_data_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Conservatively clean paired numeric observations with an audit trail."""
+    from axiomize.data.quality import clean_numeric_xy
+
+    if "t" not in payload or "y" not in payload:
+        raise ValueError("clean_data requires t and y arrays")
+    result = clean_numeric_xy(
+        payload["t"],
+        payload["y"],
+        drop_nonfinite=bool(payload.get("drop_nonfinite", True)),
+        sort_time=bool(payload.get("sort_time", True)),
+        duplicate_policy=str(payload.get("duplicate_policy", "mean")),
+    )
+    return result.to_dict()
+
+
+def compare_runs_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Explain why two stored reproducible runs differ."""
+    from axiomize.runs.compare import compare_run_directories
+
+    before_dir = str(payload.get("before_dir", "")).strip()
+    after_dir = str(payload.get("after_dir", "")).strip()
+    if not before_dir or not after_dir:
+        raise ValueError("compare_runs requires before_dir and after_dir")
+    return compare_run_directories(before_dir, after_dir)
