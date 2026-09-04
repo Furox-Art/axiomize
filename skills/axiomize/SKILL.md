@@ -1,6 +1,6 @@
 ---
 name: axiomize
-description: Transforms vague ideas, real-world problems and scientific hypotheses into rigorous mathematical models. Clarifies missing mechanisms in plain language, recommends weak/medium/strong depth, builds and compares multiple candidate models, fits and validates them with scientific tools, quantifies uncertainty and sensitivity, produces visualizations and testable hypotheses, and records reproducible runs while keeping extra agent/API consumption under explicit user control.
+description: Transforms vague ideas, real-world problems and scientific hypotheses into rigorous mathematical models. Clarifies missing mechanisms in plain language, recommends weak/medium/strong depth, builds and compares multiple candidate models, fits and validates them with scientific tools, quantifies uncertainty and sensitivity, produces visualizations and testable hypotheses, and records reproducible runs while keeping extra agent/API consumption under explicit user control. Use when the user wants to formalize, model, simulate, fit, validate, compare, or scientifically test an idea, system, process, mechanism, or hypothesis.
 ---
 
 # Axiomize: Idea → Rigorous Mathematical Model
