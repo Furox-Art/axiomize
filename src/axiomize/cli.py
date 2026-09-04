@@ -71,6 +71,7 @@ def cmd_policy(args: argparse.Namespace) -> int:
 
 def cmd_model(args: argparse.Namespace) -> int:
     """Dispatch versioned general-model operations through one JSON contract."""
+    from axiomize.application import advanced_services as ads
     from axiomize.application import general_services as gs
 
     payload = _load_object(args.input_json)
@@ -92,6 +93,9 @@ def cmd_model(args: argparse.Namespace) -> int:
         "validity": gs.model_validity_service,
         "discover": gs.model_discovery_service,
         "experiment-design": gs.experiment_design_service,
+        "uncertainty": ads.model_uncertainty_service,
+        "bifurcation": ads.model_bifurcation_service,
+        "stop-check": ads.model_stopping_service,
     }
     out = dispatch[args.action](payload)
     rc = _dump(out, args.json)
@@ -215,11 +219,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_consumption_flags(p)
     p.set_defaults(func=cmd_policy)
 
-    p = sub.add_parser("model", help="plan/validate/simulate/fit/export a versioned general Model IR")
+    p = sub.add_parser("model", help="plan/validate/simulate/fit/diagnose/export a versioned general Model IR")
     p.add_argument("--input-json", required=True, help="JSON request containing idea or model_ir")
     p.add_argument("--action", choices=[
         "plan", "validate", "simulate", "fit", "compare", "repair", "export",
-        "stability", "validity", "discover", "experiment-design",
+        "stability", "validity", "discover", "experiment-design", "uncertainty",
+        "bifurcation", "stop-check",
     ], default="plan")
     p.add_argument("--approve-heavy", action="store_true", help="approve heavy local compute for this invocation")
     p.add_argument("--approve-migration", action="store_true", help="approve displayed Model IR migration")
