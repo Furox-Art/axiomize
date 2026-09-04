@@ -70,6 +70,25 @@ def cmd_policy(args: argparse.Namespace) -> int:
     return _dump(out, args.json)
 
 
+def cmd_clean_data(args: argparse.Namespace) -> int:
+    from axiomize.application.services import clean_data_service
+
+    payload = _load_object(args.input_json)
+    payload["drop_nonfinite"] = not args.reject_nonfinite
+    payload["sort_time"] = not args.keep_order
+    payload["duplicate_policy"] = args.duplicate_policy
+    return _dump(clean_data_service(payload), args.json)
+
+
+def cmd_compare_runs(args: argparse.Namespace) -> int:
+    from axiomize.application.services import compare_runs_service
+
+    return _dump(compare_runs_service({
+        "before_dir": args.before_dir,
+        "after_dir": args.after_dir,
+    }), args.json)
+
+
 def cmd_solve(args: argparse.Namespace) -> int:
     from axiomize.application.services import solve_sir_service
 
@@ -191,6 +210,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", default=None)
     _add_consumption_flags(p)
     p.set_defaults(func=cmd_policy)
+
+    p = sub.add_parser("clean-data", help="clean paired numeric observations with a preserved audit trail")
+    p.add_argument("--input-json", required=True,
+                   help="JSON object containing t and y arrays")
+    p.add_argument("--duplicate-policy", choices=["mean", "first", "error"], default="mean")
+    p.add_argument("--reject-nonfinite", action="store_true",
+                   help="fail instead of dropping non-finite rows")
+    p.add_argument("--keep-order", action="store_true",
+                   help="do not sort non-monotonic time coordinates")
+    p.add_argument("--json", default=None)
+    p.set_defaults(func=cmd_clean_data)
+
+    p = sub.add_parser("compare-runs", help="explain why two recorded runs differ")
+    p.add_argument("before_dir")
+    p.add_argument("after_dir")
+    p.add_argument("--json", default=None)
+    p.set_defaults(func=cmd_compare_runs)
 
     p = sub.add_parser("solve", help="solve the SIR model through the full pipeline")
     p.add_argument("--beta", type=float, default=0.3)
