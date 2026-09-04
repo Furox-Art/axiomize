@@ -82,5 +82,5 @@ jobs:
           printf '# Release Smoke\n\nModel relation: $y = ax + b$.\n' > "$tmp/report.md"
           axiomize-to-latex --input "$tmp/report.md" --output "$tmp/report.tex"
           test -s "$tmp/report.tex"
-          grep -F '\\begin{document}' "$tmp/report.tex"
+          grep -F '\begin{document}' "$tmp/report.tex"
           grep -F 'Model relation' "$tmp/report.tex"
