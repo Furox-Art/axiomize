@@ -71,6 +71,10 @@ class Handler(BaseHTTPRequestHandler):
                 _send(self, 200, services.intake_service(payload))
             elif path == "/workflow-policy":
                 _send(self, 200, services.workflow_policy_service(payload))
+            elif path == "/clean-data":
+                _send(self, 200, services.clean_data_service(payload))
+            elif path == "/compare-runs":
+                _send(self, 200, services.compare_runs_service(payload))
             elif path in ("/model", "/solve", "/simulate"):
                 _send(self, 200, services.solve_sir_service(payload))
             elif path == "/fit":
