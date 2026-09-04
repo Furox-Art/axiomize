@@ -44,14 +44,17 @@ Public plan. Checked items ship; everything here is open for contribution, see C
 - [x] Novel-domain benchmark reports (telephone fidelity, async alignment)
 - [x] Report template: novel-territory appendix
 
+## Shipped after v1.6
+
+- [x] JSON export of active parameter tables for downstream tooling (`axiomize export-parameters`)
+
 ## Later / candidates
 
 - [ ] Benchmark suite: 10 standard test ideas + scoring rubric for skill quality regression
 - [ ] Web playground (Gradio/Streamlit) demo deployment
 - [ ] Submission to agent-skill registries and awesome lists
-- [ ] JSON export of parameter tables for downstream tooling
 
 ## Non-goals
 
-- Becoming a solver engine (we generate and validate models; heavy numerics belong to established solvers)
+- Heavy solver replacement: Axiomize orchestrates and validates established scientific solvers rather than reimplementing them.
 - Fine-tuning models on modeling corpora (prompt-discipline first; revisit only if evidence shows ceiling)
