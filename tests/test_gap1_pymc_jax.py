@@ -38,29 +38,45 @@ def test_pymc_execute_never_fakes():
         with pytest.raises(RuntimeError, match="TOOL_UNAVAILABLE"):
             tool.execute({"model": "normal-mean"})
     else:
-        # Kuruluysa TOOL_UNAVAILABLE denmemeli: ya gercek sonuc ya da
-        # sonraki faza ait acik NotImplementedError.
-        try:
-            out = tool.execute({"model": "normal-mean"})
-        except NotImplementedError:
-            pass
-        else:
-            assert isinstance(out, dict)
+        # Kuruluysa TOOL_UNAVAILABLE denmemeli, veri verilmeden de
+        # uydurulmamali: y yoksa acik ValueError.
+        with pytest.raises(ValueError):
+            tool.execute({"model": "normal-mean"})
+        out = tool.execute({"model": "normal-mean", "y": [1.0, 2.0, 3.0],
+                            "draws": 200, "tune": 200, "seed": 0})
+        assert isinstance(out, dict)
+        assert "posterior_mean" in out
 
 
 def test_pymc_real_fit_when_installed():
     if not _spec_present("pymc"):
         pytest.skip("pymc kurulu degil; TOOL_UNAVAILABLE yolu gecerli")
+    import numpy as np
+
     from axiomize.bayesian.pymc_tool import PyMCTool
 
     tool = PyMCTool()
     assert PyMCTool.availability().available is True
-    try:
-        out = tool.execute({"model": "normal-mean"})
-    except NotImplementedError:
-        # Faz siniri acikca soyleniyor, sahte sonuc yok.
-        return
-    assert isinstance(out, dict)
+    rng = np.random.default_rng(7)
+    y = rng.normal(5.0, 1.0, size=50)
+    out = tool.execute({"model": "normal-mean", "y": y.tolist(),
+                        "sigma": 1.0, "draws": 300, "tune": 300, "seed": 0})
+    assert out["model"] == "normal-mean"
+    assert abs(out["posterior_mean"] - 5.0) < 0.3
+    lo, hi = out["ci95"]
+    assert lo < 5.0 < hi
+    assert out["status"] in ("PASS", "WARNING")
+    if isinstance(out["r_hat"], float):
+        assert out["r_hat"] < 1.05
+
+
+def test_jax_real_grad_when_installed():
+    if not _spec_present("jax"):
+        pytest.skip("jax kurulu degil; capabilities False yolu gecerli")
+    import jax
+
+    grad = jax.grad(lambda x: x ** 2 + 2 * x)
+    assert float(grad(3.0)) == pytest.approx(8.0)
 
 
 def test_jax_capabilities_honest():

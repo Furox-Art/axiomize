@@ -50,7 +50,8 @@ class TestCapabilities:
         caps = get_capabilities()
         assert caps["symbolic_math"] == (importlib.util.find_spec("sympy") is not None)
         assert caps["fenics"] is False
-        assert caps["gpu"] is False
+        assert caps["gpu"] == (importlib.util.find_spec("torch") is not None
+                               or importlib.util.find_spec("jax") is not None)
 
 
 class TestServices:
