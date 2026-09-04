@@ -1,7 +1,7 @@
 """Runtime capability discovery.
 
 Capabilities are explicit about what the generic engine executes natively and
-what is only routed to a specialized scientific backend.
+which optional third-party scientific backends are available.
 """
 
 from __future__ import annotations
@@ -37,7 +37,8 @@ def get_capabilities() -> dict[str, Any]:
         "consumption_guard": _cap(True, guarded_actions=[
             "spawn_subtask", "repeat_alternative_method", "extra_paid_model_call",
             "heavy_compute", "constraint_rebuild", "model_discovery",
-            "experiment_design", "ir_migration",
+            "experiment_design", "ir_migration", "bayesian_sampling",
+            "multiphysics_cosimulation",
         ]),
         "model_ir": _cap(
             True, schema_version=CURRENT_SCHEMA_VERSION, versioned=True,
@@ -50,12 +51,20 @@ def get_capabilities() -> dict[str, Any]:
             visible_solver_fallbacks=True,
             scientific_constraints=True,
             constraint_repair_requires_approval=True,
-            native_execution=["ode", "stochastic", "algebraic"],
-            routed_specialized_execution=[
-                "pde", "dae", "optimization", "control", "network", "bayesian",
-                "agent_based", "discrete_event", "hybrid", "causal",
-            ],
-            note="routed families are not silently replaced by a generic/reference model",
+            native_execution=all_families,
+            routed_specialized_execution=[],
+            pde_method_of_lines=True,
+            dae_index1=True,
+            nonlinear_optimization=True,
+            state_space_control=True,
+            graph_dynamics=True,
+            builtin_bayesian_mh=True,
+            agent_based=True,
+            discrete_event=True,
+            hybrid_event_ode=True,
+            causal_identification_guard=True,
+            multiphysics_cosimulation=True,
+            note="all Model IR families have deterministic native execution contracts; no family is silently replaced by a reference model",
         ),
         "model_fitting": _cap(
             _present("scipy"), native_generic=["ode"],
@@ -79,14 +88,17 @@ def get_capabilities() -> dict[str, Any]:
         "statistics": _cap(_present("statsmodels"), backend="statsmodels"),
         "visualization": _cap(_present("matplotlib"), backend="matplotlib", supports_3d=True),
         "optimization_convex": _cap(_present("cvxpy"), backend="cvxpy"),
-        "optimization_nonlinear": _cap(_present("casadi"), backend="casadi"),
-        "bayesian_inference": _cap(_present("pymc"), backend="pymc"),
+        "optimization_nonlinear": _cap(True, native_backend="scipy", optional_casadi=_present("casadi")),
+        "bayesian_inference": _cap(True, native_backend="builtin_mh", optional_pymc=_present("pymc")),
         "bayesian_builtin_mh": _cap(True, backend="builtin"),
         "automatic_differentiation": _cap(_present("jax"), backend="jax"),
         "z3_verification": _cap(_present("z3"), backend="z3"),
         "formal_verification": _cap(LeanAdapter.availability().available, backend="lean"),
-        "network_models": _cap(_present("networkx"), backend="networkx"),
-        "control_models": _cap(_present("control"), backend="control"),
+        "network_models": _cap(True, native_backend="scipy", optional_networkx=_present("networkx")),
+        "control_models": _cap(True, native_backend="scipy.signal", optional_control=_present("control")),
+        "pde_models": _cap(True, native_backend="scipy_method_of_lines", optional_fenics=_present("fenics")),
+        "dae_models": _cap(True, native_backend="scipy_index1", optional_casadi=_present("casadi")),
+        "multiphysics": _cap(True, backend="axiomize_partitioned_cosimulation", requires_approval=True),
         "fenics": _cap(_present("fenics"), backend="fenics"),
         "gpu": _cap(_present("torch") or _present("jax"), backends={
             "torch": _present("torch"), "jax": _present("jax"),
