@@ -15,6 +15,7 @@ def _present(module: str) -> bool:
 
 
 def get_capabilities() -> dict[str, Any]:
+    from axiomize.formal.lean_adapter import LeanAdapter
     from axiomize.integrations.scs_adapter import scs_probe
 
     scs = scs_probe()
@@ -29,6 +30,7 @@ def get_capabilities() -> dict[str, Any]:
         "bayesian_builtin_mh": True,
         "automatic_differentiation": _present("jax"),
         "z3_verification": _present("z3"),
+        "formal_verification": LeanAdapter.availability().available,
         "network_models": _present("networkx"),
         "control_models": _present("control"),
         "fenics": _present("fenics"),

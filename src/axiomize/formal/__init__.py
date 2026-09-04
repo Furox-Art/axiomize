@@ -1,9 +1,8 @@
-"""Formal/Lean verification adapters (GAP-2 skeleton).
+"""Formal/Lean verification adapters (GAP-2, real integration).
 
-GAP-2 henuz gercek bir Lean kurulumuna baglanmaz; bu paket yalnizca
-:mod:`axiomize.tools.base.ScientificTool` sozlesmesine uyan durust bir
-iskelet sunar. Gercek Lean baglantisi eklenene kadar adapter her zaman
-``TOOL_UNAVAILABLE`` bildirir ve asla sahte ispat uretmez.
+:mod:`axiomize.formal.lean_adapter` checks proofs with a real, pinned
+Lean toolchain through ``elan run``. When the toolchain is missing the
+adapter reports ``TOOL_UNAVAILABLE`` and never fakes a proof.
 """
 
 from axiomize.formal.lean_adapter import LeanAdapter
