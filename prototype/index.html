@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Axiomize Hosted Prototype</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #0b0d10; color: #edf0f5; }
+    main { width: min(900px, calc(100% - 32px)); margin: 48px auto; }
+    .card { background: #13171c; border: 1px solid #262d36; border-radius: 16px; padding: 24px; margin-bottom: 18px; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    p { color: #aeb7c4; line-height: 1.5; }
+    label { display: block; font-size: 13px; color: #c6ced8; margin: 14px 0 6px; }
+    input, textarea, select, button { width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid #313a46; background: #0f1318; color: #edf0f5; padding: 12px; font: inherit; }
+    textarea { min-height: 150px; resize: vertical; }
+    button { margin-top: 16px; background: #edf0f5; color: #0b0d10; border: 0; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0d1116; border-radius: 10px; padding: 14px; min-height: 80px; }
+    .meta { font-size: 12px; color: #8490a0; }
+    .ok { color: #9fd5ab; }
+    .error { color: #ff9f9f; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Axiomize Hosted</h1>
+    <p>Use the scientific skill without installing it locally. Your provider key is sent only with the run request and is not stored by this prototype.</p>
+  </div>
+
+  <div class="card">
+    <label for="baseUrl">OpenAI-compatible API base URL</label>
+    <input id="baseUrl" placeholder="https://api.example.com/v1" />
+
+    <label for="model">Model</label>
+    <input id="model" placeholder="provider-model-name" />
+
+    <label for="apiKey">API key (BYOK)</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." />
+
+    <label for="skill">Skill</label>
+    <select id="skill"><option value="axiomize">Axiomize</option></select>
+
+    <label for="prompt">Scientific task</label>
+    <textarea id="prompt" placeholder="Model this system mathematically, state assumptions, fit parameters if data is provided, and validate the result..."></textarea>
+
+    <button id="run">Run skill</button>
+    <div id="status" class="meta"></div>
+  </div>
+
+  <div class="card">
+    <strong>Result</strong>
+    <pre id="output">No run yet.</pre>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const runButton = $('run');
+
+async function post(path, body, headers = {}) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', ...headers},
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+runButton.addEventListener('click', async () => {
+  const baseUrl = $('baseUrl').value.trim();
+  const model = $('model').value.trim();
+  const apiKey = $('apiKey').value.trim();
+  const prompt = $('prompt').value.trim();
+  if (!baseUrl || !model || !apiKey || !prompt) {
+    $('status').textContent = 'Base URL, model, API key and task are required.';
+    $('status').className = 'meta error';
+    return;
+  }
+
+  runButton.disabled = true;
+  $('status').textContent = 'Running…';
+  $('status').className = 'meta';
+  $('output').textContent = '';
+  try {
+    const session = await post('/v1/session', {
+      provider: 'openai-compatible', base_url: baseUrl, model,
+    });
+    const result = await post('/v1/run', {
+      session_id: session.session_id,
+      skill: $('skill').value,
+      prompt,
+    }, {'X-Provider-Key': apiKey});
+    $('output').textContent = result.output || JSON.stringify(result, null, 2);
+    $('status').textContent = `${result.skill} · ${result.skill_version} · ${result.model}`;
+    $('status').className = 'meta ok';
+  } catch (error) {
+    $('output').textContent = String(error);
+    $('status').textContent = 'Run failed.';
+    $('status').className = 'meta error';
+  } finally {
+    runButton.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
