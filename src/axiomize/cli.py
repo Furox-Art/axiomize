@@ -1,7 +1,8 @@
-"""Axiomize command-line interface (PHASE 8).
+"""Axiomize command-line interface.
 
-``axiomize solve --beta 0.3 --gamma 0.1 --N 1000000`` runs the same
-application service the MCP and REST adapters call.
+All adapters call the shared application-service layer. Legacy SIR/logistic
+commands remain backward-compatible; ``axiomize model`` exposes the versioned
+general Model IR engine.
 """
 
 from __future__ import annotations
@@ -36,7 +37,6 @@ def _load_object(path: str | None) -> dict[str, Any]:
 
 def cmd_intake(args: argparse.Namespace) -> int:
     from axiomize.application.services import intake_service
-
     permissions = {
         "allow_spawn_subtasks": bool(args.allow_subtasks),
         "allow_repeat_alternative_methods": bool(args.allow_repeat),
@@ -56,7 +56,6 @@ def cmd_intake(args: argparse.Namespace) -> int:
 
 def cmd_policy(args: argparse.Namespace) -> int:
     from axiomize.application.services import workflow_policy_service
-
     permissions = {
         "allow_spawn_subtasks": bool(args.allow_subtasks),
         "allow_repeat_alternative_methods": bool(args.allow_repeat),
@@ -70,9 +69,41 @@ def cmd_policy(args: argparse.Namespace) -> int:
     return _dump(out, args.json)
 
 
+def cmd_model(args: argparse.Namespace) -> int:
+    """Dispatch versioned general-model operations through one JSON contract."""
+    from axiomize.application import advanced_services as ads
+    from axiomize.application import general_services as gs
+
+    payload = _load_object(args.input_json)
+    if args.approve_heavy:
+        payload["approve_heavy"] = True
+    if args.approve_migration:
+        payload["approve_migration"] = True
+    if args.approve_repair:
+        payload["approve_repair"] = True
+    dispatch = {
+        "plan": gs.model_plan_service,
+        "validate": gs.model_validate_service,
+        "simulate": gs.model_simulate_service,
+        "fit": gs.model_fit_service,
+        "compare": gs.model_compare_service,
+        "repair": gs.model_repair_service,
+        "export": gs.model_export_service,
+        "stability": gs.model_stability_service,
+        "validity": gs.model_validity_service,
+        "discover": gs.model_discovery_service,
+        "experiment-design": gs.experiment_design_service,
+        "uncertainty": ads.model_uncertainty_service,
+        "bifurcation": ads.model_bifurcation_service,
+        "stop-check": ads.model_stopping_service,
+    }
+    out = dispatch[args.action](payload)
+    rc = _dump(out, args.json)
+    return 1 if out.get("status") == "FAIL" else rc
+
+
 def cmd_clean_data(args: argparse.Namespace) -> int:
     from axiomize.application.services import clean_data_service
-
     payload = _load_object(args.input_json)
     payload["drop_nonfinite"] = not args.reject_nonfinite
     payload["sort_time"] = not args.keep_order
@@ -82,16 +113,11 @@ def cmd_clean_data(args: argparse.Namespace) -> int:
 
 def cmd_compare_runs(args: argparse.Namespace) -> int:
     from axiomize.application.services import compare_runs_service
-
-    return _dump(compare_runs_service({
-        "before_dir": args.before_dir,
-        "after_dir": args.after_dir,
-    }), args.json)
+    return _dump(compare_runs_service({"before_dir": args.before_dir, "after_dir": args.after_dir}), args.json)
 
 
 def cmd_solve(args: argparse.Namespace) -> int:
     from axiomize.application.services import solve_sir_service
-
     out = solve_sir_service({"beta": args.beta, "gamma": args.gamma,
                              "I0": args.I0, "N": args.N, "days": args.days})
     return _dump(out, args.json)
@@ -99,9 +125,7 @@ def cmd_solve(args: argparse.Namespace) -> int:
 
 def cmd_fit(args: argparse.Namespace) -> int:
     import numpy as np
-
     from axiomize.application.services import fit_logistic_service
-
     with open(args.data, encoding="utf-8-sig") as fh:
         lines = fh.read().splitlines()[1:]
     rows = [line.split(",") for line in lines if line.strip()]
@@ -112,7 +136,6 @@ def cmd_fit(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     from axiomize.application.services import validate_sir_service
-
     out = validate_sir_service({"beta": args.beta, "gamma": args.gamma,
                                 "I0": args.I0, "N": args.N, "days": args.days})
     rc = _dump(out, args.json)
@@ -121,7 +144,6 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_tools(_args: argparse.Namespace) -> int:
     from axiomize.application.services import tools_service
-
     info = tools_service()
     for name, meta in info["tools"].items():
         flag = "available" if meta["available"] else f"UNAVAILABLE ({meta['reason']})"
@@ -131,24 +153,19 @@ def cmd_tools(_args: argparse.Namespace) -> int:
 
 def cmd_capabilities(_args: argparse.Namespace) -> int:
     from axiomize.application.services import capabilities_service
-
     print(json.dumps(capabilities_service(), indent=2))
     return 0
 
 
 def cmd_reproduce(args: argparse.Namespace) -> int:
     from axiomize.runs.state import RunState
-
     run = RunState.load(args.run_id)
-    print(json.dumps({"input_hash": run.input_hash(),
-                      "results": run.results}, indent=2, default=str))
+    print(json.dumps({"input_hash": run.input_hash(), "results": run.results}, indent=2, default=str))
     return 0
 
 
 def cmd_benchmark(_args: argparse.Namespace) -> int:
-    """Run the package-native suite; works from a wheel without repo tests."""
     from axiomize.benchmark_suite import run_suite
-
     result = run_suite()
     print(json.dumps(result, indent=2, default=str))
     return 0 if result["status"] == "PASS" else 1
@@ -156,7 +173,6 @@ def cmd_benchmark(_args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     from axiomize.server import rest_server
-
     server = rest_server.start_server(args.host, args.port)
     print(f"axiomize REST v1 on http://{args.host}:{server.server_address[1]}")
     try:
@@ -168,7 +184,6 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 def cmd_mcp(_args: argparse.Namespace) -> int:
     from axiomize.server import mcp_server
-
     mcp_server.serve_stdio()
     return 0
 
@@ -183,42 +198,45 @@ def _add_consumption_flags(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="axiomize",
-                                     description="Axiomize scientific engine CLI (API v1)")
+    parser = argparse.ArgumentParser(prog="axiomize", description="Axiomize scientific engine CLI (API v1)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("intake", help="clarify a vague idea before mathematical modeling")
     p.add_argument("idea")
-    p.add_argument("--context-json", default=None,
-                   help="JSON object containing known system_boundary/goal/measurable_outcome/horizon/mechanism")
-    p.add_argument("--signals-json", default=None,
-                   help="JSON object with rigor signals such as high_stakes or mechanism_unclear")
-    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"],
-                   default="adaptive")
-    p.add_argument("--preferred-question-mode", choices=["one_by_one", "all_at_once"],
-                   default="one_by_one")
-    p.add_argument("--rigor", choices=["weak", "medium", "strong", "basic", "standard", "research"],
-                   default=None)
+    p.add_argument("--context-json", default=None)
+    p.add_argument("--signals-json", default=None)
+    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"], default="adaptive")
+    p.add_argument("--preferred-question-mode", choices=["one_by_one", "all_at_once"], default="one_by_one")
+    p.add_argument("--rigor", choices=["weak", "medium", "strong", "basic", "standard", "research"], default=None)
     p.add_argument("--json", default=None)
     _add_consumption_flags(p)
     p.set_defaults(func=cmd_intake)
 
     p = sub.add_parser("policy", help="show adaptive workflow policy and consumption guard")
     p.add_argument("--signals-json", default=None)
-    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"],
-                   default="adaptive")
+    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"], default="adaptive")
     p.add_argument("--json", default=None)
     _add_consumption_flags(p)
     p.set_defaults(func=cmd_policy)
 
+    p = sub.add_parser("model", help="plan/validate/simulate/fit/diagnose/export a versioned general Model IR")
+    p.add_argument("--input-json", required=True, help="JSON request containing idea or model_ir")
+    p.add_argument("--action", choices=[
+        "plan", "validate", "simulate", "fit", "compare", "repair", "export",
+        "stability", "validity", "discover", "experiment-design", "uncertainty",
+        "bifurcation", "stop-check",
+    ], default="plan")
+    p.add_argument("--approve-heavy", action="store_true", help="approve heavy local compute for this invocation")
+    p.add_argument("--approve-migration", action="store_true", help="approve displayed Model IR migration")
+    p.add_argument("--approve-repair", action="store_true", help="approve constraint-driven rebuild/refit intent")
+    p.add_argument("--json", default=None)
+    p.set_defaults(func=cmd_model)
+
     p = sub.add_parser("clean-data", help="clean paired numeric observations with a preserved audit trail")
-    p.add_argument("--input-json", required=True,
-                   help="JSON object containing t and y arrays")
+    p.add_argument("--input-json", required=True)
     p.add_argument("--duplicate-policy", choices=["mean", "first", "error"], default="mean")
-    p.add_argument("--reject-nonfinite", action="store_true",
-                   help="fail instead of dropping non-finite rows")
-    p.add_argument("--keep-order", action="store_true",
-                   help="do not sort non-monotonic time coordinates")
+    p.add_argument("--reject-nonfinite", action="store_true")
+    p.add_argument("--keep-order", action="store_true")
     p.add_argument("--json", default=None)
     p.set_defaults(func=cmd_clean_data)
 
@@ -228,7 +246,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", default=None)
     p.set_defaults(func=cmd_compare_runs)
 
-    p = sub.add_parser("solve", help="solve the SIR model through the full pipeline")
+    p = sub.add_parser("solve", help="solve the backward-compatible reference SIR model")
     p.add_argument("--beta", type=float, default=0.3)
     p.add_argument("--gamma", type=float, default=0.1)
     p.add_argument("--I0", type=float, default=10.0)
@@ -237,12 +255,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", default=None)
     p.set_defaults(func=cmd_solve)
 
-    p = sub.add_parser("fit", help="fit logistic growth to a CSV (time,value)")
+    p = sub.add_parser("fit", help="fit backward-compatible logistic growth to CSV (time,value)")
     p.add_argument("--data", required=True)
     p.add_argument("--json", default=None)
     p.set_defaults(func=cmd_fit)
 
-    p = sub.add_parser("validate", help="solve + dimensional + cross-validation")
+    p = sub.add_parser("validate", help="backward-compatible SIR solve + dimensional + cross-validation")
     p.add_argument("--beta", type=float, default=0.3)
     p.add_argument("--gamma", type=float, default=0.1)
     p.add_argument("--I0", type=float, default=10.0)
@@ -253,22 +271,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("tools", help="list scientific backends and availability")
     p.set_defaults(func=cmd_tools)
-
     p = sub.add_parser("capabilities", help="machine-readable capability map")
     p.set_defaults(func=cmd_capabilities)
-
     p = sub.add_parser("reproduce", help="inspect a stored run")
     p.add_argument("run_id")
     p.set_defaults(func=cmd_reproduce)
-
-    p = sub.add_parser("benchmark", help="run the install-safe 12-case scientific benchmark suite")
+    p = sub.add_parser("benchmark", help="run the install-safe scientific benchmark suite")
     p.set_defaults(func=cmd_benchmark)
-
     p = sub.add_parser("serve", help="start the REST API (v1)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
     p.set_defaults(func=cmd_serve)
-
     p = sub.add_parser("mcp", help="serve MCP over stdio")
     p.set_defaults(func=cmd_mcp)
     return parser

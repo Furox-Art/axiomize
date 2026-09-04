@@ -15,32 +15,83 @@ from axiomize.validation.status import ValidationStatus
 
 _BASES = ("L", "M", "T", "I", "Theta", "N", "J")
 
-# unit name -> dimension vector (only non-zero exponents stored)
+# unit name -> dimension vector (scale factors are irrelevant for dimensional checks)
 _UNIT_TABLE: dict[str, dict[str, int]] = {
     "metre": {"L": 1},
     "meter": {"L": 1},
     "m": {"L": 1},
+    "centimeter": {"L": 1},
+    "cm": {"L": 1},
+    "millimeter": {"L": 1},
+    "mm": {"L": 1},
+    "kilometer": {"L": 1},
+    "km": {"L": 1},
+    "litre": {"L": 3},
+    "liter": {"L": 3},
+    "L": {"L": 3},
+    "m^2": {"L": 2},
+    "m2": {"L": 2},
+    "m^3": {"L": 3},
+    "m3": {"L": 3},
     "kilogram": {"M": 1},
     "kg": {"M": 1},
+    "gram": {"M": 1},
+    "g": {"M": 1},
     "second": {"T": 1},
     "s": {"T": 1},
+    "minute": {"T": 1},
+    "min": {"T": 1},
     "day": {"T": 1},
     "hour": {"T": 1},
+    "h": {"T": 1},
+    "year": {"T": 1},
+    "yr": {"T": 1},
     "ampere": {"I": 1},
+    "A": {"I": 1},
     "kelvin": {"Theta": 1},
+    "K": {"Theta": 1},
     "mole": {"N": 1},
+    "mol": {"N": 1},
     "candela": {"J": 1},
     "hertz": {"T": -1},
+    "Hz": {"T": -1},
     "newton": {"L": 1, "M": 1, "T": -2},
+    "N": {"L": 1, "M": 1, "T": -2},
     "joule": {"L": 2, "M": 1, "T": -2},
+    "J": {"L": 2, "M": 1, "T": -2},
     "watt": {"L": 2, "M": 1, "T": -3},
+    "W": {"L": 2, "M": 1, "T": -3},
     "pascal": {"L": -1, "M": 1, "T": -2},
+    "Pa": {"L": -1, "M": 1, "T": -2},
+    "volt": {"L": 2, "M": 1, "T": -3, "I": -1},
+    "V": {"L": 2, "M": 1, "T": -3, "I": -1},
+    "coulomb": {"T": 1, "I": 1},
+    "C": {"T": 1, "I": 1},
     "persons": {"N": 1},
+    "person": {"N": 1},
+    "cells": {"N": 1},
+    "molecules": {"N": 1},
     "1/day": {"T": -1},
     "1/second": {"T": -1},
+    "1/s": {"T": -1},
+    "1/min": {"T": -1},
     "1/hour": {"T": -1},
+    "1/h": {"T": -1},
+    "1/year": {"T": -1},
     "per_day": {"T": -1},
+    "m/s": {"L": 1, "T": -1},
+    "m/s^2": {"L": 1, "T": -2},
+    "m/s2": {"L": 1, "T": -2},
+    "kg/m^3": {"M": 1, "L": -3},
+    "kg/m3": {"M": 1, "L": -3},
+    "mol/m^3": {"N": 1, "L": -3},
+    "mol/m3": {"N": 1, "L": -3},
+    "mol/L": {"N": 1, "L": -3},
+    "mmol/L": {"N": 1, "L": -3},
+    "umol/L": {"N": 1, "L": -3},
+    "M": {"N": 1, "L": -3},
     "dimensionless": {},
+    "1": {},
 }
 
 
@@ -58,13 +109,13 @@ class Dimension:
         cleaned = {k: v for k, v in self.exponents.items() if v != 0}
         object.__setattr__(self, "exponents", cleaned)
 
-    def __mul__(self, other: Dimension) -> Dimension:
+    def __mul__(self, other: "Dimension") -> "Dimension":
         merged = dict(self.exponents)
         for key, value in other.exponents.items():
             merged[key] = merged.get(key, 0) + value
         return Dimension(merged)
 
-    def __truediv__(self, other: Dimension) -> Dimension:
+    def __truediv__(self, other: "Dimension") -> "Dimension":
         merged = dict(self.exponents)
         for key, value in other.exponents.items():
             merged[key] = merged.get(key, 0) - value

@@ -1,6 +1,6 @@
 """User-controlled policy for the adaptive Axiomize workflow.
 
-This module encodes product behavior independently of any model provider.  The
+This module encodes product behavior independently of any model provider. The
 scientific engine can therefore enforce honesty, reproducibility and spending
 boundaries even when different agents/providers drive the workflow.
 """
@@ -13,11 +13,7 @@ from typing import Any
 
 
 class RigorLevel(str, Enum):
-    """User-facing depth labels.
-
-    ``basic``/``standard``/``research`` remain accepted aliases for backward
-    compatibility with Axiomize <=1.6 skill files.
-    """
+    """User-facing depth labels with backwards-compatible aliases."""
 
     WEAK = "weak"
     MEDIUM = "medium"
@@ -77,15 +73,22 @@ class ConfidenceLabel(str, Enum):
 
 @dataclass(frozen=True)
 class ExecutionPermissions:
-    """Bound actions that can unexpectedly increase cost or external activity."""
+    """Bound actions that can unexpectedly increase cost or alter a model.
 
-    # Looking up missing public data is part of the requested modeling workflow.
+    The defaults intentionally allow bounded local deterministic work while
+    requiring consent for multiplicative compute, new mechanism discovery,
+    constraint-driven rebuilds, or schema migration.
+    """
+
     allow_public_data_lookup: bool = True
-    # New autonomous work branches are opt-in because they can multiply calls.
     allow_spawn_subtasks: bool = False
     allow_repeat_alternative_methods: bool = False
     allow_extra_paid_model_calls: bool = False
-    # Local visual/report generation is safe to perform by default.
+    allow_heavy_compute: bool = False
+    allow_constraint_rebuild: bool = False
+    allow_model_discovery: bool = False
+    allow_experiment_design: bool = False
+    allow_ir_migration: bool = False
     allow_visualization: bool = True
     allow_3d_visualization: bool = True
 
@@ -94,6 +97,11 @@ class ExecutionPermissions:
             "spawn_subtask": self.allow_spawn_subtasks,
             "repeat_alternative_method": self.allow_repeat_alternative_methods,
             "extra_paid_model_call": self.allow_extra_paid_model_calls,
+            "heavy_compute": self.allow_heavy_compute,
+            "constraint_rebuild": self.allow_constraint_rebuild,
+            "model_discovery": self.allow_model_discovery,
+            "experiment_design": self.allow_experiment_design,
+            "ir_migration": self.allow_ir_migration,
         }
         if action not in guarded:
             return False
@@ -102,7 +110,7 @@ class ExecutionPermissions:
 
 @dataclass(frozen=True)
 class ReportRequirements:
-    """Behavior agreed for every substantive modeling run."""
+    """Behavior required for substantive modeling runs."""
 
     compare_multiple_models: bool = True
     rank_top_n: int = 3
@@ -148,6 +156,31 @@ class ReportRequirements:
     user_controls_detail: bool = True
     offer_stronger_rerun: bool = True
 
+    # General model-engine invariants.
+    explicit_model_ir: bool = True
+    check_units_and_dimensions: bool = True
+    show_scientific_constraint_checks: bool = True
+    show_solver_selection: bool = True
+    diagnose_solver_failures: bool = True
+    check_identifiability_before_interpreting_fit: bool = True
+    penalize_unnecessary_model_complexity: bool = True
+    residual_and_out_of_sample_diagnostics: bool = True
+    analyze_validity_region: bool = True
+    analyze_stability_when_applicable: bool = True
+    propose_nondimensionalization_when_ill_conditioned: bool = True
+    separate_aleatoric_and_epistemic_uncertainty: bool = True
+    discriminate_competing_mechanisms: bool = True
+    quantify_experiment_information_gain: bool = True
+    validate_discovered_equations_against_science: bool = True
+    compare_discovered_models_with_domain_theory: bool = True
+    prohibit_causal_claims_from_fit_alone: bool = True
+    show_compute_estimate_before_heavy_work: bool = True
+    provenance_audit_trail: bool = True
+    portable_model_export: bool = True
+    explicit_stopping_criteria: bool = True
+    versioned_backward_compatible_ir: bool = True
+    never_silently_migrate_or_repair: bool = True
+
 
 @dataclass(frozen=True)
 class WorkflowPolicy:
@@ -171,12 +204,7 @@ def default_policy(*, question_mode: str | None = None,
 
 
 def recommend_rigor(signals: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Recommend weak/medium/strong from explicit, machine-readable signals.
-
-    This deliberately does not pretend to understand arbitrary prose.  An agent
-    may extract these signals from natural language, while the engine keeps the
-    recommendation deterministic and auditable.
-    """
+    """Recommend weak/medium/strong from explicit, machine-readable signals."""
     signals = dict(signals or {})
     reasons: list[str] = []
 
@@ -194,6 +222,8 @@ def recommend_rigor(signals: dict[str, Any] | None = None) -> dict[str, Any]:
         "high_sensitivity": "result is highly parameter-sensitive",
         "causal_claim": "causal claim requires stronger validation",
         "real_world_experiment": "real-world experiment needs stronger validation",
+        "pde_or_dae": "PDE/DAE structure usually needs stronger numerical checks",
+        "model_discovery": "data-driven equation discovery needs strong falsification",
     }
     score = 0
     for key, reason in strong_flags.items():
