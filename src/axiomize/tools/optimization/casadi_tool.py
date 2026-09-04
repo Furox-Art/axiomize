@@ -40,8 +40,16 @@ def solve_rosenbrock() -> dict[str, Any]:
 
     x = ca.SX.sym("x", 2)
     f = (1 - x[0]) ** 2 + 100 * (x[1] - x[0] ** 2) ** 2
-    solver = ca.nlpsol("solver", "ipopt", {"x": x, "f": f},
-                       {"ipopt.print_level": 0, "print_time": 0})
+    # `ipopt.print_level=0` suppresses iteration output; `ipopt.sb=yes`
+    # additionally suppresses the IPOPT startup banner. Keeping numerical
+    # backends silent is part of the CLI contract because commands such as
+    # `axiomize benchmark` emit machine-readable JSON on stdout.
+    solver = ca.nlpsol(
+        "solver",
+        "ipopt",
+        {"x": x, "f": f},
+        {"ipopt.print_level": 0, "ipopt.sb": "yes", "print_time": 0},
+    )
     result = solver(x0=[-1.2, 1.0], lbx=[-10, -10], ubx=[10, 10])
     stats = solver.stats()
     return {"x": [float(v) for v in result["x"].full().ravel()],
