@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import uuid
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -42,9 +42,12 @@ def _json_bytes(payload: Any) -> bytes:
     return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
 def _read_skill_text(skill: SkillDescriptor) -> str:
-    repo_root = Path(__file__).resolve().parents[1]
-    path = repo_root / skill.entrypoint
+    path = _repo_root() / skill.entrypoint
     return path.read_text(encoding="utf-8")
 
 
@@ -59,14 +62,8 @@ def _build_openai_compatible_request(
     body = {
         "model": model,
         "messages": [
-            {
-                "role": "system",
-                "content": skill_text,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
+            {"role": "system", "content": skill_text},
+            {"role": "user", "content": user_prompt},
         ],
     }
     return endpoint, headers, _json_bytes(body)
@@ -120,6 +117,15 @@ class ProviderHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_html(self, status: int, html: str) -> None:
+        body = html.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
         if length <= 0:
@@ -135,6 +141,10 @@ class ProviderHandler(BaseHTTPRequestHandler):
         print(f"{self.address_string()} - {fmt % args}")
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.path in {"/", "/index.html"}:
+            html = (_repo_root() / "prototype" / "index.html").read_text(encoding="utf-8")
+            self._send_html(HTTPStatus.OK, html)
+            return
         if self.path == "/health":
             self._send(HTTPStatus.OK, {"status": "ok", "service": "axiomize-hosted-prototype"})
             return
