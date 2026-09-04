@@ -64,14 +64,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Install built package into clean environment
+      - name: Enforce release version contract
+        run: python .github/scripts/check_release_contract.py
+      - name: Build and install the exact wheel artifact
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .
-      - name: Installed CLI smoke tests
-        run: |
-          axiomize --help
-          axiomize tools
-          axiomize-benchmark --case-list
-      - name: Installed package-native scientific benchmark
-        run: axiomize benchmark
+          python -m pip install build
+          python -m build --wheel
+          python -m pip install --force-reinstall dist/*.whl
+      - name: Full installed CLI contract
+        run: python .github/scripts/cli_release_smoke.py
