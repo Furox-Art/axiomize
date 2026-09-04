@@ -50,8 +50,6 @@ def fit_logistic_service(payload: dict[str, Any]) -> dict[str, Any]:
     y = np.asarray(payload["y"], dtype=float)
     result = fit_logistic_curve(t, y)
     out = result.to_dict()
-    # Preserve the structured result while keeping the historical top-level
-    # parameter keys used by callers and older integrations.
     for name, pair in result.params.items():
         out[name] = float(pair[0])
     return out
@@ -103,11 +101,7 @@ def validate_sir_service(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def compare_service(payload: dict[str, Any]) -> dict[str, Any]:
-    from axiomize.fitting.estimator import (
-        compare_fits,
-        fit_logistic_curve,
-        fit_sir_curve,
-    )
+    from axiomize.fitting.estimator import compare_fits, fit_logistic_curve, fit_sir_curve
 
     t = np.asarray(payload["t"], dtype=float)
     y = np.asarray(payload["y"], dtype=float)
@@ -169,18 +163,9 @@ def uncertainty_service(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def tools_service() -> dict[str, Any]:
-    from axiomize.tools.numerical.scipy_tool import SciPyTool
-    from axiomize.tools.optimization.casadi_tool import CasadiTool
-    from axiomize.tools.optimization.cvxpy_tool import CvxpyTool
-    from axiomize.tools.statistics.statsmodels_tool import StatsmodelsTool
-    from axiomize.tools.symbolic.sympy_tool import SymPyTool
+    from axiomize.tools.inventory import collect_tool_inventory
 
-    tools = {}
-    for cls in (SymPyTool, SciPyTool, CvxpyTool, CasadiTool, StatsmodelsTool):
-        meta = cls.availability()
-        tools[meta.name] = {"available": meta.available, "version": meta.version,
-                            "capabilities": meta.capabilities, "reason": meta.reason}
-    return {"tools": tools}
+    return collect_tool_inventory()
 
 
 def capabilities_service() -> dict[str, Any]:
