@@ -32,9 +32,15 @@ def get_capabilities() -> dict[str, Any]:
     scs = scs_probe()
     return {
         "axiomize_version": _version(),
+        "adaptive_intake": _cap(True, levels=["weak", "medium", "strong"],
+                                question_modes=["one_by_one", "all_at_once", "adaptive"]),
+        "consumption_guard": _cap(True, guarded_actions=[
+            "spawn_subtask", "repeat_alternative_method", "extra_paid_model_call"
+        ]),
         "symbolic_math": _cap(_present("sympy"), backend="sympy"),
         "numerical_computing": _cap(_present("scipy"), backend="scipy"),
         "statistics": _cap(_present("statsmodels"), backend="statsmodels"),
+        "visualization": _cap(_present("matplotlib"), backend="matplotlib", supports_3d=True),
         "optimization_convex": _cap(_present("cvxpy"), backend="cvxpy"),
         "optimization_nonlinear": _cap(_present("casadi"), backend="casadi"),
         "bayesian_inference": _cap(_present("pymc"), backend="pymc"),
