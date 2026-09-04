@@ -98,6 +98,8 @@ packages = ["src/axiomize"]
 "skills/axiomize/first-principles.md" = "axiomize/first-principles.md"
 "skills/axiomize/perspectives" = "axiomize/perspectives"
 "skills/axiomize/templates" = "axiomize/templates"
+# Runtime data for the packaged axiomize-benchmark entry point.
+"benchmarks/ideas.json" = "axiomize/data/benchmark_ideas.json"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
