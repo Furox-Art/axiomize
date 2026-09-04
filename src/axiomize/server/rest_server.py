@@ -27,6 +27,10 @@ def _send(handler: BaseHTTPRequestHandler, code: int, payload: Any) -> None:
     handler.wfile.write(body)
 
 
+def _strip_api_prefix(path: str) -> str:
+    return path[3:] if path.startswith("/v1/") else path
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "AxiomizeREST/1.0"
 
@@ -36,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         from axiomize.application import services
 
-        path = urlparse(self.path).path
+        path = _strip_api_prefix(urlparse(self.path).path)
         if path == "/tools":
             _send(self, 200, services.tools_service())
         elif path == "/capabilities":
@@ -58,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         from axiomize.application import services
 
-        path = urlparse(self.path).path
+        path = _strip_api_prefix(urlparse(self.path).path)
         try:
             payload = _read_json(self)
             if path in ("/model", "/solve", "/simulate"):
@@ -88,7 +92,7 @@ class Handler(BaseHTTPRequestHandler):
                 _send(self, 404, {"error": f"unknown route: {path}"})
         except (ValueError, KeyError) as exc:
             _send(self, 400, {"error": f"{type(exc).__name__}: {exc}"})
-        except Exception as exc:  # noqa: BLE001 - adapter boundary, reported as 500
+        except Exception as exc:
             _send(self, 500, {"error": f"{type(exc).__name__}: {exc}"})
 
 
