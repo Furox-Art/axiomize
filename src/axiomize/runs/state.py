@@ -18,7 +18,7 @@ from typing import Any
 import axiomize
 
 
-@dataclass(init=False)
+@dataclass
 class RunState:
     problem_definition: str = ""
     variables: list[dict[str, Any]] = field(default_factory=list)
@@ -41,20 +41,7 @@ class RunState:
     run_id: str = ""
     inputs: dict[str, Any] = field(default_factory=dict)
 
-    def __init__(self, **kwargs: Any) -> None:
-        for name, item in self.__dataclass_fields__.items():
-            if item.default_factory is not field:  # type: ignore[comparison-overlap]
-                try:
-                    value = item.default_factory()  # type: ignore[misc]
-                except TypeError:
-                    value = item.default
-            else:
-                value = item.default
-            setattr(self, name, value)
-        for key, value in kwargs.items():
-            if key not in self.__dataclass_fields__:
-                raise TypeError(f"RunState.__init__() got an unexpected keyword argument {key!r}")
-            setattr(self, key, value)
+    def __post_init__(self) -> None:
         if self.inputs and not self.parameters:
             self.parameters = dict(self.inputs)
         elif self.parameters and not self.inputs:
