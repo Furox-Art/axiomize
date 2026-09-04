@@ -119,6 +119,44 @@ def falsify_service(payload: dict[str, Any]) -> dict[str, Any]:
             "untested": result["untested"]}
 
 
+def uncertainty_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Belirsizlik araliklari (core servis).
+
+    Gecerli ``params`` (``{ad: [deger, hata]}``) verilirse normal
+    yaklasimla guven araliklari uretir; girdi yoksa/belirsizse sonuc
+    uydurmaz, ``UNVERIFIED`` doner.
+    """
+    from axiomize.validation.status import ValidationStatus
+
+    params = payload.get("params", payload.get("fit", {}))
+    if isinstance(params, dict) and "params" in params and isinstance(params["params"], dict):
+        params = params["params"]
+    if not isinstance(params, dict) or not params:
+        return {"status": ValidationStatus.UNVERIFIED.value,
+                "uncertainty": {"reason": "no fit payload with params; pass params as {name: [value, error]}"},
+                "intervals": {}}
+    try:
+        from scipy.stats import norm
+
+        z = float(norm.ppf(0.975))
+    except Exception:  # noqa: BLE001 - scipy yoksa durustce bildir
+        return {"status": ValidationStatus.TOOL_UNAVAILABLE.value,
+                "uncertainty": {"reason": "scipy.stats not available for intervals"},
+                "intervals": {}}
+    intervals: dict[str, Any] = {}
+    try:
+        for name, pair in params.items():
+            value, err = float(pair[0]), float(pair[1])
+            intervals[name] = [value - z * err, value + z * err]
+    except (TypeError, ValueError, IndexError):
+        return {"status": ValidationStatus.UNVERIFIED.value,
+                "uncertainty": {"reason": "params must map names to [value, error] pairs"},
+                "intervals": {}}
+    return {"status": ValidationStatus.PASS.value,
+            "uncertainty": {"method": "normal_95ci", "n_params": len(intervals)},
+            "intervals": intervals}
+
+
 def tools_service() -> dict[str, Any]:
     from axiomize.tools.numerical.scipy_tool import SciPyTool
     from axiomize.tools.optimization.casadi_tool import CasadiTool

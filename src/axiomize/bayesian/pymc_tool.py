@@ -18,9 +18,11 @@ class PyMCTool(ScientificTool):
 
     @classmethod
     def _probe_version(cls) -> str:
-        import pymc  # type: ignore[import-untyped]
+        import importlib
 
-        return str(pymc.__version__)
+        pymc = importlib.import_module("pymc")
+
+        return str(getattr(pymc, "__version__", "unknown"))
 
     def validate_input(self, payload: dict[str, Any]) -> None:
         if "model" not in payload:
@@ -30,6 +32,8 @@ class PyMCTool(ScientificTool):
         self.validate_input(payload)
         meta = self.availability()
         if not meta.available:
+            reason = meta.reason or "No module named 'pymc'"
             raise RuntimeError(
-                "pymc is not installed; use axiomize.bayesian.mh instead")
+                f"TOOL_UNAVAILABLE: pymc is not installed ({reason}); "
+                "use axiomize.bayesian.mh instead")
         raise NotImplementedError("pymc model execution lands in a later phase")

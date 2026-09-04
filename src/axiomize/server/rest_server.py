@@ -73,6 +73,10 @@ class Handler(BaseHTTPRequestHandler):
                 _send(self, 200, services.falsify_service(payload))
             elif path == "/compare":
                 _send(self, 200, services.compare_service(payload))
+            elif path == "/sensitivity":
+                _send(self, 200, services.sensitivity_service(payload))
+            elif path == "/uncertainty":
+                _send(self, 200, services.uncertainty_service(payload))
             elif path.startswith("/runs/") and path.endswith("/reproduce"):
                 run_dir = path[len("/runs/"):-len("/reproduce")]
                 from axiomize.runs.state import RunState

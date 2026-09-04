@@ -36,7 +36,9 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     from axiomize.routing.router import classify
     from axiomize.runs.state import RunState
 
-    if name in ("axiomize.solve", "axiomize.simulate", "axiomize.validate"):
+    if name in ("axiomize.solve", "axiomize.simulate"):
+        return services.solve_sir_service(arguments)
+    if name == "axiomize.validate":
         return services.validate_sir_service(arguments)
     if name == "axiomize.fit_model":
         if arguments.get("model", "logistic") == "sir" and "N" in arguments:
@@ -54,8 +56,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if name == "axiomize.sensitivity_analysis":
         return services.sensitivity_service(arguments)
     if name == "axiomize.uncertainty_analysis":
-        return {"note": "pass a fit payload via REST/CLI for full intervals",
-                "echo": arguments}
+        return services.uncertainty_service(arguments)
     if name == "axiomize.falsify":
         return services.falsify_service(arguments)
     if name == "axiomize.compare_models":
