@@ -27,13 +27,12 @@ jobs:
         # SKILL.md and the perspective heads are written to be browsed inside
         # skills/axiomize/, so their relative links do not survive being
         # concatenated into a single docs/ page. Everything that is NOT staged
-        # into docs/ (i.e. anything but rigor.md and archetypes.md) is rewritten
-        # to an absolute GitHub URL. `mkdocs build --strict` below is what keeps
-        # this list honest: a new link shape that no rule covers fails the build
-        # instead of shipping a 404 to the site.
+        # into docs/ is rewritten to an absolute GitHub URL. `mkdocs build
+        # --strict` below keeps this list honest.
         run: |
           cp skills/axiomize/rigor.md docs/rigor.md
           cp skills/axiomize/archetypes.md docs/archetypes.md
+          cp skills/axiomize/adaptive-workflow.md docs/adaptive-workflow.md
           SKILL_URL='https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize'
           {
             echo "# The workflow"

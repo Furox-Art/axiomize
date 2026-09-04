@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.6.0"
+version = "1.7.0"
 description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
 readme = "README.md"
 license = "MIT"
@@ -42,6 +42,7 @@ dependencies = [
     "sympy>=1.12",
     "networkx>=3.0",
     "statsmodels>=0.14",
+    "matplotlib>=3.7",
     "z3-solver>=4.12",
     "control>=0.10",
     "cvxpy>=1.5",
@@ -56,7 +57,6 @@ full = [
 playground = [
     "gradio>=4.0",
     "pandas>=1.5",
-    "matplotlib>=3.7",
 ]
 dev = [
     "pytest>=8.0",
@@ -92,6 +92,7 @@ packages = ["src/axiomize"]
 [tool.hatch.build.targets.wheel.force-include]
 "skills/axiomize/tools" = "axiomize/tools"
 "skills/axiomize/SKILL.md" = "axiomize/SKILL.md"
+"skills/axiomize/adaptive-workflow.md" = "axiomize/adaptive-workflow.md"
 "skills/axiomize/rigor.md" = "axiomize/rigor.md"
 "skills/axiomize/archetypes.md" = "axiomize/archetypes.md"
 "skills/axiomize/first-principles.md" = "axiomize/first-principles.md"
@@ -117,7 +118,7 @@ python_version = "3.13"
 [[tool.mypy.overrides]]
 module = [
     "sympy.*", "scipy.*", "numpy.*", "networkx.*", "statsmodels.*",
-    "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics",
+    "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics",
 ]
 ignore_missing_imports = true
 

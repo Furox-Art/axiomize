@@ -10,6 +10,8 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
 
 def _dump(payload: dict, path: str | None) -> int:
@@ -21,6 +23,70 @@ def _dump(payload: dict, path: str | None) -> int:
     else:
         print(text)
     return 0
+
+
+def _load_object(path: str | None) -> dict[str, Any]:
+    if not path:
+        return {}
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return payload
+
+
+def cmd_intake(args: argparse.Namespace) -> int:
+    from axiomize.application.services import intake_service
+
+    permissions = {
+        "allow_spawn_subtasks": bool(args.allow_subtasks),
+        "allow_repeat_alternative_methods": bool(args.allow_repeat),
+        "allow_extra_paid_model_calls": bool(args.allow_extra_paid_calls),
+    }
+    payload = {
+        "idea": args.idea,
+        "context": _load_object(args.context_json),
+        "signals": _load_object(args.signals_json),
+        "question_mode": args.question_mode,
+        "preferred_question_mode": args.preferred_question_mode,
+        "rigor": args.rigor,
+        "permissions": permissions,
+    }
+    return _dump(intake_service(payload), args.json)
+
+
+def cmd_policy(args: argparse.Namespace) -> int:
+    from axiomize.application.services import workflow_policy_service
+
+    permissions = {
+        "allow_spawn_subtasks": bool(args.allow_subtasks),
+        "allow_repeat_alternative_methods": bool(args.allow_repeat),
+        "allow_extra_paid_model_calls": bool(args.allow_extra_paid_calls),
+    }
+    out = workflow_policy_service({
+        "signals": _load_object(args.signals_json),
+        "question_mode": args.question_mode,
+        "permissions": permissions,
+    })
+    return _dump(out, args.json)
+
+
+def cmd_clean_data(args: argparse.Namespace) -> int:
+    from axiomize.application.services import clean_data_service
+
+    payload = _load_object(args.input_json)
+    payload["drop_nonfinite"] = not args.reject_nonfinite
+    payload["sort_time"] = not args.keep_order
+    payload["duplicate_policy"] = args.duplicate_policy
+    return _dump(clean_data_service(payload), args.json)
+
+
+def cmd_compare_runs(args: argparse.Namespace) -> int:
+    from axiomize.application.services import compare_runs_service
+
+    return _dump(compare_runs_service({
+        "before_dir": args.before_dir,
+        "after_dir": args.after_dir,
+    }), args.json)
 
 
 def cmd_solve(args: argparse.Namespace) -> int:
@@ -107,10 +173,60 @@ def cmd_mcp(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_consumption_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--allow-subtasks", action="store_true",
+                        help="explicitly allow spawning additional agent/subtasks")
+    parser.add_argument("--allow-repeat", action="store_true",
+                        help="explicitly allow repeating the analysis with alternative methods")
+    parser.add_argument("--allow-extra-paid-calls", action="store_true",
+                        help="explicitly allow extra paid/provider calls")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="axiomize",
                                      description="Axiomize scientific engine CLI (API v1)")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("intake", help="clarify a vague idea before mathematical modeling")
+    p.add_argument("idea")
+    p.add_argument("--context-json", default=None,
+                   help="JSON object containing known system_boundary/goal/measurable_outcome/horizon/mechanism")
+    p.add_argument("--signals-json", default=None,
+                   help="JSON object with rigor signals such as high_stakes or mechanism_unclear")
+    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"],
+                   default="adaptive")
+    p.add_argument("--preferred-question-mode", choices=["one_by_one", "all_at_once"],
+                   default="one_by_one")
+    p.add_argument("--rigor", choices=["weak", "medium", "strong", "basic", "standard", "research"],
+                   default=None)
+    p.add_argument("--json", default=None)
+    _add_consumption_flags(p)
+    p.set_defaults(func=cmd_intake)
+
+    p = sub.add_parser("policy", help="show adaptive workflow policy and consumption guard")
+    p.add_argument("--signals-json", default=None)
+    p.add_argument("--question-mode", choices=["adaptive", "one_by_one", "all_at_once"],
+                   default="adaptive")
+    p.add_argument("--json", default=None)
+    _add_consumption_flags(p)
+    p.set_defaults(func=cmd_policy)
+
+    p = sub.add_parser("clean-data", help="clean paired numeric observations with a preserved audit trail")
+    p.add_argument("--input-json", required=True,
+                   help="JSON object containing t and y arrays")
+    p.add_argument("--duplicate-policy", choices=["mean", "first", "error"], default="mean")
+    p.add_argument("--reject-nonfinite", action="store_true",
+                   help="fail instead of dropping non-finite rows")
+    p.add_argument("--keep-order", action="store_true",
+                   help="do not sort non-monotonic time coordinates")
+    p.add_argument("--json", default=None)
+    p.set_defaults(func=cmd_clean_data)
+
+    p = sub.add_parser("compare-runs", help="explain why two recorded runs differ")
+    p.add_argument("before_dir")
+    p.add_argument("after_dir")
+    p.add_argument("--json", default=None)
+    p.set_defaults(func=cmd_compare_runs)
 
     p = sub.add_parser("solve", help="solve the SIR model through the full pipeline")
     p.add_argument("--beta", type=float, default=0.3)

@@ -45,6 +45,8 @@ class Handler(BaseHTTPRequestHandler):
             _send(self, 200, services.tools_service())
         elif path == "/capabilities":
             _send(self, 200, services.capabilities_service())
+        elif path == "/workflow-policy":
+            _send(self, 200, services.workflow_policy_service({}))
         elif path.startswith("/runs/"):
             run_dir = path[len("/runs/"):]
             from axiomize.runs.state import RunState
@@ -65,7 +67,15 @@ class Handler(BaseHTTPRequestHandler):
         path = _strip_api_prefix(urlparse(self.path).path)
         try:
             payload = _read_json(self)
-            if path in ("/model", "/solve", "/simulate"):
+            if path == "/intake":
+                _send(self, 200, services.intake_service(payload))
+            elif path == "/workflow-policy":
+                _send(self, 200, services.workflow_policy_service(payload))
+            elif path == "/clean-data":
+                _send(self, 200, services.clean_data_service(payload))
+            elif path == "/compare-runs":
+                _send(self, 200, services.compare_runs_service(payload))
+            elif path in ("/model", "/solve", "/simulate"):
                 _send(self, 200, services.solve_sir_service(payload))
             elif path == "/fit":
                 _send(self, 200, services.fit_logistic_service(payload))

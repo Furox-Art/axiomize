@@ -50,8 +50,6 @@ def fit_logistic_service(payload: dict[str, Any]) -> dict[str, Any]:
     y = np.asarray(payload["y"], dtype=float)
     result = fit_logistic_curve(t, y)
     out = result.to_dict()
-    # Preserve the structured result while keeping the historical top-level
-    # parameter keys used by callers and older integrations.
     for name, pair in result.params.items():
         out[name] = float(pair[0])
     return out
@@ -103,11 +101,7 @@ def validate_sir_service(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def compare_service(payload: dict[str, Any]) -> dict[str, Any]:
-    from axiomize.fitting.estimator import (
-        compare_fits,
-        fit_logistic_curve,
-        fit_sir_curve,
-    )
+    from axiomize.fitting.estimator import compare_fits, fit_logistic_curve, fit_sir_curve
 
     t = np.asarray(payload["t"], dtype=float)
     y = np.asarray(payload["y"], dtype=float)
@@ -169,21 +163,64 @@ def uncertainty_service(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def tools_service() -> dict[str, Any]:
-    from axiomize.tools.numerical.scipy_tool import SciPyTool
-    from axiomize.tools.optimization.casadi_tool import CasadiTool
-    from axiomize.tools.optimization.cvxpy_tool import CvxpyTool
-    from axiomize.tools.statistics.statsmodels_tool import StatsmodelsTool
-    from axiomize.tools.symbolic.sympy_tool import SymPyTool
+    from axiomize.tools.inventory import collect_tool_inventory
 
-    tools = {}
-    for cls in (SymPyTool, SciPyTool, CvxpyTool, CasadiTool, StatsmodelsTool):
-        meta = cls.availability()
-        tools[meta.name] = {"available": meta.available, "version": meta.version,
-                            "capabilities": meta.capabilities, "reason": meta.reason}
-    return {"tools": tools}
+    return collect_tool_inventory()
 
 
 def capabilities_service() -> dict[str, Any]:
     from axiomize.capabilities import get_capabilities
 
     return get_capabilities()
+
+
+def intake_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Clarify a vague idea before model construction."""
+    from axiomize.workflow.intake import build_intake_response
+
+    return build_intake_response(payload)
+
+
+def workflow_policy_service(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Expose the deterministic workflow and consumption policy."""
+    from axiomize.workflow.policy import default_policy, recommend_rigor
+
+    payload = dict(payload or {})
+    permissions = payload.get("permissions")
+    if permissions is not None and not isinstance(permissions, dict):
+        raise ValueError("permissions must be an object")
+    policy = default_policy(
+        question_mode=payload.get("question_mode"),
+        permissions=permissions,
+    )
+    return {
+        "policy": policy.to_dict(),
+        "rigor_recommendation": recommend_rigor(payload.get("signals")),
+    }
+
+
+def clean_data_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Conservatively clean paired numeric observations with an audit trail."""
+    from axiomize.data.quality import clean_numeric_xy
+
+    if "t" not in payload or "y" not in payload:
+        raise ValueError("clean_data requires t and y arrays")
+    result = clean_numeric_xy(
+        payload["t"],
+        payload["y"],
+        drop_nonfinite=bool(payload.get("drop_nonfinite", True)),
+        sort_time=bool(payload.get("sort_time", True)),
+        duplicate_policy=str(payload.get("duplicate_policy", "mean")),
+    )
+    return result.to_dict()
+
+
+def compare_runs_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Explain why two stored reproducible runs differ."""
+    from axiomize.runs.compare import compare_run_directories
+
+    before_dir = str(payload.get("before_dir", "")).strip()
+    after_dir = str(payload.get("after_dir", "")).strip()
+    if not before_dir or not after_dir:
+        raise ValueError("compare_runs requires before_dir and after_dir")
+    return compare_run_directories(before_dir, after_dir)

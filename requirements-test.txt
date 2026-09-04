@@ -10,13 +10,11 @@
 numpy>=1.24
 scipy>=1.10
 
-# Required by the PHASE 1 scientific engine (src/axiomize/tools/symbolic).
+# Required by the scientific engine.
 sympy>=1.12
-
-# Required by the PHASE 2+ engine (fitting, network, logic, control,
-# optimization, statistics adapters under src/axiomize/).
 networkx>=3.0
 statsmodels>=0.14
+matplotlib>=3.7
 z3-solver>=4.12
 control>=0.10
 cvxpy>=1.5
@@ -27,5 +25,5 @@ casadi>=3.6
 # is collected.
 pytest>=8.0
 
-# Playground only (playground/app.py) , not needed for the tools or CI:
-#   pip install pandas matplotlib gradio
+# Playground only (playground/app.py):
+#   pip install pandas gradio
