@@ -30,12 +30,21 @@ _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "axiomize.reproduce": {"params": ["run_dir"]},
 }
 
+_LEGACY_TOOL_NAMES = {
+    "solve_sir": "axiomize.solve",
+    "validate_sir": "axiomize.validate",
+    "fit_model": "axiomize.fit_model",
+    "list_tools": "axiomize.list_tools",
+    "get_capabilities": "axiomize.get_capabilities",
+}
+
 
 def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     from axiomize.application import services
     from axiomize.routing.router import classify
     from axiomize.runs.state import RunState
 
+    name = _LEGACY_TOOL_NAMES.get(name, name)
     if name in ("axiomize.solve", "axiomize.simulate"):
         return services.solve_sir_service(arguments)
     if name == "axiomize.validate":
@@ -43,7 +52,6 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if name == "axiomize.fit_model":
         if arguments.get("model", "logistic") == "sir" and "N" in arguments:
             import numpy as np
-
             from axiomize.fitting.estimator import fit_sir_curve
 
             t = np.asarray(arguments["t"], dtype=float)
@@ -74,6 +82,23 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     raise KeyError(f"unknown tool: {name}")
 
 
+def list_tools() -> list[dict[str, Any]]:
+    """Compatibility helper used by direct Python integrations."""
+    aliases = [{"name": name} for name in sorted(_LEGACY_TOOL_NAMES)]
+    canonical = [{"name": name} for name in sorted(_TOOL_SCHEMAS)]
+    return aliases + canonical
+
+
+def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Compatibility helper returning an error object instead of raising."""
+    try:
+        return _call_tool(name, arguments)
+    except KeyError as exc:
+        return {"error": str(exc)}
+    except Exception as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
 def handle_message(message: dict[str, Any]) -> dict[str, Any]:
     method = message.get("method", "")
     msg_id = message.get("id")
@@ -99,7 +124,7 @@ def handle_message(message: dict[str, Any]) -> dict[str, Any]:
         except KeyError as exc:
             return {"jsonrpc": "2.0", "id": msg_id,
                     "error": {"code": -32601, "message": str(exc)}}
-        except Exception as exc:  # noqa: BLE001 - tool errors become JSON-RPC errors
+        except Exception as exc:
             return {"jsonrpc": "2.0", "id": msg_id,
                     "error": {"code": -32000, "message": f"{type(exc).__name__}: {exc}"}}
         return {"jsonrpc": "2.0", "id": msg_id,
