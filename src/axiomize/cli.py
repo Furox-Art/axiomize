@@ -53,6 +53,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return rc if out["status"] == "PASS" else 1
 
 
+def cmd_export_parameters(args: argparse.Namespace) -> int:
+    from axiomize.parameters.export import parse_parameter_table
+
+    with open(args.report, encoding="utf-8") as fh:
+        payload = parse_parameter_table(fh.read())
+    return _dump(payload, args.json)
+
+
 def cmd_tools(_args: argparse.Namespace) -> int:
     from axiomize.application.services import tools_service
 
@@ -134,6 +142,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--days", type=float, default=180.0)
     p.add_argument("--json", default=None)
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser("export-parameters",
+                       help="export an Axiomize active parameter table from Markdown as JSON")
+    p.add_argument("report", help="Markdown report containing the active parameter table")
+    p.add_argument("--json", default=None, help="output file; omit to print JSON to stdout")
+    p.set_defaults(func=cmd_export_parameters)
 
     p = sub.add_parser("tools", help="list scientific backends and availability")
     p.set_defaults(func=cmd_tools)
