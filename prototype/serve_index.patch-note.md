@@ -1,0 +1,1 @@
+The browser UI is `prototype/index.html`. The next hardening step is to serve this file directly from `provider_server.py` and then replace the process-local execution boundary with a real disposable sandbox/container service.
