@@ -12,6 +12,7 @@ import json
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -25,18 +26,27 @@ class RunState:
     parameters: dict[str, Any] = field(default_factory=dict)
     assumptions: list[str] = field(default_factory=list)
     candidate_models: list[dict[str, Any]] = field(default_factory=list)
+    candidate_rankings: list[dict[str, Any]] = field(default_factory=list)
     selected_model: str = ""
     tools_used: list[str] = field(default_factory=list)
     datasets: list[str] = field(default_factory=list)
+    data_transformations: list[dict[str, Any]] = field(default_factory=list)
+    source_checks: list[dict[str, Any]] = field(default_factory=list)
     solver_settings: dict[str, Any] = field(default_factory=dict)
     equations: list[str] = field(default_factory=list)
     intermediate_results: dict[str, Any] = field(default_factory=dict)
     validation_results: dict[str, Any] = field(default_factory=dict)
     conflicts: list[str] = field(default_factory=list)
     uncertainty: dict[str, Any] = field(default_factory=dict)
+    confidence: dict[str, str] = field(default_factory=dict)
+    validity_domain: dict[str, Any] = field(default_factory=dict)
+    sensitivity_results: dict[str, Any] = field(default_factory=dict)
     falsification_results: dict[str, Any] = field(default_factory=dict)
+    hypotheses: list[dict[str, Any]] = field(default_factory=list)
+    visualizations: list[str] = field(default_factory=list)
     artifacts: list[str] = field(default_factory=list)
     provenance: dict[str, str] = field(default_factory=dict)
+    workflow_policy: dict[str, Any] = field(default_factory=dict)
     results: dict[str, Any] = field(default_factory=dict)
     run_id: str = ""
     inputs: dict[str, Any] = field(default_factory=dict)
@@ -61,26 +71,50 @@ class RunState:
             "equations": self.equations,
             "solver_settings": self.solver_settings,
             "datasets": self.datasets,
+            "data_transformations": self.data_transformations,
+            "workflow_policy": self.workflow_policy,
         }
 
     def input_hash(self) -> str:
         canonical = json.dumps(self._input_payload(), sort_keys=True, default=str)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def manifest(self) -> dict[str, Any]:
-        versions: dict[str, str] = {"python": sys.version.split()[0]}
-        for mod in ("numpy", "scipy", "sympy", "axiomize"):
+    @staticmethod
+    def _tool_versions() -> dict[str, str]:
+        packages = {
+            "numpy": "numpy",
+            "scipy": "scipy",
+            "sympy": "sympy",
+            "networkx": "networkx",
+            "statsmodels": "statsmodels",
+            "matplotlib": "matplotlib",
+            "z3": "z3-solver",
+            "control": "control",
+            "cvxpy": "cvxpy",
+            "casadi": "casadi",
+            "pymc": "pymc",
+            "jax": "jax",
+        }
+        versions: dict[str, str] = {
+            "python": sys.version.split()[0],
+            "axiomize": getattr(axiomize, "__version__", "unknown"),
+        }
+        for name, distribution in packages.items():
             try:
-                versions[mod] = str(getattr(__import__(mod), "__version__", "unknown"))
-            except ImportError:
-                versions[mod] = "not-installed"
+                versions[name] = metadata.version(distribution)
+            except metadata.PackageNotFoundError:
+                versions[name] = "not-installed"
+        return versions
+
+    def manifest(self) -> dict[str, Any]:
         return {
             "axiomize_version": getattr(axiomize, "__version__", "unknown"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "input_hash": self.input_hash(),
-            "tool_versions": versions,
+            "tool_versions": self._tool_versions(),
             "solver_settings": self.solver_settings,
             "tools_used": self.tools_used,
+            "workflow_policy": self.workflow_policy,
         }
 
     def save(self, run_dir: str | Path) -> Path:
