@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from axiomize.dimensional_engine import merge_dimension_checks
 from axiomize.general_engine import (
     build_execution_plan,
     discover_sparse_dynamics,
@@ -84,9 +85,11 @@ def model_validate_service(payload: dict[str, Any]) -> dict[str, Any]:
         model = _load_model(payload)
     except MigrationApprovalRequired as exc:
         return {"status": "APPROVAL_REQUIRED", "action": "ir_migration", "migration": exc.preview}
+    validation = merge_dimension_checks(validate_model(model), model)
     return {
+        "status": validation["status"],
         "model_ir": model.to_dict(),
-        "validation": validate_model(model),
+        "validation": validation,
         "nondimensionalization": nondimensionalization_plan(model),
         "provenance": provenance_snapshot(model, seed=payload.get("seed"), data_hash=payload.get("data_hash")),
     }
@@ -97,6 +100,13 @@ def model_simulate_service(payload: dict[str, Any]) -> dict[str, Any]:
         model = _load_model(payload)
     except MigrationApprovalRequired as exc:
         return {"status": "APPROVAL_REQUIRED", "action": "ir_migration", "migration": exc.preview}
+    pre_validation = merge_dimension_checks(validate_model(model), model)
+    if pre_validation["status"] == "FAIL":
+        return {
+            "status": "FAIL", "stage": "pre_validation", "validation": pre_validation,
+            "model_ir": model.to_dict(),
+            "provenance": provenance_snapshot(model, seed=payload.get("seed"), data_hash=payload.get("data_hash")),
+        }
     span = payload.get("t_span", [0.0, 1.0])
     if not isinstance(span, (list, tuple)) or len(span) != 2:
         raise ValueError("t_span must contain [start, stop]")
@@ -108,12 +118,22 @@ def model_simulate_service(payload: dict[str, Any]) -> dict[str, Any]:
         seed=int(payload.get("seed", 0)),
         approve_heavy=bool(payload.get("approve_heavy", False)),
     )
+    if isinstance(result.get("validation"), dict):
+        result["validation"] = merge_dimension_checks(result["validation"], model)
+        if result["validation"]["status"] == "FAIL":
+            result["status"] = "FAIL"
     result["provenance"] = provenance_snapshot(model, seed=int(payload.get("seed", 0)), data_hash=payload.get("data_hash"))
     return result
 
 
 def model_fit_service(payload: dict[str, Any]) -> dict[str, Any]:
-    model = _load_model(payload)
+    try:
+        model = _load_model(payload)
+    except MigrationApprovalRequired as exc:
+        return {"status": "APPROVAL_REQUIRED", "action": "ir_migration", "migration": exc.preview}
+    validation = merge_dimension_checks(validate_model(model), model)
+    if validation["status"] == "FAIL":
+        return {"status": "FAIL", "stage": "pre_validation", "validation": validation}
     time = payload.get("time", payload.get("t"))
     observations = payload.get("observations")
     if not isinstance(time, list) or not isinstance(observations, dict):
@@ -134,6 +154,7 @@ def model_fit_service(payload: dict[str, Any]) -> dict[str, Any]:
             residual_std=max(residual_stds) if residual_stds else None,
             parameter_covariance=out.get("covariance"),
         )
+    out["validation"] = validation
     out["provenance"] = provenance_snapshot(model, data_hash=payload.get("data_hash"))
     return out
 
