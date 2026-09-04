@@ -16,7 +16,7 @@ class OpenAICompatibleProvider(ModelProvider):
     supports_tools = True
     supports_structured_output = True
 
-    def __init__(self, base_url: str, model: str, api_key: str = "",
+    def __init__(self, base_url: str, model: str = "default", api_key: str = "",
                  timeout_s: float = 30.0) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -53,7 +53,7 @@ class OpenAICompatibleProvider(ModelProvider):
             req = urllib.request.Request(self.base_url + "/models", method="GET")
             if self.api_key:
                 req.add_header("Authorization", f"Bearer {self.api_key}")
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=min(self.timeout_s, 5.0)) as resp:
                 return resp.status == 200
         except Exception:  # noqa: BLE001 - unreachable means unhealthy
             return False
