@@ -17,10 +17,10 @@ def solve_sir_service(params: dict[str, Any]) -> dict[str, Any]:
     from axiomize.tools.symbolic.sympy_tool import final_size_symbolic
     from axiomize.validation.cross import compare_values
 
-    beta = float(params["beta"])
-    gamma = float(params["gamma"])
+    beta = float(params.get("beta", 0.3))
+    gamma = float(params.get("gamma", 0.1))
     I0 = float(params.get("I0", 10.0))
-    N = float(params["N"])
+    N = float(params.get("N", 100000.0))
     days = float(params.get("days", 180.0))
     if N <= 0:
         raise ValueError("population N must be positive")
@@ -48,7 +48,13 @@ def fit_logistic_service(payload: dict[str, Any]) -> dict[str, Any]:
 
     t = np.asarray(payload["t"], dtype=float)
     y = np.asarray(payload["y"], dtype=float)
-    return fit_logistic_curve(t, y).to_dict()
+    result = fit_logistic_curve(t, y)
+    out = result.to_dict()
+    # Preserve the structured result while keeping the historical top-level
+    # parameter keys used by callers and older integrations.
+    for name, pair in result.params.items():
+        out[name] = float(pair[0])
+    return out
 
 
 def sensitivity_service(payload: dict[str, Any]) -> dict[str, Any]:
@@ -71,9 +77,16 @@ def sensitivity_service(payload: dict[str, Any]) -> dict[str, Any]:
 def validate_sir_service(params: dict[str, Any]) -> dict[str, Any]:
     from axiomize.validation.dimensions import Quantity, check_add
 
-    out = solve_sir_service(params)
-    beta = Quantity("transmission rate", "beta", "1/day", float(params["beta"]))
-    horizon = Quantity("horizon", "T", "day", float(params.get("days", 180.0)))
+    normalized = {
+        "beta": params.get("beta", 0.3),
+        "gamma": params.get("gamma", 0.1),
+        "I0": params.get("I0", 10.0),
+        "N": params.get("N", 100000.0),
+        "days": params.get("days", 180.0),
+    }
+    out = solve_sir_service(normalized)
+    beta = Quantity("transmission rate", "beta", "1/day", float(normalized["beta"]))
+    horizon = Quantity("horizon", "T", "day", float(normalized["days"]))
     dim_rate = (beta.dimension * horizon.dimension).is_dimensionless
     checks = {
         "conservation": out["max_conservation_error"] < 1e-3,
@@ -120,12 +133,7 @@ def falsify_service(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def uncertainty_service(payload: dict[str, Any]) -> dict[str, Any]:
-    """Belirsizlik araliklari (core servis).
-
-    Gecerli ``params`` (``{ad: [deger, hata]}``) verilirse normal
-    yaklasimla guven araliklari uretir; girdi yoksa/belirsizse sonuc
-    uydurmaz, ``UNVERIFIED`` doner.
-    """
+    """Belirsizlik araliklari (core servis)."""
     from axiomize.validation.status import ValidationStatus
 
     params = payload.get("params", payload.get("fit", {}))
@@ -139,16 +147,19 @@ def uncertainty_service(payload: dict[str, Any]) -> dict[str, Any]:
         from scipy.stats import norm
 
         z = float(norm.ppf(0.975))
-    except Exception:  # noqa: BLE001 - scipy yoksa durustce bildir
+    except Exception:
         return {"status": ValidationStatus.TOOL_UNAVAILABLE.value,
                 "uncertainty": {"reason": "scipy.stats not available for intervals"},
                 "intervals": {}}
     intervals: dict[str, Any] = {}
     try:
         for name, pair in params.items():
-            value, err = float(pair[0]), float(pair[1])
+            if isinstance(pair, dict):
+                value, err = float(pair["value"]), float(pair["stderr"])
+            else:
+                value, err = float(pair[0]), float(pair[1])
             intervals[name] = [value - z * err, value + z * err]
-    except (TypeError, ValueError, IndexError):
+    except (TypeError, ValueError, IndexError, KeyError):
         return {"status": ValidationStatus.UNVERIFIED.value,
                 "uncertainty": {"reason": "params must map names to [value, error] pairs"},
                 "intervals": {}}
