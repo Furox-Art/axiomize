@@ -13,21 +13,127 @@ from typing import Any
 SERVER_NAME = "axiomize"
 API_VERSION = "v1"
 
+_NUMBER = {"type": "number"}
+_NUMBER_ARRAY = {"type": "array", "items": {"type": "number"}, "minItems": 2}
+_OBJECT = {"type": "object", "additionalProperties": True}
+
 _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
-    "axiomize.solve": {"params": ["beta", "gamma", "I0", "N", "days"]},
-    "axiomize.fit_model": {"params": ["t", "y", "model"]},
-    "axiomize.simulate": {"params": ["beta", "gamma", "I0", "N", "days"]},
-    "axiomize.validate": {"params": ["beta", "gamma", "I0", "N", "days"]},
-    "axiomize.cross_validate": {"params": ["beta", "gamma", "I0", "N"]},
-    "axiomize.sensitivity_analysis": {"params": ["params", "N", "I0"]},
-    "axiomize.uncertainty_analysis": {"params": ["fit"]},
-    "axiomize.falsify": {"params": ["falsifiers", "observations"]},
-    "axiomize.compare_models": {"params": ["t", "y", "N"]},
-    "axiomize.select_tools": {"params": ["signals"]},
-    "axiomize.list_tools": {"params": []},
-    "axiomize.get_capabilities": {"params": []},
-    "axiomize.inspect_run": {"params": ["run_dir"]},
-    "axiomize.reproduce": {"params": ["run_dir"]},
+    "axiomize.intake": {
+        "description": "Clarify a vague idea, recommend weak/medium/strong depth, and return the next plain-language question or a ready workflow plan.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "idea": {"type": "string", "minLength": 1},
+                "context": _OBJECT,
+                "signals": _OBJECT,
+                "rigor": {"type": "string", "enum": ["weak", "medium", "strong", "basic", "standard", "research"]},
+                "question_mode": {"type": "string", "enum": ["one_by_one", "all_at_once", "adaptive"]},
+                "preferred_question_mode": {"type": "string", "enum": ["one_by_one", "all_at_once"]},
+                "permissions": _OBJECT,
+            },
+            "required": ["idea"],
+            "additionalProperties": False,
+        },
+    },
+    "axiomize.workflow_policy": {
+        "description": "Return the deterministic Axiomize workflow policy, rigor recommendation, and user-consent boundaries for extra agent/API work.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "signals": _OBJECT,
+                "question_mode": {"type": "string", "enum": ["one_by_one", "all_at_once", "adaptive"]},
+                "permissions": _OBJECT,
+            },
+            "additionalProperties": False,
+        },
+    },
+    "axiomize.solve": {
+        "description": "Solve the reference SIR model with numerical and theoretical validation.",
+        "inputSchema": {"type": "object", "properties": {
+            "beta": _NUMBER, "gamma": _NUMBER, "I0": _NUMBER,
+            "N": {"type": "number", "exclusiveMinimum": 0},
+            "days": {"type": "number", "exclusiveMinimum": 0},
+        }, "additionalProperties": False},
+    },
+    "axiomize.fit_model": {
+        "description": "Fit logistic or SIR data with parameter uncertainty and diagnostics.",
+        "inputSchema": {"type": "object", "properties": {
+            "t": _NUMBER_ARRAY, "y": _NUMBER_ARRAY,
+            "model": {"type": "string", "enum": ["logistic", "sir"]},
+            "N": {"type": "number", "exclusiveMinimum": 0}, "I0": _NUMBER,
+        }, "required": ["t", "y"], "additionalProperties": False},
+    },
+    "axiomize.simulate": {
+        "description": "Simulate the reference SIR model.",
+        "inputSchema": {"type": "object", "properties": {
+            "beta": _NUMBER, "gamma": _NUMBER, "I0": _NUMBER,
+            "N": {"type": "number", "exclusiveMinimum": 0},
+            "days": {"type": "number", "exclusiveMinimum": 0},
+        }, "additionalProperties": False},
+    },
+    "axiomize.validate": {
+        "description": "Run SIR numerical, dimensional, conservation and cross-validation checks.",
+        "inputSchema": {"type": "object", "properties": {
+            "beta": _NUMBER, "gamma": _NUMBER, "I0": _NUMBER,
+            "N": {"type": "number", "exclusiveMinimum": 0},
+            "days": {"type": "number", "exclusiveMinimum": 0},
+        }, "additionalProperties": False},
+    },
+    "axiomize.cross_validate": {
+        "description": "Cross-check SIR numerical output against independent theory.",
+        "inputSchema": {"type": "object", "properties": {
+            "beta": _NUMBER, "gamma": _NUMBER, "I0": _NUMBER,
+            "N": {"type": "number", "exclusiveMinimum": 0},
+        }, "additionalProperties": False},
+    },
+    "axiomize.sensitivity_analysis": {
+        "description": "Rank local and Monte-Carlo sensitivity for SIR parameters.",
+        "inputSchema": {"type": "object", "properties": {
+            "params": {"type": "object", "additionalProperties": {"type": "number"}},
+            "N": {"type": "number", "exclusiveMinimum": 0}, "I0": _NUMBER,
+            "target": {"type": "string", "enum": ["final_size", "peak"]},
+        }, "required": ["params"], "additionalProperties": False},
+    },
+    "axiomize.uncertainty_analysis": {
+        "description": "Build normal 95% uncertainty intervals from fitted value/error pairs.",
+        "inputSchema": {"type": "object", "properties": {"fit": _OBJECT, "params": _OBJECT}, "additionalProperties": False},
+    },
+    "axiomize.falsify": {
+        "description": "Evaluate explicit falsifiers against observations.",
+        "inputSchema": {"type": "object", "properties": {
+            "falsifiers": {"type": "array", "items": _OBJECT},
+            "observations": _OBJECT,
+        }, "additionalProperties": False},
+    },
+    "axiomize.compare_models": {
+        "description": "Fit and compare logistic and SIR candidates on the same observations.",
+        "inputSchema": {"type": "object", "properties": {
+            "t": _NUMBER_ARRAY, "y": _NUMBER_ARRAY,
+            "N": {"type": "number", "exclusiveMinimum": 0}, "I0": _NUMBER,
+        }, "required": ["t", "y"], "additionalProperties": False},
+    },
+    "axiomize.select_tools": {
+        "description": "Select scientific tools from explicit problem signals.",
+        "inputSchema": {"type": "object", "properties": {
+            "signals": {"type": "array", "items": {"type": "string"}},
+        }, "required": ["signals"], "additionalProperties": False},
+    },
+    "axiomize.list_tools": {
+        "description": "List live scientific backends and availability.",
+        "inputSchema": {"type": "object", "additionalProperties": False},
+    },
+    "axiomize.get_capabilities": {
+        "description": "Return machine-readable engine capabilities including adaptive intake and cost guards.",
+        "inputSchema": {"type": "object", "additionalProperties": False},
+    },
+    "axiomize.inspect_run": {
+        "description": "Inspect a recorded reproducible run.",
+        "inputSchema": {"type": "object", "properties": {"run_dir": {"type": "string"}}, "required": ["run_dir"], "additionalProperties": False},
+    },
+    "axiomize.reproduce": {
+        "description": "Load a recorded run configuration for reproducibility inspection.",
+        "inputSchema": {"type": "object", "properties": {"run_dir": {"type": "string"}}, "required": ["run_dir"], "additionalProperties": False},
+    },
 }
 
 _LEGACY_TOOL_NAMES = {
@@ -45,6 +151,10 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     from axiomize.runs.state import RunState
 
     name = _LEGACY_TOOL_NAMES.get(name, name)
+    if name == "axiomize.intake":
+        return services.intake_service(arguments)
+    if name == "axiomize.workflow_policy":
+        return services.workflow_policy_service(arguments)
     if name in ("axiomize.solve", "axiomize.simulate"):
         return services.solve_sir_service(arguments)
     if name == "axiomize.validate":
@@ -85,7 +195,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 def list_tools() -> list[dict[str, Any]]:
     """Compatibility helper used by direct Python integrations."""
     aliases = [{"name": name} for name in sorted(_LEGACY_TOOL_NAMES)]
-    canonical = [{"name": name} for name in sorted(_TOOL_SCHEMAS)]
+    canonical = [{"name": name, **_TOOL_SCHEMAS[name]} for name in sorted(_TOOL_SCHEMAS)]
     return aliases + canonical
 
 
@@ -114,9 +224,10 @@ def handle_message(message: dict[str, Any]) -> dict[str, Any]:
     if method == "tools/list":
         return {"jsonrpc": "2.0", "id": msg_id,
                 "result": {"tools": [
-                    {"name": name, "description": f"Axiomize {name} ({API_VERSION})",
-                     "inputSchema": {"type": "object"}}
-                    for name in sorted(_TOOL_SCHEMAS)]}}
+                    {"name": name,
+                     "description": spec["description"],
+                     "inputSchema": spec["inputSchema"]}
+                    for name, spec in sorted(_TOOL_SCHEMAS.items())]}}
     if method == "tools/call":
         params = message.get("params", {})
         try:
