@@ -30,3 +30,11 @@ class ModelProvider(ABC):
     @abstractmethod
     def health_check(self) -> bool:
         """True when the provider is reachable and usable."""
+
+    def complete(self, prompt: str) -> dict[str, Any]:
+        """Backward-compatible structured completion wrapper."""
+        return {"text": self.generate(prompt), "provider": self.name}
+
+    def healthcheck(self) -> bool:
+        """Backward-compatible health-check alias."""
+        return self.health_check()
