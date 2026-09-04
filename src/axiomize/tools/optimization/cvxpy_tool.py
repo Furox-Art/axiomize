@@ -32,7 +32,13 @@ class CvxpyTool(ScientificTool):
 def solve_qp(P: list[list[float]], q: list[float],
              G: list[list[float]] | None = None,
              h: list[float] | None = None) -> dict[str, Any]:
-    """Minimize (1/2)x'Px + q'x s.t. Gx <= h."""
+    """Minimize (1/2)x'Px + q'x s.t. Gx <= h.
+
+    CLARABEL is selected explicitly because it is a CVXPY dependency and keeps
+    the adapter silent when ``verbose=False``. Some OSQP versions emit a
+    polishing notice to stdout even in otherwise quiet solves, which corrupts
+    machine-readable CLI/MCP output that wraps this adapter.
+    """
     import cvxpy as cp  # type: ignore[import-untyped]
 
     n = len(q)
@@ -42,7 +48,9 @@ def solve_qp(P: list[list[float]], q: list[float],
     if G is not None and h is not None:
         constraints.append(np.array(G) @ x <= np.array(h))
     problem = cp.Problem(objective, constraints)
-    problem.solve()
+    problem.solve(solver=cp.CLARABEL, verbose=False)
+    if x.value is None or problem.value is None:
+        raise RuntimeError(f"cvxpy solve produced no solution (status={problem.status})")
     return {"x": [float(v) for v in np.asarray(x.value).ravel()],
             "objective": float(problem.value),
             "status": str(problem.status).lower()}
