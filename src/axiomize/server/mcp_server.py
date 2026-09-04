@@ -47,6 +47,33 @@ _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "axiomize.clean_data": {
+        "description": "Conservatively clean paired numeric observations while preserving originals and returning a complete audit trail.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "t": _NUMBER_ARRAY,
+                "y": _NUMBER_ARRAY,
+                "drop_nonfinite": {"type": "boolean"},
+                "sort_time": {"type": "boolean"},
+                "duplicate_policy": {"type": "string", "enum": ["mean", "first", "error"]},
+            },
+            "required": ["t", "y"],
+            "additionalProperties": False,
+        },
+    },
+    "axiomize.compare_runs": {
+        "description": "Compare two stored reproducible runs and explain whether data, parameters, assumptions, solver settings, tool versions, policy, model choice or results changed.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "before_dir": {"type": "string", "minLength": 1},
+                "after_dir": {"type": "string", "minLength": 1},
+            },
+            "required": ["before_dir", "after_dir"],
+            "additionalProperties": False,
+        },
+    },
     "axiomize.solve": {
         "description": "Solve the reference SIR model with numerical and theoretical validation.",
         "inputSchema": {"type": "object", "properties": {
@@ -155,6 +182,10 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return services.intake_service(arguments)
     if name == "axiomize.workflow_policy":
         return services.workflow_policy_service(arguments)
+    if name == "axiomize.clean_data":
+        return services.clean_data_service(arguments)
+    if name == "axiomize.compare_runs":
+        return services.compare_runs_service(arguments)
     if name in ("axiomize.solve", "axiomize.simulate"):
         return services.solve_sir_service(arguments)
     if name == "axiomize.validate":
