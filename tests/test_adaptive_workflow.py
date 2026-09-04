@@ -3,10 +3,17 @@
 import sys
 from pathlib import Path
 
+import matplotlib
+import numpy as np
+
+matplotlib.use("Agg")
+
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.application.services import intake_service, workflow_policy_service
+from axiomize.data.quality import clean_numeric_xy
+from axiomize.visualization.plots import plot_dependency_graph, plot_sensitivity, plot_surface_3d
 from axiomize.workflow.policy import RigorLevel, default_policy, recommend_rigor
 
 
@@ -98,3 +105,42 @@ def test_user_can_explicitly_authorize_extra_work() -> None:
     assert permissions["allow_spawn_subtasks"] is True
     assert permissions["allow_repeat_alternative_methods"] is True
     assert permissions["allow_extra_paid_model_calls"] is True
+
+
+def test_data_cleaning_preserves_original_and_audits_changes() -> None:
+    result = clean_numeric_xy(
+        [2.0, 1.0, 1.0, 3.0, float("nan")],
+        [20.0, 9.0, 11.0, 30.0, 99.0],
+    )
+    assert result.original_t[0] == 2.0
+    assert len(result.original_t) == 5
+    assert result.cleaned_t == [1.0, 2.0, 3.0]
+    assert result.cleaned_y == [10.0, 20.0, 30.0]
+    operations = [item["operation"] for item in result.audit]
+    assert "drop_nonfinite_rows" in operations
+    assert "sort_by_time" in operations
+    assert "merge_duplicate_times" in operations
+    assert result.material_change is True
+
+
+def test_data_cleaning_retains_possible_outliers() -> None:
+    result = clean_numeric_xy([0, 1, 2, 3, 4, 5, 6], [1, 1, 1, 1, 1, 1, 100])
+    assert result.cleaned_y[-1] == 100.0
+
+
+def test_visualization_helpers_create_files(tmp_path: Path) -> None:
+    sensitivity = plot_sensitivity({"beta": 1.2, "gamma": -0.8}, tmp_path / "sensitivity.png")
+    assert sensitivity.is_file() and sensitivity.stat().st_size > 0
+
+    x = np.linspace(0, 1, 5)
+    y = np.linspace(0, 1, 4)
+    z = np.add.outer(y, x)
+    surface = plot_surface_3d(x, y, z, tmp_path / "surface.png")
+    assert surface.is_file() and surface.stat().st_size > 0
+
+    graph = plot_dependency_graph(
+        ["input", "state", "output"],
+        [("input", "state"), ("state", "output")],
+        tmp_path / "graph.png",
+    )
+    assert graph.is_file() and graph.stat().st_size > 0
