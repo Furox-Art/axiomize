@@ -80,13 +80,12 @@ def cmd_reproduce(args: argparse.Namespace) -> int:
 
 
 def cmd_benchmark(_args: argparse.Namespace) -> int:
-    import subprocess
+    """Run the package-native suite; works from a wheel without repo tests."""
+    from axiomize.benchmark_suite import run_suite
 
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest",
-         "tests/test_benchmark_suite.py", "-q"], check=False,
-        cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent.parent))
-    return proc.returncode
+    result = run_suite()
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result["status"] == "PASS" else 1
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -146,7 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run_id")
     p.set_defaults(func=cmd_reproduce)
 
-    p = sub.add_parser("benchmark", help="run the scientific benchmark suite")
+    p = sub.add_parser("benchmark", help="run the install-safe 12-case scientific benchmark suite")
     p.set_defaults(func=cmd_benchmark)
 
     p = sub.add_parser("serve", help="start the REST API (v1)")
