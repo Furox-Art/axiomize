@@ -17,11 +17,26 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
+    outputs:
+      package_name: ${{ steps.meta.outputs.name }}
+      package_version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+      - name: Enforce release version contract
+        run: python .github/scripts/check_release_contract.py
+      - name: Resolve package metadata
+        id: meta
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import pathlib, tomllib
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          print(f"name={data['project']['name']}")
+          print(f"version={data['project']['version']}")
+          PY
       - name: Install test and build tooling
         run: |
           python -m pip install --upgrade pip
@@ -33,41 +48,48 @@ jobs:
         run: python -m build
       - name: Validate distributions
         run: python -m twine check dist/*
-      - name: Smoke-test built wheel
+      - name: Install exact release wheel
+        run: python -m pip install --force-reinstall dist/*.whl
+      - name: Full installed CLI contract
+        run: python .github/scripts/cli_release_smoke.py
+      - name: Real LaTeX console conversion
+        shell: bash
         run: |
-          python -m pip install --force-reinstall dist/*.whl
-          axiomize --help
-          axiomize tools
-          axiomize capabilities
-          axiomize policy
-          axiomize intake "A city wants to reduce traffic congestion"
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          printf '# Release Smoke\n\nModel relation: $y = ax + b$.\n' > "$tmp/report.md"
+          axiomize-to-latex --input "$tmp/report.md" --output "$tmp/report.tex"
+          test -s "$tmp/report.tex"
+          grep -F '\begin{document}' "$tmp/report.tex"
+          grep -F 'Model relation' "$tmp/report.tex"
+      - name: Preserve tested distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
 
   publish:
     needs: preflight
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/${{ needs.preflight.outputs.package_name }}/${{ needs.preflight.outputs.package_version }}/
     permissions:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - name: Download tested distributions
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
-      - name: Resolve package metadata
-        id: meta
-        shell: bash
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import pathlib, tomllib
-          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
-          print(f"name={data['project']['name']}")
-          print(f"version={data['project']['version']}")
-          PY
+          name: python-package-distributions
+          path: dist
       - name: Check whether version already exists on PyPI
         id: gate
         shell: bash
         run: |
-          if curl -sfL "https://pypi.org/pypi/${{ steps.meta.outputs.name }}/${{ steps.meta.outputs.version }}/json" > /dev/null; then
+          if curl -sfL "https://pypi.org/pypi/${{ needs.preflight.outputs.package_name }}/${{ needs.preflight.outputs.package_version }}/json" > /dev/null; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -77,14 +99,14 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        shell: bash
         run: |
-          if [ -n "$PYPI_TOKEN" ]; then echo "has_token=true" >> "$GITHUB_OUTPUT"; else echo "has_token=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Build distributions
-        if: steps.gate.outputs.skip != 'true'
-        run: |
-          python -m pip install build
-          python -m build
-      - name: Publish to PyPI with trusted publishing
+          if [ -n "$PYPI_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish to PyPI with Trusted Publishing
         id: trusted_publish
         if: steps.gate.outputs.skip != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -96,14 +118,24 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
         continue-on-error: true
+      - name: Fail clearly when PyPI authentication is not configured
+        if: steps.gate.outputs.skip != 'true' && steps.trusted_publish.outcome != 'success' && steps.auth.outputs.has_token != 'true'
+        shell: bash
+        run: |
+          echo "::error::PyPI authentication is not configured for this release."
+          echo "::error::Configure a PyPI Trusted Publisher with owner=Furox-Art, repository=axiomize, workflow=release.yml, environment=pypi; or define the PYPI_API_TOKEN secret in the pypi environment."
+          exit 1
       - name: Verify PyPI publication
         if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          url="https://pypi.org/pypi/${{ steps.meta.outputs.name }}/${{ steps.meta.outputs.version }}/json"
+          url="https://pypi.org/pypi/${{ needs.preflight.outputs.package_name }}/${{ needs.preflight.outputs.package_version }}/json"
           for attempt in 1 2 3 4 5 6; do
-            if curl -sfL "$url" > /dev/null; then exit 0; fi
+            if curl -sfL "$url" > /dev/null; then
+              echo "PyPI publication verified: $url"
+              exit 0
+            fi
             sleep 10
           done
           echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
@@ -112,6 +144,6 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.meta.outputs.version }}
+          tag_name: v${{ needs.preflight.outputs.package_version }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
