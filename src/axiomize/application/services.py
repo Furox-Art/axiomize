@@ -187,3 +187,28 @@ def capabilities_service() -> dict[str, Any]:
     from axiomize.capabilities import get_capabilities
 
     return get_capabilities()
+
+
+def intake_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Clarify a vague idea before model construction."""
+    from axiomize.workflow.intake import build_intake_response
+
+    return build_intake_response(payload)
+
+
+def workflow_policy_service(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Expose the deterministic workflow and consumption policy."""
+    from axiomize.workflow.policy import default_policy, recommend_rigor
+
+    payload = dict(payload or {})
+    permissions = payload.get("permissions")
+    if permissions is not None and not isinstance(permissions, dict):
+        raise ValueError("permissions must be an object")
+    policy = default_policy(
+        question_mode=payload.get("question_mode"),
+        permissions=permissions,
+    )
+    return {
+        "policy": policy.to_dict(),
+        "rigor_recommendation": recommend_rigor(payload.get("signals")),
+    }
