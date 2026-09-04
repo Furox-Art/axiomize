@@ -52,6 +52,16 @@ jobs:
         run: python -m pip install --force-reinstall dist/*.whl
       - name: Full installed CLI contract
         run: python .github/scripts/cli_release_smoke.py
+      - name: Real LaTeX console conversion
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          printf '# Release Smoke\n\nModel relation: $y = ax + b$.\n' > "$tmp/report.md"
+          axiomize-to-latex --input "$tmp/report.md" --output "$tmp/report.tex"
+          test -s "$tmp/report.tex"
+          grep -F '\\begin{document}' "$tmp/report.tex"
+          grep -F 'Model relation' "$tmp/report.tex"
       - name: Preserve tested distributions
         uses: actions/upload-artifact@v4
         with:
