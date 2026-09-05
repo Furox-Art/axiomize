@@ -28,6 +28,7 @@ class ModelFamily(str, Enum):
     AGENT_BASED = "agent_based"
     DISCRETE_EVENT = "discrete_event"
     HYBRID = "hybrid"
+    MULTIPHYSICS = "multiphysics"
     CAUSAL = "causal"
 
     @classmethod
@@ -38,6 +39,8 @@ class ModelFamily(str, Enum):
             "abm": cls.AGENT_BASED,
             "des": cls.DISCRETE_EVENT,
             "differential_algebraic": cls.DAE,
+            "multi_physics": cls.MULTIPHYSICS,
+            "coupled_physics": cls.MULTIPHYSICS,
         }
         if normalized in aliases:
             return aliases[normalized]
