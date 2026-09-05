@@ -20,4 +20,4 @@ The skill documents (SKILL.md, adaptive-workflow.md, perspectives/, templates/)
 ship inside the ``axiomize`` package for agent loaders.
 """
 
-__version__ = "1.10.0"
+__version__ = "1.11.0"
