@@ -16,6 +16,7 @@ from axiomize.tools.logic.z3_tool import Z3Tool
 from axiomize.tools.numerical.scipy_tool import SciPyTool
 from axiomize.tools.optimization.casadi_tool import CasadiTool
 from axiomize.tools.optimization.cvxpy_tool import CvxpyTool
+from axiomize.tools.pde.fenics_tool import FEniCSAdapter
 from axiomize.tools.statistics.statsmodels_tool import StatsmodelsTool
 from axiomize.tools.symbolic.sympy_tool import SymPyTool
 from axiomize.validation.status import ValidationStatus
@@ -39,7 +40,7 @@ _RULES: list[tuple[frozenset[str], str, list[str], list[str], str]] = [
      "nonlinear constrained optimization maps to CasADi with SciPy as an independent check"),
     (frozenset({"pde", "fem"}), "pde_fem",
      ["fenics"], ["sympy"],
-     "PDE/FEM uses FEniCS when installed; symbolic structure can still be checked independently"),
+     "FEniCS weak-form execution is optional and is selected only when its real adapter reports runnable; otherwise fallback is explicit"),
     (frozenset({"bayesian"}), "bayesian_estimation",
      ["pymc"], ["scipy"],
      "Bayesian inference uses PyMC when available; frequentist/numerical checks remain independent"),
@@ -65,13 +66,13 @@ _TOOL_CLASSES = {
     "casadi": CasadiTool,
     "z3": Z3Tool,
     "lean": LeanAdapter,
+    "fenics": FEniCSAdapter,
 }
 
 _MODULE_TOOLS = {
     "pymc": "pymc",
     "networkx": "networkx",
     "control": "control",
-    "fenics": "fenics",
 }
 
 

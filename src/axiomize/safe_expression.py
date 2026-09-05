@@ -1,10 +1,10 @@
 """Hardened parser for user-supplied mathematical expressions.
 
 Axiomize accepts equations from Model IR and symbolic-tool calls. This module is
-the single parser policy for those strings: only a small arithmetic AST is
-accepted, symbols/functions are explicit, and complexity is bounded before
-SymPy sees the expression. This prevents Python-evaluation constructs and
-pathological parser inputs from crossing an interface boundary.
+the single parser policy for those strings: only a small arithmetic/relational
+AST is accepted, symbols/functions are explicit, complexity is bounded, and the
+validated AST is translated directly to SymPy. User text is never passed to
+``sympify``/``parse_expr`` for evaluation.
 """
 
 from __future__ import annotations
@@ -27,11 +27,7 @@ ALLOWED_FUNCTIONS = frozenset({
     "exp", "log", "sqrt", "Abs", "Min", "Max", "Piecewise", "Heaviside",
 })
 
-# Function names must stay distinct because they are injected into SymPy's local
-# namespace. Conventional scientific symbols such as I, E, and pi remain legal
-# when explicitly declared in Model IR and therefore override SymPy constants.
 RESERVED_SYMBOLS = ALLOWED_FUNCTIONS | frozenset({"True", "False", "None", "nan", "inf", "oo"})
-
 _IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 _ALLOWED_NODES = (
@@ -50,7 +46,7 @@ _ALLOWED_NODES = (
     ast.USub,
     ast.UAdd,
     ast.Call,
-    ast.Tuple,  # Piecewise pair syntax: Piecewise((x, cond), ...)
+    ast.Tuple,
     ast.Compare,
     ast.Lt,
     ast.LtE,
@@ -83,8 +79,6 @@ def _depth(node: ast.AST) -> int:
 
 
 def _check_constant(value: Any) -> None:
-    # Boolean constants are allowed only as declarative mathematical conditions
-    # (notably Piecewise(..., True)). They cannot introduce executable behavior.
     if isinstance(value, bool):
         return
     if not isinstance(value, (int, float)):
@@ -96,7 +90,6 @@ def _check_constant(value: Any) -> None:
 
 
 def _constant_number(node: ast.AST) -> float | None:
-    """Return a finite literal numeric value, including a unary +/- literal."""
     sign = 1.0
     current = node
     if isinstance(current, ast.UnaryOp) and isinstance(current.op, (ast.UAdd, ast.USub)):
@@ -159,6 +152,11 @@ def validate_expression(
                 raise ValueError("keyword arguments are not allowed in mathematical expressions")
             if len(node.args) > 32:
                 raise ValueError("mathematical function has too many arguments")
+            if node.func.id == "Piecewise":
+                if not node.args:
+                    raise ValueError("Piecewise requires at least one (expression, condition) pair")
+                if any(not isinstance(arg, ast.Tuple) or len(arg.elts) != 2 for arg in node.args):
+                    raise ValueError("Piecewise arguments must be (expression, condition) pairs")
         elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
             exponent = _constant_number(node.right)
             if exponent is not None and abs(exponent) > MAX_ABS_CONSTANT_EXPONENT:
@@ -172,17 +170,83 @@ def validate_expression(
     return tree
 
 
-def sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
-    """Safely convert a validated arithmetic expression to a SymPy expression."""
+def _to_sympy(node: ast.AST, symbols: dict[str, Any], functions: dict[str, Any]) -> Any:
     import sympy as sp
 
-    validate_expression(expression, allowed_names=set(symbols))
-    local_dict = dict(symbols)
-    for name in ALLOWED_FUNCTIONS:
-        if name not in local_dict and hasattr(sp, name):
-            local_dict[name] = getattr(sp, name)
-    # SymPy sees only AST-whitelisted text and an explicit local namespace.
-    return sp.sympify(expression, locals=local_dict)
+    if isinstance(node, ast.Expression):
+        return _to_sympy(node.body, symbols, functions)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool):
+            return sp.true if node.value else sp.false
+        if isinstance(node.value, int):
+            return sp.Integer(node.value)
+        if isinstance(node.value, float):
+            return sp.Float(node.value)
+        raise ValueError("unsupported constant")
+    if isinstance(node, ast.Name):
+        if node.id in symbols:
+            return symbols[node.id]
+        raise ValueError(f"unknown symbol in expression: {node.id}")
+    if isinstance(node, ast.UnaryOp):
+        value = _to_sympy(node.operand, symbols, functions)
+        if isinstance(node.op, ast.USub):
+            return -value
+        if isinstance(node.op, ast.UAdd):
+            return value
+        raise ValueError(f"unsupported unary operator: {type(node.op).__name__}")
+    if isinstance(node, ast.BinOp):
+        left = _to_sympy(node.left, symbols, functions)
+        right = _to_sympy(node.right, symbols, functions)
+        if isinstance(node.op, ast.Add): return left + right
+        if isinstance(node.op, ast.Sub): return left - right
+        if isinstance(node.op, ast.Mult): return left * right
+        if isinstance(node.op, ast.Div): return left / right
+        if isinstance(node.op, ast.Pow): return left ** right
+        if isinstance(node.op, ast.Mod): return sp.Mod(left, right)
+        raise ValueError(f"unsupported binary operator: {type(node.op).__name__}")
+    if isinstance(node, ast.Compare):
+        left = _to_sympy(node.left, symbols, functions)
+        right = _to_sympy(node.comparators[0], symbols, functions)
+        op = node.ops[0]
+        if isinstance(op, ast.Lt): return sp.Lt(left, right)
+        if isinstance(op, ast.LtE): return sp.Le(left, right)
+        if isinstance(op, ast.Gt): return sp.Gt(left, right)
+        if isinstance(op, ast.GtE): return sp.Ge(left, right)
+        if isinstance(op, ast.Eq): return sp.Eq(left, right)
+        if isinstance(op, ast.NotEq): return sp.Ne(left, right)
+        raise ValueError(f"unsupported comparison operator: {type(op).__name__}")
+    if isinstance(node, ast.BoolOp):
+        values = [_to_sympy(value, symbols, functions) for value in node.values]
+        if isinstance(node.op, ast.And): return sp.And(*values)
+        if isinstance(node.op, ast.Or): return sp.Or(*values)
+        raise ValueError(f"unsupported boolean operator: {type(node.op).__name__}")
+    if isinstance(node, ast.Tuple):
+        return tuple(_to_sympy(value, symbols, functions) for value in node.elts)
+    if isinstance(node, ast.Call):
+        assert isinstance(node.func, ast.Name)
+        function = functions[node.func.id]
+        args = [_to_sympy(arg, symbols, functions) for arg in node.args]
+        return function(*args)
+    raise ValueError(f"unsupported expression syntax: {type(node).__name__}")
+
+
+def sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
+    """Convert a validated AST directly to a SymPy expression."""
+    import sympy as sp
+
+    tree = validate_expression(expression, allowed_names=set(symbols))
+    functions = {
+        "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
+        "asin": sp.asin, "acos": sp.acos, "atan": sp.atan,
+        "sinh": sp.sinh, "cosh": sp.cosh, "tanh": sp.tanh,
+        "exp": sp.exp, "log": sp.log, "sqrt": sp.sqrt,
+        "Abs": sp.Abs, "Min": sp.Min, "Max": sp.Max,
+        "Piecewise": sp.Piecewise, "Heaviside": sp.Heaviside,
+    }
+    translated = _to_sympy(tree, dict(symbols), functions)
+    if isinstance(translated, tuple):
+        raise ValueError("top-level mathematical expression cannot be a tuple")
+    return translated
 
 
 def auto_symbol_map(expression: str) -> dict[str, Any]:

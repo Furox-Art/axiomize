@@ -1,14 +1,16 @@
 """Hard, interface-independent safety limits for Axiomize.
 
-Approval gates control *policy* (whether expensive work may begin).  These limits
+Approval gates control *policy* (whether expensive work may begin). These limits
 are separate resource-safety ceilings and cannot be bypassed with an approval
-flag.  Keep them conservative enough for scientific work while preventing an
+flag. Keep them conservative enough for scientific work while preventing an
 accidental or hostile request from allocating unbounded memory/CPU.
 """
 
 from __future__ import annotations
 
 import math
+import numbers
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -16,6 +18,8 @@ MAX_JSON_BYTES = 2 * 1024 * 1024
 MAX_MCP_MESSAGE_BYTES = 2 * 1024 * 1024
 MAX_RUN_JSON_BYTES = 16 * 1024 * 1024
 MAX_PROVIDER_RESPONSE_BYTES = 8 * 1024 * 1024
+MAX_CSV_BYTES = 64 * 1024 * 1024
+MAX_TEXT_ARTIFACT_BYTES = 64 * 1024 * 1024
 
 MAX_POINTS = 200_000
 MAX_SAMPLES = 100_000
@@ -27,6 +31,7 @@ MAX_MODEL_PARAMETERS = 2_000
 MAX_MODEL_EQUATIONS = 2_000
 MAX_MODEL_CONSTRAINTS = 2_000
 MAX_MODEL_COMPONENTS = 64
+MAX_WORKERS = 32
 
 # Dense network execution currently materializes an n x n adjacency matrix.
 MAX_DENSE_NETWORK_NODES = 2_000
@@ -35,6 +40,7 @@ MAX_RESULT_CELLS = 10_000_000
 MAX_CONTROL_DIMENSION = 2_048
 MAX_BAYES_DRAWS = 100_000
 MAX_OPTIMIZER_ITERATIONS = 100_000
+MAX_Z3_TIMEOUT_MS = 60_000
 
 MAX_EXPRESSION_CHARS = 8_192
 MAX_EXPRESSION_NODES = 512
@@ -42,13 +48,35 @@ MAX_EXPRESSION_DEPTH = 40
 MAX_INTEGER_DIGITS = 64
 MAX_ABS_CONSTANT_EXPONENT = 1_000.0
 
+_INTEGER_TEXT = re.compile(r"^[+-]?[0-9]+$")
+
 
 def bounded_int(value: Any, *, name: str, minimum: int = 0, maximum: int) -> int:
-    """Coerce an integer-like value and enforce an inclusive hard range."""
-    try:
+    """Coerce an *exact* integer value and enforce an inclusive hard range.
+
+    ``int(1.9) == 1`` is unsafe for scientific/resource contracts because it
+    silently changes a caller's request. Booleans are also rejected even though
+    Python models them as integers.
+    """
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be an integer, not a boolean")
+    if isinstance(value, numbers.Integral):
         result = int(value)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise ValueError(f"{name} must be an integer") from exc
+    elif isinstance(value, numbers.Real):
+        numeric = float(value)
+        if not math.isfinite(numeric) or not numeric.is_integer():
+            raise ValueError(f"{name} must be an exact finite integer")
+        result = int(numeric)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not _INTEGER_TEXT.fullmatch(text):
+            raise ValueError(f"{name} must be an integer")
+        try:
+            result = int(text, 10)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"{name} must be an integer") from exc
+    else:
+        raise ValueError(f"{name} must be an integer")
     if result < minimum or result > maximum:
         raise ValueError(f"{name} must be between {minimum} and {maximum}; got {result}")
     return result
@@ -97,9 +125,7 @@ def bounded_sequence(
 def enforce_result_cells(*dimensions: int, name: str = "requested result") -> None:
     cells = 1
     for raw in dimensions:
-        dim = int(raw)
-        if dim < 0:
-            raise ValueError(f"{name} dimension cannot be negative")
+        dim = bounded_int(raw, name=f"{name} dimension", minimum=0, maximum=MAX_RESULT_CELLS)
         cells *= dim
         if cells > MAX_RESULT_CELLS:
             raise ValueError(

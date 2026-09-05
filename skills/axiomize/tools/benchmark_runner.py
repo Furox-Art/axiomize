@@ -1,28 +1,83 @@
 """Axiomize benchmark runner.
 
 Automated layer of benchmarks/rubric.md: grades a produced report against a
-test case from ideas.json. The default benchmark dataset is resolved both from
-a source checkout and from the PyPI wheel.
+test case from ideas.json. Custom benchmark files are treated as untrusted data:
+matching uses a small literal-alternative grammar rather than arbitrary regex.
 """
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
+
+MAX_BENCHMARK_BYTES = 4 * 1024 * 1024
+MAX_REPORT_BYTES = 64 * 1024 * 1024
+MAX_CASES = 10_000
+MAX_PATTERNS_PER_CASE = 1_000
+
+
+def _bounded_text(path, maximum, label):
+    target = Path(path)
+    if not target.is_file():
+        raise SystemExit(f"{label} not found: {target}")
+    try:
+        size = target.stat().st_size
+    except OSError as exc:
+        raise SystemExit(f"cannot stat {label}: {exc}") from exc
+    if size > maximum:
+        raise SystemExit(f"{label} exceeds hard size limit {maximum} bytes")
+    try:
+        return target.read_text(encoding="utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        raise SystemExit(f"cannot read {label}: {exc}") from exc
 
 
 def load_cases(path):
     if not path:
         raise SystemExit("benchmark dataset not found; pass --benchmarks <ideas.json>")
-    target = Path(path)
-    if not target.is_file():
-        raise SystemExit(f"benchmark dataset not found: {target}")
-    data = json.loads(target.read_text(encoding="utf-8"))
-    return {c["id"]: c for c in data["cases"]}
+    text = _bounded_text(path, MAX_BENCHMARK_BYTES, "benchmark dataset")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"benchmark dataset is invalid JSON: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("cases"), list):
+        raise SystemExit("benchmark dataset must contain a cases array")
+    if len(data["cases"]) > MAX_CASES:
+        raise SystemExit(f"benchmark dataset exceeds hard case limit {MAX_CASES}")
+    cases = {}
+    for index, case in enumerate(data["cases"]):
+        if not isinstance(case, dict) or not isinstance(case.get("id"), str) or not case["id"].strip():
+            raise SystemExit(f"benchmark case {index} needs a non-empty string id")
+        must = case.get("must_contain", [])
+        if not isinstance(must, list) or len(must) > MAX_PATTERNS_PER_CASE or not all(isinstance(v, str) for v in must):
+            raise SystemExit(f"benchmark case {case['id']!r} has invalid must_contain")
+        minimum_lenses = case.get("min_lenses_built", 0)
+        if isinstance(minimum_lenses, bool) or not isinstance(minimum_lenses, int) or not 0 <= minimum_lenses <= 1000:
+            raise SystemExit(
+                f"benchmark case {case['id']!r} min_lenses_built must be an integer in [0, 1000]"
+            )
+        if case["id"] in cases:
+            raise SystemExit(f"duplicate benchmark case id: {case['id']}")
+        cases[case["id"]] = case
+    return cases
 
 
 _STOPWORDS = {"a", "an", "the", "and", "or", "of", "on", "in", "with", "for", "to"}
+_WORD_BOUNDARY_LITERAL = re.compile(r"^\\b([A-Za-z0-9_.+/-]+)\\b$")
+
+
+def _literal_alt_present(alt, text_lower):
+    """Safe matching grammar: ``a|b`` alternatives + optional ``\bword\b``."""
+    alt = alt.strip()
+    if not alt:
+        return False
+    word = _WORD_BOUNDARY_LITERAL.fullmatch(alt)
+    if word:
+        token = word.group(1).lower()
+        return re.search(rf"(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", text_lower) is not None
+    return alt.lower() in text_lower
 
 
 def _alt_tokens_present(alt, text_lower):
@@ -37,17 +92,19 @@ def _alt_tokens_present(alt, text_lower):
 
 
 def grade(text, case):
+    if not isinstance(text, str):
+        raise ValueError("report must be text")
     checks = {}
+    text_lower = text.lower()
     for i, token in enumerate(case["must_contain"], 1):
         alternatives = token.split("|")
         checks[f"must_contain[{i}]: {token[:40]}"] = any(
-            re.search(alt, text, re.IGNORECASE) is not None for alt in alternatives
+            _literal_alt_present(alt, text_lower) for alt in alternatives
         )
 
-    archetype = case["expected_archetype"]
+    archetype = case.get("expected_archetype", "")
     if archetype:
-        alts = [a.strip() for a in archetype.split(" / ") if a.strip()]
-        text_lower = text.lower()
+        alts = [a.strip() for a in str(archetype).split(" / ") if a.strip()]
         present = any(_alt_tokens_present(alt, text_lower) for alt in alts)
         checks[f"archetype '{archetype}' present"] = present
     else:
@@ -70,7 +127,10 @@ def grade(text, case):
                 re.MULTILINE | re.IGNORECASE,
             )
         )
-    checks[f"perspectives built >= {case['min_lenses_built']} (found {lenses})"] = lenses >= case["min_lenses_built"]
+    minimum_lenses = case.get("min_lenses_built", 0)
+    if isinstance(minimum_lenses, bool) or not isinstance(minimum_lenses, int) or not 0 <= minimum_lenses <= 1000:
+        raise ValueError("min_lenses_built must be an integer in [0, 1000]")
+    checks[f"perspectives built >= {minimum_lenses} (found {lenses})"] = lenses >= minimum_lenses
 
     if case.get("must_reject_at_least_one"):
         rejected = bool(
@@ -88,30 +148,25 @@ def grade(text, case):
 
     if "numeric_oracle" in case:
         oracle = case["numeric_oracle"]
-        kw = oracle["keyword"]
+        if not isinstance(oracle, dict) or "keyword" not in oracle or "expected" not in oracle or "tolerance" not in oracle:
+            raise ValueError("numeric_oracle requires keyword, expected, tolerance")
+        kw = str(oracle["keyword"])
         expected = float(oracle["expected"])
         tol = float(oracle["tolerance"])
-        match = re.search(rf"{re.escape(kw)}[^0-9]*([0-9]*\.?[0-9]+)", text, re.IGNORECASE)
-        if match:
-            try:
-                value = float(match.group(1))
-                ok = abs(value - expected) <= tol
-            except ValueError:
-                ok = False
-        else:
-            ok = False
+        if not (math.isfinite(expected) and math.isfinite(tol) and tol >= 0):
+            raise ValueError("numeric oracle expected/tolerance must be finite and tolerance non-negative")
+        match = re.search(rf"{re.escape(kw)}[^0-9\n]{{0,128}}([0-9]*\.?[0-9]+)", text, re.IGNORECASE)
+        ok = bool(match and abs(float(match.group(1)) - expected) <= tol)
         checks[f"numeric oracle {kw} ~ {expected} ±{tol}"] = ok
 
     return checks, lenses
 
 
-def _default_benchmark_path() -> str:
+def _default_benchmark_path():
     here = Path(__file__).resolve().parent
     candidates = [
-        # Source checkout: skills/axiomize/tools -> repository root.
         here.parents[2] / "benchmarks" / "ideas.json",
         Path.cwd() / "benchmarks" / "ideas.json",
-        # Installed wheel: axiomize/tools -> axiomize/data.
         here.parent / "data" / "benchmark_ideas.json",
     ]
     for candidate in candidates:
@@ -135,11 +190,15 @@ def main():
         print("\n".join(cases.keys()))
         return 1
     if args.case_list or not args.report:
-        print("\n".join(f"{cid}: {c['prompt'][:70]}" for cid, c in cases.items()))
+        print("\n".join(f"{cid}: {str(c.get('prompt', ''))[:70]}" for cid, c in cases.items()))
         return 0
 
-    text = Path(args.report).read_text(encoding="utf-8", errors="replace")
-    checks, _ = grade(text, cases[args.case])
+    text = _bounded_text(args.report, MAX_REPORT_BYTES, "benchmark report")
+    try:
+        checks, _ = grade(text, cases[args.case])
+    except (TypeError, ValueError, OverflowError) as exc:
+        print(f"benchmark definition error: {exc}")
+        return 1
     passed = sum(checks.values())
     total = len(checks)
     for key, value in checks.items():
