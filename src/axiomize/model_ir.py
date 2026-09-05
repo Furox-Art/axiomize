@@ -8,11 +8,61 @@ by deterministic code.
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
 
+from axiomize.limits import (
+    MAX_MODEL_CONSTRAINTS,
+    MAX_MODEL_EQUATIONS,
+    MAX_MODEL_PARAMETERS,
+    MAX_MODEL_VARIABLES,
+)
+from axiomize.safe_expression import validate_identifier
+
 CURRENT_SCHEMA_VERSION = "1.0"
+_SUPPORTED_LEGACY_SCHEMA_VERSIONS = frozenset({"0.9"})
+
+_VARIABLE_ROLES = frozenset({"state", "latent", "output", "input", "decision", "algebraic"})
+_EQUATION_KINDS = frozenset({
+    "derivative", "residual", "algebraic", "constraint", "objective",
+    "update", "difference", "likelihood", "observation", "mean",
+})
+_CONSTRAINT_RELATIONS = frozenset({"ge", "le", "eq", "between"})
+_CONSTRAINT_SEVERITIES = frozenset({"error", "warning", "info"})
+
+
+def _finite(value: Any, *, name: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be numeric") from exc
+    if not math.isfinite(number):
+        raise ValueError(f"{name} must be finite")
+    return number
+
+
+def _bounds(payload: Any, *, name: str) -> tuple[float | None, float | None] | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, (list, tuple)) or len(payload) != 2:
+        raise ValueError(f"{name} bounds must have length 2")
+    low = None if payload[0] is None else _finite(payload[0], name=f"{name} lower bound")
+    high = None if payload[1] is None else _finite(payload[1], name=f"{name} upper bound")
+    if low is not None and high is not None and low > high:
+        raise ValueError(f"{name} lower bound must be <= upper bound")
+    return (low, high)
+
+
+def _bounded_list(payload: Any, *, name: str, maximum: int) -> list[Any]:
+    if payload is None:
+        return []
+    if not isinstance(payload, list):
+        raise ValueError(f"{name} must be an array")
+    if len(payload) > maximum:
+        raise ValueError(f"{name} exceeds hard safety limit of {maximum}")
+    return payload
 
 
 class ModelFamily(str, Enum):
@@ -62,16 +112,19 @@ class VariableSpec:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "VariableSpec":
-        bounds = payload.get("bounds")
-        if bounds is not None:
-            if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
-                raise ValueError(f"variable {payload.get('name', '<unknown>')} bounds must have length 2")
-            bounds = (bounds[0], bounds[1])
+        if not isinstance(payload, dict):
+            raise ValueError("variable entry must be an object")
+        name = validate_identifier(str(payload["name"]), what="variable name")
+        role = str(payload.get("role", "state")).strip().lower()
+        if role not in _VARIABLE_ROLES:
+            raise ValueError(f"variable {name!r} has unsupported role {role!r}")
+        initial = None if payload.get("initial") is None else _finite(payload["initial"], name=f"variable {name} initial")
+        bounds = _bounds(payload.get("bounds"), name=f"variable {name}")
         return cls(
-            name=str(payload["name"]),
+            name=name,
             unit=str(payload.get("unit", "dimensionless")),
-            role=str(payload.get("role", "state")),
-            initial=None if payload.get("initial") is None else float(payload["initial"]),
+            role=role,
+            initial=initial,
             bounds=bounds,
             description=str(payload.get("description", "")),
         )
@@ -89,14 +142,14 @@ class ParameterSpec:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ParameterSpec":
-        bounds = payload.get("bounds")
-        if bounds is not None:
-            if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
-                raise ValueError(f"parameter {payload.get('name', '<unknown>')} bounds must have length 2")
-            bounds = (bounds[0], bounds[1])
+        if not isinstance(payload, dict):
+            raise ValueError("parameter entry must be an object")
+        name = validate_identifier(str(payload["name"]), what="parameter name")
+        value = None if payload.get("value") is None else _finite(payload["value"], name=f"parameter {name} value")
+        bounds = _bounds(payload.get("bounds"), name=f"parameter {name}")
         return cls(
-            name=str(payload["name"]),
-            value=None if payload.get("value") is None else float(payload["value"]),
+            name=name,
+            value=value,
             unit=str(payload.get("unit", "dimensionless")),
             bounds=bounds,
             fit=bool(payload.get("fit", False)),
@@ -122,10 +175,23 @@ class EquationSpec:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "EquationSpec":
+        if not isinstance(payload, dict):
+            raise ValueError("equation entry must be an object")
+        target = str(payload.get("target", payload.get("lhs", ""))).strip()
+        if target:
+            target = validate_identifier(target, what="equation target")
+        expression = str(payload.get("expression", payload.get("rhs", ""))).strip()
+        if not expression:
+            raise ValueError("equation expression must be non-empty")
+        kind = str(payload.get("kind", "derivative")).strip().lower()
+        if kind not in _EQUATION_KINDS:
+            raise ValueError(f"unsupported equation kind {kind!r}")
+        if kind not in {"residual", "objective"} and not target:
+            raise ValueError(f"equation kind {kind!r} requires a target")
         return cls(
-            target=str(payload.get("target", payload.get("lhs", ""))),
-            expression=str(payload.get("expression", payload.get("rhs", ""))),
-            kind=str(payload.get("kind", "derivative")),
+            target=target,
+            expression=expression,
+            kind=kind,
             unit=None if payload.get("unit") is None else str(payload["unit"]),
             description=str(payload.get("description", "")),
         )
@@ -133,12 +199,7 @@ class EquationSpec:
 
 @dataclass(frozen=True)
 class ConstraintSpec:
-    """Explicit scientific or mathematical constraint.
-
-    ``expression`` must evaluate to a numeric residual/observable. The check is
-    visible and deterministic; it is never silently repaired. Supported
-    relations are ``ge``, ``le``, ``eq`` and ``between``.
-    """
+    """Explicit scientific or mathematical constraint."""
 
     name: str
     expression: str
@@ -151,14 +212,35 @@ class ConstraintSpec:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ConstraintSpec":
+        if not isinstance(payload, dict):
+            raise ValueError("constraint entry must be an object")
+        relation = str(payload.get("relation", "ge")).strip().lower()
+        if relation not in _CONSTRAINT_RELATIONS:
+            raise ValueError(f"unsupported constraint relation {relation!r}")
+        severity = str(payload.get("severity", "error")).strip().lower()
+        if severity not in _CONSTRAINT_SEVERITIES:
+            raise ValueError(f"unsupported constraint severity {severity!r}")
+        tolerance = _finite(payload.get("tolerance", 1e-8), name="constraint tolerance")
+        if tolerance < 0:
+            raise ValueError("constraint tolerance must be non-negative")
+        threshold = _finite(payload.get("threshold", 0.0), name="constraint threshold")
+        upper = None if payload.get("upper") is None else _finite(payload["upper"], name="constraint upper")
+        if relation == "between":
+            if upper is None:
+                raise ValueError("constraint relation='between' requires upper")
+            if upper < threshold:
+                raise ValueError("constraint upper must be >= threshold")
+        expression = str(payload["expression"]).strip()
+        if not expression:
+            raise ValueError("constraint expression must be non-empty")
         return cls(
             name=str(payload["name"]),
-            expression=str(payload["expression"]),
-            relation=str(payload.get("relation", "ge")),
-            threshold=float(payload.get("threshold", 0.0)),
-            upper=None if payload.get("upper") is None else float(payload["upper"]),
-            tolerance=float(payload.get("tolerance", 1e-8)),
-            severity=str(payload.get("severity", "error")),
+            expression=expression,
+            relation=relation,
+            threshold=threshold,
+            upper=upper,
+            tolerance=tolerance,
+            severity=severity,
             scientific_basis=str(payload.get("scientific_basis", "")),
         )
 
@@ -174,14 +256,26 @@ class SolverSpec:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any] | None) -> "SolverSpec":
+        if payload is not None and not isinstance(payload, dict):
+            raise ValueError("solver must be an object")
         payload = dict(payload or {})
+        rtol = _finite(payload.get("rtol", 1e-7), name="solver.rtol")
+        atol = _finite(payload.get("atol", 1e-9), name="solver.atol")
+        if rtol <= 0 or atol <= 0:
+            raise ValueError("solver rtol and atol must be positive")
+        max_steps = None if payload.get("max_steps") is None else int(payload["max_steps"])
+        if max_steps is not None and max_steps <= 0:
+            raise ValueError("solver.max_steps must be positive")
+        fallbacks = payload.get("fallbacks", [])
+        if not isinstance(fallbacks, (list, tuple)) or len(fallbacks) > 32:
+            raise ValueError("solver.fallbacks must be an array with at most 32 entries")
         return cls(
             backend=str(payload.get("backend", "auto")),
             method=str(payload.get("method", "auto")),
-            rtol=float(payload.get("rtol", 1e-7)),
-            atol=float(payload.get("atol", 1e-9)),
-            max_steps=None if payload.get("max_steps") is None else int(payload["max_steps"]),
-            fallbacks=tuple(str(v) for v in payload.get("fallbacks", [])),
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            fallbacks=tuple(str(v) for v in fallbacks),
         )
 
 
@@ -192,6 +286,8 @@ class ProvenanceEvent:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ProvenanceEvent":
+        if not isinstance(payload, dict):
+            raise ValueError("provenance event must be an object")
         return cls(action=str(payload["action"]), detail=dict(payload.get("detail", {})))
 
 
@@ -216,17 +312,26 @@ class ModelIR:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any], *, allow_migration: bool = False) -> "ModelIR":
+        if not isinstance(payload, dict):
+            raise ValueError("Model IR must be an object")
         migrated = migrate_payload(payload, allow_migration=allow_migration)
-        return cls(
+        variables = _bounded_list(migrated.get("variables", []), name="variables", maximum=MAX_MODEL_VARIABLES)
+        parameters = _bounded_list(migrated.get("parameters", []), name="parameters", maximum=MAX_MODEL_PARAMETERS)
+        equations = _bounded_list(migrated.get("equations", []), name="equations", maximum=MAX_MODEL_EQUATIONS)
+        constraints = _bounded_list(migrated.get("constraints", []), name="constraints", maximum=MAX_MODEL_CONSTRAINTS)
+        independent = validate_identifier(
+            str(migrated.get("independent_variable", "t")), what="independent variable"
+        )
+        model = cls(
             name=str(migrated.get("name", "model")),
             domain=str(migrated.get("domain", "general")),
             family=ModelFamily.parse(str(migrated["family"])),
-            variables=[VariableSpec.from_dict(v) for v in migrated.get("variables", [])],
-            parameters=[ParameterSpec.from_dict(p) for p in migrated.get("parameters", [])],
-            equations=[EquationSpec.from_dict(e) for e in migrated.get("equations", [])],
-            independent_variable=str(migrated.get("independent_variable", "t")),
+            variables=[VariableSpec.from_dict(v) for v in variables],
+            parameters=[ParameterSpec.from_dict(p) for p in parameters],
+            equations=[EquationSpec.from_dict(e) for e in equations],
+            independent_variable=independent,
             independent_unit=str(migrated.get("independent_unit", "dimensionless")),
-            constraints=[ConstraintSpec.from_dict(c) for c in migrated.get("constraints", [])],
+            constraints=[ConstraintSpec.from_dict(c) for c in constraints],
             boundary_conditions=dict(migrated.get("boundary_conditions", {})),
             assumptions=[str(v) for v in migrated.get("assumptions", [])],
             validity_domain=dict(migrated.get("validity_domain", {})),
@@ -235,12 +340,19 @@ class ModelIR:
             provenance=[ProvenanceEvent.from_dict(v) for v in migrated.get("provenance", [])],
             schema_version=str(migrated.get("schema_version", CURRENT_SCHEMA_VERSION)),
         )
+        failed = [c for c in model.validate_structure() if c["status"] == "FAIL"]
+        if failed:
+            details = "; ".join(f"{c['name']}: {c['detail']}" for c in failed)
+            raise ValueError(f"invalid Model IR structure: {details}")
+        return model
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["family"] = self.family.value
         payload["solver"]["fallbacks"] = list(self.solver.fallbacks)
-        payload["schema_version"] = CURRENT_SCHEMA_VERSION
+        # Preserve the object's version exactly.  Changing it here would be a
+        # silent migration and would violate the Model IR audit contract.
+        payload["schema_version"] = self.schema_version
         return payload
 
     def validate_structure(self) -> list[dict[str, Any]]:
@@ -254,6 +366,10 @@ class ModelIR:
         add("name", bool(self.name.strip()), "model name must be non-empty")
         add("variables", bool(self.variables), f"n={len(self.variables)}")
         add("equations", bool(self.equations), f"n={len(self.equations)}")
+        add("variable_limit", len(self.variables) <= MAX_MODEL_VARIABLES, f"n={len(self.variables)}")
+        add("parameter_limit", len(self.parameters) <= MAX_MODEL_PARAMETERS, f"n={len(self.parameters)}")
+        add("equation_limit", len(self.equations) <= MAX_MODEL_EQUATIONS, f"n={len(self.equations)}")
+        add("constraint_limit", len(self.constraints) <= MAX_MODEL_CONSTRAINTS, f"n={len(self.constraints)}")
 
         variable_names = [v.name for v in self.variables]
         parameter_names = [p.name for p in self.parameters]
@@ -261,10 +377,22 @@ class ModelIR:
         add("unique_parameters", len(parameter_names) == len(set(parameter_names)), str(parameter_names))
         overlap = sorted(set(variable_names) & set(parameter_names))
         add("symbol_namespace", not overlap, f"overlap={overlap}")
+        independent_collision = self.independent_variable in set(variable_names) | set(parameter_names)
+        add("independent_namespace", not independent_collision,
+            f"independent_variable={self.independent_variable}")
+
+        variable_set = set(variable_names)
+        targeted_kinds = {"derivative", "algebraic", "constraint", "update", "difference", "likelihood", "observation", "mean"}
+        bad_targets = sorted({e.target for e in self.equations if e.kind in targeted_kinds and e.target not in variable_set})
+        add("equation_targets_known", not bad_targets, f"unknown_targets={bad_targets}")
+
+        derivative_targets = [e.target for e in self.equations if e.kind == "derivative"]
+        duplicates = sorted({name for name in derivative_targets if derivative_targets.count(name) > 1})
+        add("unique_derivative_targets", not duplicates, f"duplicates={duplicates}")
 
         if self.family in {ModelFamily.ODE, ModelFamily.STOCHASTIC}:
             state_names = {v.name for v in self.variables if v.role == "state"}
-            targets = {e.target for e in self.equations if e.kind == "derivative"}
+            targets = set(derivative_targets)
             missing = sorted(state_names - targets)
             unknown = sorted(targets - state_names)
             add("state_equations_complete", not missing and not unknown,
@@ -293,10 +421,29 @@ class MigrationApprovalRequired(ValueError):
         )
 
 
+class UnsupportedSchemaVersion(ValueError):
+    """Raised when a schema is newer/unknown and no deterministic migration exists."""
+
+
 def migration_preview(payload: dict[str, Any]) -> dict[str, Any]:
     source = str(payload.get("schema_version", "0.9"))
     if source == CURRENT_SCHEMA_VERSION:
-        return {"required": False, "from": source, "to": CURRENT_SCHEMA_VERSION, "changes": []}
+        return {
+            "required": False,
+            "supported": True,
+            "from": source,
+            "to": CURRENT_SCHEMA_VERSION,
+            "changes": [],
+        }
+    if source not in _SUPPORTED_LEGACY_SCHEMA_VERSIONS:
+        return {
+            "required": True,
+            "supported": False,
+            "from": source,
+            "to": CURRENT_SCHEMA_VERSION,
+            "changes": [],
+            "reason": "no deterministic migration is registered for this schema version",
+        }
     changes: list[str] = []
     if "model_family" in payload and "family" not in payload:
         changes.append("rename model_family -> family")
@@ -305,7 +452,13 @@ def migration_preview(payload: dict[str, Any]) -> dict[str, Any]:
     if "rhs" in payload and "equations" not in payload:
         changes.append("convert rhs mapping -> derivative equations")
     changes.append(f"set schema_version -> {CURRENT_SCHEMA_VERSION}")
-    return {"required": True, "from": source, "to": CURRENT_SCHEMA_VERSION, "changes": changes}
+    return {
+        "required": True,
+        "supported": True,
+        "from": source,
+        "to": CURRENT_SCHEMA_VERSION,
+        "changes": changes,
+    }
 
 
 def migrate_payload(payload: dict[str, Any], *, allow_migration: bool = False) -> dict[str, Any]:
@@ -313,6 +466,10 @@ def migrate_payload(payload: dict[str, Any], *, allow_migration: bool = False) -
     preview = migration_preview(out)
     if not preview["required"]:
         return out
+    if not preview.get("supported", False):
+        raise UnsupportedSchemaVersion(
+            f"unsupported Model IR schema {preview['from']!r}; current schema is {CURRENT_SCHEMA_VERSION!r}"
+        )
     if not allow_migration:
         raise MigrationApprovalRequired(preview)
 
