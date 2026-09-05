@@ -21,3 +21,10 @@ ship inside the ``axiomize`` package for agent loaders.
 """
 
 __version__ = "1.11.1"
+
+# Import the public engine once at package initialization. Besides exposing the
+# normal facade, this installs its hardened parser/resource hooks into the
+# legacy ``general_engine_core`` module. Python always initializes the package
+# before resolving ``axiomize.general_engine_core``, so direct submodule imports
+# cannot bypass those trust-boundary guards.
+from axiomize import general_engine as _general_engine  # noqa: E402,F401
