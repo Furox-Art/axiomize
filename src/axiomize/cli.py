@@ -73,6 +73,7 @@ def cmd_model(args: argparse.Namespace) -> int:
     """Dispatch versioned general-model operations through one JSON contract."""
     from axiomize.application import advanced_services as ads
     from axiomize.application import general_services as gs
+    from axiomize.application import surrogate_services as ss
 
     payload = _load_object(args.input_json)
     if args.approve_heavy:
@@ -97,10 +98,11 @@ def cmd_model(args: argparse.Namespace) -> int:
         "bifurcation": ads.model_bifurcation_service,
         "numerical-verify": ads.model_numerical_verification_service,
         "stop-check": ads.model_stopping_service,
+        "surrogate": ss.model_surrogate_service,
     }
     out = dispatch[args.action](payload)
     rc = _dump(out, args.json)
-    return 1 if out.get("status") == "FAIL" else rc
+    return 1 if out.get("status") in {"FAIL", "SURROGATE_REJECTED", "OUT_OF_DOMAIN"} else rc
 
 
 def cmd_clean_data(args: argparse.Namespace) -> int:
@@ -225,7 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--action", choices=[
         "plan", "validate", "simulate", "fit", "compare", "repair", "export",
         "stability", "validity", "discover", "experiment-design", "uncertainty",
-        "bifurcation", "numerical-verify", "stop-check",
+        "bifurcation", "numerical-verify", "stop-check", "surrogate",
     ], default="plan")
     p.add_argument("--approve-heavy", action="store_true", help="approve heavy local compute for this invocation")
     p.add_argument("--approve-migration", action="store_true", help="approve displayed Model IR migration")
