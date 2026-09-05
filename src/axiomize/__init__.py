@@ -22,13 +22,18 @@ ship inside the ``axiomize`` package for agent loaders.
 
 __version__ = "1.11.1"
 
-# Initialize the public engine once. This installs the hardened parser/resource
-# hooks into the legacy ``general_engine_core`` module before any caller can
-# resolve ``axiomize.general_engine_core`` directly.
+# Initialize the public engine once. This installs hardened parser/resource hooks
+# into legacy modules before callers can resolve those submodules directly.
 from axiomize import general_engine as _general_engine  # noqa: E402,F401
+from axiomize import advanced_family_engine as _advanced_family_engine  # noqa: E402
 from axiomize.portable_export_compat import install_notebook_schema_alias as _install_notebook_schema_alias  # noqa: E402
 from axiomize.runtime_guard import install_general_engine_guards as _install_runtime_guards  # noqa: E402
 
 _install_runtime_guards(_general_engine)
 _install_notebook_schema_alias()
-del _install_runtime_guards, _install_notebook_schema_alias
+# ``advanced_family_engine`` retains an internal compatibility parser. Replace
+# it immediately, not only when simulate_model is called, so direct submodule
+# imports cannot reach the older parser implementation.
+_advanced_family_engine._compile_expression = _general_engine._compile_expression_hardened
+
+del _install_runtime_guards, _install_notebook_schema_alias, _advanced_family_engine
