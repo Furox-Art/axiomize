@@ -2,6 +2,15 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.12.1] - 2026-09-05
+
+### Fixed
+
+- PDE automatic solver planning now uses the same real `FEniCSAdapter.availability()` probe as the executable FEM path.
+- DOLFINx-only installations are correctly routed to the bounded FEM executor instead of being misclassified as SciPy/method-of-lines only.
+- a merely importable but unrunnable legacy FEniCS installation no longer causes the planner to advertise FEM execution incorrectly.
+- public `general_engine.select_solver()` and direct `general_engine_core.select_solver()` now share the same PDE backend decision contract while preserving explicit user solver configuration.
+
 ## [1.12.0] - 2026-09-05
 
 ### Added
@@ -211,6 +220,7 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 First tagged release: multi-perspective modeling workflow, rigor ladder, standardized report, bundled validation/fitting/sweep tools, worked examples and GitHub Actions CI.
 
+[1.12.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.1
 [1.12.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.0
 [1.11.2]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.2
 [1.11.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.1

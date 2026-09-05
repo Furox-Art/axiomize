@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.12.0"
+version = "1.12.1"
 description = "Rigorous scientific modeling engine and agent skill pack with native multi-family simulation, validation, causal/Bayesian inference and reproducible export"
 readme = "README.md"
 license = "MIT"

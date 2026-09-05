@@ -26,6 +26,43 @@ def install(engine: Any, advanced: Any) -> None:
         return result
     advanced._infer_bayesian = infer_bayesian_compat
 
+    # Keep PDE planning and the executable FEM adapter on exactly the same
+    # availability contract.  The old core planner only looked for a module
+    # literally named ``fenics``; that missed DOLFINx-only installations and
+    # could also select a broken legacy FEniCS import.  Probe the real bounded
+    # adapter instead, then install the same selector on both the public facade
+    # and the core module so direct-core callers cannot observe a different
+    # solver plan.
+    original_select_solver = engine.select_solver
+
+    def select_solver_v121(model: ModelIR) -> dict[str, Any]:
+        if (
+            model.family == ModelFamily.PDE
+            and model.solver.backend == "auto"
+            and model.solver.method == "auto"
+        ):
+            from axiomize.tools.pde.fenics_tool import FEniCSAdapter
+
+            fem = FEniCSAdapter.availability()
+            if fem.available:
+                version = f" ({fem.version})" if fem.version and fem.version != "unknown" else ""
+                return {
+                    "backend": "fenics",
+                    "method": "finite_element",
+                    "fallbacks": ["finite_difference"],
+                    "reason": f"bounded FEniCS/DOLFINx FEM adapter available{version}",
+                }
+            return {
+                "backend": "scipy",
+                "method": "method_of_lines",
+                "fallbacks": ["finite_difference"],
+                "reason": "bounded FEniCS/DOLFINx FEM adapter unavailable; using native method-of-lines PDE path",
+            }
+        return original_select_solver(model)
+
+    engine.select_solver = select_solver_v121
+    engine._core.select_solver = select_solver_v121
+
     # Every executable family gets an explicit numerical-verification contract.
     engine._NUMERICALLY_REFINED = set(ModelFamily)
 
