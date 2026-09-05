@@ -1,138 +1,225 @@
 # Changelog
 
-All notable changes to Axiomize are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is SemVer.
+All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
-## [Unreleased]
+## [1.12.0] - 2026-09-05
 
-### Added (PHASE 1 scientific engine core)
+### Added
 
-- `ScientificTool` standard interface (`src/axiomize/tools/base.py`): name, capabilities, availability(), validate_input(), execute(), validate_output(), metadata()
-- SymPy symbolic adapter (`tools/symbolic/`): simplify, derivatives, Jacobian, equation equivalence, analytic final-size, singularities; bare `beta`/`gamma` correctly parse as symbols, not special functions
-- SciPy numerical adapter (`tools/numerical/`): SIR solver that always reports conservation error and ODE residual; solver-agreement check; brentq final-size
-- Rule-based Scientific Tool Router (`routing/`): problem signals → structured tool decision; only truly installed tools are selected, otherwise explicit TOOL_UNAVAILABLE/degraded fallback
-- Dimensional analysis layer (`validation/`): mandatory unit registry; `metre + second` raises instead of computing; ValidationStatus enum (PASS/WARNING/FAIL/CONFLICT/INCONCLUSIVE/TOOL_UNAVAILABLE/UNVERIFIED)
-- Execution sandbox (`execution/`): timeout, private workdir, captured streams, seed, tool versions, no shell
-- Portable RunState (`runs/`): run.json + manifest.json with input hash, versions, timestamps
-- 26 new engine tests (`tests/test_engine_phase1.py`); `sympy` added to runtime deps and test requirements
+- all-family scientific benchmark/stress matrix with explicit per-case and total runtime budgets
+- permanent exact-installed-wheel scientific stress gate in CI and release preflight
+- Causal Engine 2.0:
+  - DAG cycle validation
+  - explicit/DAG-derived backdoor adjustment
+  - post-treatment-adjustment rejection
+  - AIPW doubly-robust, IPW and outcome-regression estimates for binary treatment
+  - robust continuous-treatment backdoor regression
+  - positivity/overlap, effective-sample-size and covariate-balance diagnostics
+  - bounded intervention/counterfactual predictions
+- package-native Bayesian Engine 2.0:
+  - bounded multi-chain random-walk Metropolis
+  - split R-hat, bulk ESS and MCSE
+  - posterior interval summaries
+  - posterior predictive RMSE, predictive coverage and Bayesian p-values
+- real optional structured FEniCS/DOLFINx FEM executor for bounded scalar Poisson P1 problems on unit intervals/squares
+- numerical-verification contracts for every Model IR family; stochastic between-seed variability remains explicitly separate from numerical error
+- Modelica 3.6 textual export for supported ODE/DAE/algebraic models
+- GraphML network export
+- Graphviz DOT causal-DAG export
+- `axiomize.portable-bundle.v1` export with canonical Model IR SHA-256 integrity metadata
 
-### Added (PHASES 2-10 scientific engine completion)
+### Changed
 
-- Cross-validation module with CONFLICT semantics (never silently picks a side)
-- Provenance enum (9 levels incl. ASSUMED_FOR_DEMONSTRATION) + candidate-model records
-- Fitting engine (bounded least squares, AIC/BIC, residual flags, BIC model comparison, SIR/logistic fitters)
-- Uncertainty module (6 classes, CIs, Monte Carlo propagation) + dependency-free Metropolis-Hastings Bayesian sampler (PyMC probed, honestly reported missing)
-- Z3 constraint verification, executable falsifiers, local + Monte Carlo sensitivity
-- Network SIR on graphs, PID closed-loop analysis, FTCS heat solver with CFL guard (FEniCS adapter reports TOOL_UNAVAILABLE)
-- cvxpy/CasADi/statsmodels adapters; SCS (`cds`) cross-validation backend
-- Shared application services + `axiomize` CLI + stdio MCP server + REST API v1 + capability discovery
-- Provider abstraction (echo + OpenAI-compatible) + portable run bundles (zip)
-- 12-case scientific benchmark suite (`tests/test_benchmark_suite.py`); `docs/integrations.md` agent guide
+- runtime capability discovery now advertises Causal Engine 2.0, Bayesian diagnostics/PPC, all-family numerical verification and extended exports
+- FEniCS availability is based on a real executable backend probe rather than module-name presence
+- README, ROADMAP and CHANGELOG now describe the actual hardened scientific engine rather than the older prompt/skill-only architecture
+
+### Release gates
+
+- Python 3.10/3.11/3.12/3.13 validation
+- security contract and dependency vulnerability audit
+- source and installed import-graph contracts
+- exact built wheel installation and full CLI/Model IR/export/surrogate/LaTeX checks
+- all-family scientific stress matrix
+- Ubuntu/Linux, Windows and macOS exact-wheel CLI smoke
+- Trusted Publishing-first PyPI publication and verification
+
+## [1.11.2] - 2026-09-05
+
+### Security / correctness
+
+- replaced permissive mathematical parsing paths with a bounded AST-whitelist boundary and explicit AST→SymPy construction
+- removed arbitrary `eval()` use from Z3 constraint handling; added solver timeout and denominator-domain guards
+- hardened Model IR namespaces, targets, bounds, finite values, solver settings and schema migrations
+- prevented silent future-schema migration and schema-version relabeling
+- made arbitrary Python and Lean execution explicit-trust operations with reduced environment inheritance and resource/time limits
+- confined REST/MCP run-file access to configured run roots; added request/message/concurrency/read-time limits and safer errors
+- added provider URL/redirect/request/response/timeout hardening
+- added run-state content integrity verification and atomic persistence
+- added hard non-bypassable limits for arrays, draws, networks, optimization, event queues, PDE work, causal matrices and other native executors
+- hardened LaTeX conversion with a mathematical macro allow-list and `-no-shell-escape`
+- corrected finite-horizon SIR validation versus asymptotic final-size theory
+- hardened direct SciPy/CVXPy/CasADi/statsmodels/PyMC/benchmark/playground/CSV/parallel-sweep surfaces
+- preserved first-occurrence order when duplicate data are merged with `sort_time=False`
+
+### CI / supply chain
+
+- immutable commit-SHA pinning for external GitHub Actions
+- permanent security-contract scanner
+- dependency vulnerability audit
+- direct adversarial runtime regressions
+- release verification hardened against PyPI propagation delay without weakening Trusted Publishing or exact-artifact gates
+
+## [1.11.1] - 2026-09-05
+
+### Added
+
+- permanent exact-wheel/CLI matrix on Ubuntu/Linux, Windows and macOS in normal CI and release preflight
+- platform-independent wheel smoke harness
 
 ### Fixed
 
-- `__version__` 1.5.0 → 1.6.0 to match pyproject.toml
+- macOS ARM dependency compatibility by constraining the Darwin Z3 line to compatible 4.x releases
+- release smoke SIR horizon corrected so it tests CLI portability rather than an intentionally truncated asymptotic final-size comparison
+
+## [1.11.0] - 2026-09-05
+
+### Added
+
+- validated polynomial response-surface surrogate/reduced-order models
+- deterministic Latin-hypercube training design through full Model IR execution
+- explicit approval before multiplying full-model simulations
+- untouched holdout validation with RMSE/NRMSE/MAE/max-error/R² thresholds
+- default blocking of out-of-domain surrogate extrapolation
+- exact source-model provenance and dataset hashes
+- CLI/REST/MCP surrogate paths and installed-wheel release smoke
+
+## [1.10.0]
+
+### Added
+
+- numerical/discretization verification separated from parameter/data/structural uncertainty
+- PDE mesh-refinement studies with observed-order/Richardson-style estimates
+- ODE/DAE tolerance refinement
+- approval gating before repeated numerical solves
+- CLI and REST numerical-verification services
+
+## [1.9.0]
+
+### Added
+
+- native advanced-family execution for PDE, index-1 DAE, optimization, control, network, Bayesian, agent-based, discrete-event, hybrid, multiphysics and causal Model IR
+- method-of-lines finite-difference PDE support with Dirichlet/Neumann boundary conditions
+- solver fallback diagnostics and advanced family execution through the stable general-engine facade
+
+## [1.8.0]
+
+### Added
+
+- canonical versioned Model IR / DSL as the single source of truth for deterministic scientific execution
+- migration preview/approval contract and reproducible migration history
+- model-family/domain recommendation and solver selection
+- native algebraic, ODE and stochastic execution
+- generic ODE fitting, scientific constraints/repair, residual diagnostics, AIC/BIC, stability/validity and nondimensionalization planning
+- SINDy-style sparse dynamics discovery, experiment ranking, provenance and portable exports
+- CLI `axiomize model` path and shared REST/MCP application services
+
+## [1.7.0]
+
+### Added
+
+- adaptive weak/medium/strong workflow and user-controlled clarification
+- explicit consumption policy: no silent extra agents, whole-analysis reruns or extra paid calls
+- stronger reproducibility, uncertainty, hypothesis/falsifier and visualization workflow contracts
+
+## [1.6.0]
+
+### Added
+
+- standardized `ScientificTool` interface and live backend availability probes
+- SciPy, SymPy, statsmodels, Z3, CVXPY, CasADi, network/control and Bayesian scientific adapters
+- dimensional validation and explicit validation statuses
+- application services, CLI, REST, MCP, provider abstraction and portable run-state foundations
 
 ## [1.5.0] - 2026-08-24
 
 ### Added
-- First-principles protocol (`skills/axiomize/first-principles.md`) for ideas with no matching archetype: derive the model from conservation/accounting identities instead of forcing a known template
-- Two novel-domain benchmark reports exercising that path , async-alignment and telephone-fidelity , neither drawn from the archetype catalog
-- Novel-territory appendix in the report template, recording which quantities were derived rather than borrowed
 
-### Changed
-- SKILL.md routes to the first-principles protocol when archetype matching fails
+- first-principles protocol for ideas with no matching archetype
+- novel-domain benchmark reports and novel-territory report appendix
 
 ## [1.4.1] - 2026-08-24
 
 ### Fixed
-- LaTeX converter hardening: all 11 worked examples and 8 benchmark reports now compile with zero errors
-- `texput.log`, a LaTeX build artifact, had been committed in 1.4.0; removed and `*.aux` / `*.log` / `*.out` added to `.gitignore`
+
+- LaTeX converter hardening across worked examples/benchmark reports
+- removed committed TeX build artifacts and expanded `.gitignore`
 
 ## [1.4.0] - 2026-08-24
 
 ### Added
-- LaTeX/PDF export for reports (`skills/axiomize/tools/report_to_latex.py`): booktabs tables, verbatim code blocks, unicode transliteration
-- Sample rendered report checked in as `docs/report-sample.tex` / `.pdf`
+
+- LaTeX/PDF export for reports
+- sample rendered report
 
 ## [1.3.2] - 2026-08-24
 
 ### Added
-- Animated demo embedded in the README
-- Benchmark regression wired into CI: the eight stored blind-test reports are replayed on every run, so a scoring regression fails the build
+
+- animated demo
+- benchmark-report regression wired into CI
 
 ## [1.3.1] - 2026-08-24
 
 ### Added
-- Eight blind-test benchmark reports committed under `benchmarks/reports/` (8/8 PASS, mean score 9.35) plus `docs/benchmark-results.md` summarising them
-- Epidemiology and operations domain packs filled out
+
+- stored blind-test benchmark reports and benchmark results documentation
+- epidemiology and operations domain packs
 
 ### Fixed
-- QA-wave defects: fade-out theory formula, Erlang-C overflow on large offered load, `csv_check` reporting a false PASS, and `fit` bounds
 
-### Removed
-- Registry submission kit (`docs/submissions.md`) , premature
+- stochastic fade-out theory, Erlang-C overflow, CSV check and fit-bound defects
 
 ## [1.3.0] - 2026-08-24
 
 ### Added
-- Three new lenses: decision theory (deep uncertainty, EVPI), demographic/actuarial, spatial statistics , fifteen total
-- Benchmark runner: `benchmark_runner.py` grades produced reports against ideas.json cases automatically
-- `fit.py --json` for machine-readable calibration output
-- Local playground: Gradio UI wrapping csv_check + calibration (`playground/app.py`)
-- Example gallery page and registry submission kit in docs
-- Domain pack: project management
 
-### Fixed
-- benchmark_runner --case-list no longer requires --report
+- decision-theory, demographic/actuarial and spatial-statistics lenses
+- report benchmark runner
+- machine-readable fitting output
+- local Gradio playground
+- project-management domain pack
 
 ## [1.2.0] - 2026-08-24
 
 ### Added
-- Three new lenses: reliability engineering, statistical process control, thermodynamic analogies (twelve total)
-- Three new worked examples: fleet maintenance (reliability), marketing attribution (causal), sensor placement (information theory) , eleven examples total
-- Benchmark suite: `benchmarks/ideas.json` with 8 standard test cases + scoring rubric
-- Domain packs: economics and ecology (alongside epidemiology and operations)
-- Beginner tutorial: `docs/tutorial.md`
-- New tool: `csv_check.py` , data quality pre-check before calibration
-- Parallel subagent wave executed for lens/example authoring; orchestrator integration pattern documented by example
 
-### Fixed
-- f-string backslash incompatibility breaking Python 3.9/3.11 in parallel_sweep.py
+- reliability, statistical-process-control and thermodynamic lenses
+- additional worked examples and domain packs
+- benchmark dataset/scoring rubric
+- CSV quality pre-check
 
 ## [1.1.0] - 2026-08-24
 
 ### Added
-- Three new lenses: game theory, causal inference, information theory (nine total)
-- Archetype catalog expanded 16 → 30 entries
-- Five new worked examples: network rumor, greenhouse control, startup growth (Bass + calibration), insurance ruin risk, café pricing war , network and control lenses now have dedicated examples
-- Mermaid coupling diagrams in Phase 2 and the report template
-- `fit.py`: AIC/BIC diagnostics, residual autocorrelation flag, `--compare` mode ranking models on the same data
-- `tools/index_reports.py`: rebuilds `reports/INDEX.md`; sessions now cross-reference earlier reports
-- Glossary template supporting basic-tier readers
-- GitHub Pages site (`mkdocs-material`) via Pages workflow
-- Domain packs: epidemiology, operations
-- Publishing checklist for external registries
-- CI: Python 3.9 / 3.11 / 3.13 matrix with dependency floors
+
+- game-theory, causal-inference and information-theory lenses
+- expanded archetype catalog and worked examples
+- model-comparison diagnostics, report indexing and GitHub Pages
 
 ## [1.0.0] - 2026-08-24
 
-First tagged release.
+First tagged release: multi-perspective modeling workflow, rigor ladder, standardized report, bundled validation/fitting/sweep tools, worked examples and GitHub Actions CI.
 
-### Added
-- 8-phase workflow: parse → decompose → parameters → assumptions → multi-perspective modeling → comparison → implementation → falsifiability
-- Six mathematical lenses: deterministic, stochastic, optimization, agent-based, network, control
-- Archetype catalog mapping idea patterns to canonical models (SIR, Bass, newsvendor, M/M/c, logistic, Lotka, Volterra...)
-- Three-tier rigor ladder (basic / standard / research) with plain-language guarantee and automatic escalation on threshold risk
-- Parallel Dispatch Protocol: lenses run as independent subagents from frozen self-contained briefs; assumption conflicts surface at merge
-- Standardized report template with confidence ledger and research appendix
-- Tools bundled inside the skill:
-  - `validate.py` , SIR / Gillespie CTMC / Erlang-C queue modes with sanity checks and sweeps
-  - `fit.py` , parameter calibration from CSV data with confidence intervals and self-tests
-  - `parallel_sweep.py` , real process-pool execution of grids and Monte Carlo chunks
-  - `check_skill.py` , metadata, link and compile linter (wired into CI)
-- Three worked examples: epidemic SIR, retail inventory, coffee-shop staffing
-- GitHub Actions CI running all validation modes
-
+[1.12.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.0
+[1.11.2]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.2
+[1.11.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.1
+[1.11.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.0
+[1.10.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.10.0
+[1.9.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.9.0
+[1.8.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.8.0
+[1.7.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.7.0
+[1.6.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.6.0
 [1.5.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.5.0
 [1.4.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.4.1
 [1.4.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.4.0
