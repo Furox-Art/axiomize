@@ -1,17 +1,13 @@
 """Axiomize local playground (optional).
 
-A tiny Gradio UI wrapping the bundled tools so non-CLI users can explore:
-  - data quality check (csv_check)
-  - parameter calibration (fit) with curve plot
-
-Install & run:
-    pip install gradio numpy scipy matplotlib pandas
-    gradio app.py
-Then open the printed local URL. The skill itself does NOT depend on this.
+A tiny Gradio UI wrapping the bundled calibration tools. Uploaded CSVs are
+bounded and validated before pandas/SciPy processing. Tool loading never prepends
+an arbitrary working directory to ``sys.path``.
 """
 
+import importlib.util
 import io
-import sys
+import math
 from pathlib import Path
 
 import gradio as gr
@@ -22,80 +18,110 @@ import pandas as pd
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-def _find_tools():
-    """Locate skills/axiomize/tools next to this file, falling back to the
-    working directory (the `gradio app.py` launcher copies the file to a temp
-    dir, which breaks a __file__-only path).
+MAX_CSV_BYTES = 64 * 1024 * 1024
+MAX_DATA_ROWS = 200_000
 
-    Also checks src/axiomize/tools (the installed wheel layout) so the
-    playground works after `pip install axiomize` without a source checkout."""
+
+def _load_fit_functions():
+    try:
+        from axiomize.tools.fit import fit_logistic, fit_sir
+        return fit_logistic, fit_sir
+    except ImportError:
+        pass
+
     here = Path(__file__).resolve()
-    candidates = [
-        here.parent.parent / "skills" / "axiomize" / "tools",  # source checkout
-        here.parent.parent / "src" / "axiomize" / "tools",     # wheel layout
-        Path.cwd() / "skills" / "axiomize" / "tools",          # run from repo root
-        Path.cwd() / "src" / "axiomize" / "tools",             # run from repo root (wheel)
-    ]
-    for cand in candidates:
-        if (cand / "fit.py").is_file():
-            return cand
-    raise SystemExit(
-        f"error: cannot find skills/axiomize/tools (looked in: "
-        f"{', '.join(str(c) for c in candidates)}). "
-        f"Run me from the axiomize repo: python playground/app.py"
-    )
+    candidates = [here.parent.parent / "skills" / "axiomize" / "tools" / "fit.py"]
+    cwd = Path.cwd().resolve()
+    # A Gradio launcher may copy app.py to a temp directory. Permit a cwd
+    # fallback only when it is demonstrably an Axiomize source checkout, and
+    # load the exact file rather than mutating sys.path.
+    if (cwd / "pyproject.toml").is_file() and (cwd / "skills" / "axiomize" / "tools" / "fit.py").is_file():
+        candidates.append(cwd / "skills" / "axiomize" / "tools" / "fit.py")
+
+    for target in candidates:
+        if not target.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("_axiomize_playground_fit", target)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.fit_logistic, module.fit_sir
+    raise RuntimeError("cannot locate Axiomize calibration tools; install axiomize or run from its repository")
 
 
-TOOLS = _find_tools()
-sys.path.insert(0, str(TOOLS))
+fit_logistic, fit_sir = _load_fit_functions()
 
-from fit import fit_logistic, fit_sir  # noqa: E402
+
+def _uploaded_path(csv_file):
+    raw = getattr(csv_file, "name", None)
+    if raw is None and isinstance(csv_file, (str, Path)):
+        raw = str(csv_file)
+    if not raw:
+        raise ValueError("uploaded CSV has no readable file path")
+    path = Path(raw)
+    if not path.is_file():
+        raise ValueError("uploaded CSV is not a regular file")
+    if path.stat().st_size > MAX_CSV_BYTES:
+        raise ValueError(f"CSV exceeds hard size limit {MAX_CSV_BYTES} bytes")
+    return path
 
 
 def analyze(csv_file, model, N):
     if csv_file is None:
         return None, "Upload a CSV first (time column first, value second)."
     try:
-        df = pd.read_csv(csv_file.name)
-    except (OSError, pd.errors.ParserError) as e:
-        return None, f"CSV read failed: {e}"
+        path = _uploaded_path(csv_file)
+        df = pd.read_csv(path, nrows=MAX_DATA_ROWS + 1)
+    except (OSError, ValueError, UnicodeError, pd.errors.ParserError) as exc:
+        return None, f"CSV read failed: {exc}"
+    if len(df) > MAX_DATA_ROWS:
+        return None, f"CSV exceeds hard row limit {MAX_DATA_ROWS}."
     if df.shape[1] < 2:
         return None, "Need at least two columns: time, observed value."
-    t = df.iloc[:, 0].to_numpy(float)
-    y = df.iloc[:, 1].to_numpy(float)
-    order = np.argsort(t)
-    t, y = t[order], y[order]
+    try:
+        t = df.iloc[:, 0].to_numpy(float)
+        y = df.iloc[:, 1].to_numpy(float)
+    except (TypeError, ValueError) as exc:
+        return None, f"First two columns must be numeric: {exc}"
+    if len(t) < 3:
+        return None, "Need at least three data rows for calibration."
+    if not np.all(np.isfinite(t)) or not np.all(np.isfinite(y)):
+        return None, "Time and observed values must be finite."
+    if np.any(np.diff(t) <= 0):
+        return None, "Time must be strictly increasing with no duplicates; run csv_check and fix the source data."
     notes = [f"rows: {len(t)}"]
 
     if model == "sir":
-        # fit_sir treats N as mandatory (population size is not inferable from
-        # case counts), so the UI must refuse before calling it.
         try:
-            n_val = int(N)
-        except (TypeError, ValueError):
-            return None, "SIR needs a whole-number population N (required)."
-        if n_val <= 0:
-            return None, "SIR needs N > 0."
-        if n_val <= float(y.max()):
-            return None, f"SIR needs N > max observed value ({y.max():g}); got N={n_val}."
+            n_float = float(N)
+        except (TypeError, ValueError, OverflowError):
+            return None, "SIR needs a finite positive population N (required)."
+        if not math.isfinite(n_float) or n_float <= 0 or not n_float.is_integer():
+            return None, "SIR needs a finite positive whole-number population N."
+        n_val = int(n_float)
+        if np.any(y < 0) or n_val < float(y.max()):
+            return None, f"SIR needs observations in [0, N]; max observed value is {y.max():g}, N={n_val}."
     else:
         n_val = None
 
     try:
         result = fit_sir(t, y, N=n_val) if model == "sir" else fit_logistic(t, y)
-    except Exception as e:  # UI must never crash on a bad fit
-        return None, f"Fit failed: {e}. Try csv_check first; SIR needs N >> max(y)."
+    except (ValueError, RuntimeError, TypeError, FloatingPointError, OverflowError) as exc:
+        return None, f"Fit failed: {exc}. Run csv_check and verify model assumptions."
 
-    for k, (v, err) in result["params"].items():
-        notes.append(f"{k} = {v:.4g}" + (f" ± {err:.2g}" if err else ""))
+    for key, (value, error) in result["params"].items():
+        notes.append(f"{key} = {value:.4g}" + (f" ± {error:.2g}" if error else ""))
     notes.append(f"RMSE = {result['rmse']:.4g}")
     d = result["diag"]
     notes.append(f"AIC {d['aic']:.1f} | BIC {d['bic']:.1f} | resid AC(1) {d['lag1_autocorr']:+.2f}")
 
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.scatter(t, y, s=16, label="observed")
-    ax.plot(t, result["fitted"], lw=2, label=f" fitted {model}")
-    ax.legend(); ax.set_xlabel(df.columns[0]); ax.set_ylabel(df.columns[1])
+    ax.plot(t, result["fitted"], lw=2, label=f"fitted {model}")
+    ax.legend()
+    ax.set_xlabel(df.columns[0])
+    ax.set_ylabel(df.columns[1])
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=120, bbox_inches="tight")
     plt.close(fig)
