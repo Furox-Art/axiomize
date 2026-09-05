@@ -131,11 +131,27 @@ jobs:
         id: gate
         shell: bash
         run: |
-          if curl -sfL "https://pypi.org/pypi/${{ needs.preflight.outputs.package_name }}/${{ needs.preflight.outputs.package_version }}/json" > /dev/null; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          name="${{ needs.preflight.outputs.package_name }}"
+          version="${{ needs.preflight.outputs.package_version }}"
+          json_url="https://pypi.org/pypi/${name}/${version}/json"
+          simple_url="https://pypi.org/simple/${name}/"
+          normalized_name="$(python -c 'import re,sys; print(re.sub(r"[-_.]+", "_", sys.argv[1]))' "$name")"
+          found=false
+          if curl --retry 2 --retry-delay 2 -sfL "$json_url" > /dev/null; then
+            found=true
+            echo "Existing PyPI release found through JSON API: $json_url"
           else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            listing="$(mktemp)"
+            if curl --retry 2 --retry-delay 2 -sfL "$simple_url" -o "$listing"; then
+              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then
+                found=true
+                echo "Existing PyPI release found through Simple API: $simple_url"
+              fi
+            fi
+            rm -f "$listing"
           fi
+          echo "skip=$found" >> "$GITHUB_OUTPUT"
       - name: Detect API token fallback
         id: auth
         if: steps.gate.outputs.skip != 'true'
@@ -152,6 +168,8 @@ jobs:
         id: trusted_publish
         if: steps.gate.outputs.skip != 'true'
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          skip-existing: true
         continue-on-error: true
       - name: Publish to PyPI with API token fallback
         id: token_publish
@@ -159,6 +177,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
         continue-on-error: true
       - name: Fail clearly when PyPI authentication is not configured
         if: steps.gate.outputs.skip != 'true' && steps.trusted_publish.outcome != 'success' && steps.auth.outputs.has_token != 'true'
@@ -168,18 +187,45 @@ jobs:
           echo "::error::Configure a PyPI Trusted Publisher with owner=Furox-Art, repository=axiomize, workflow=release.yml, environment=pypi; or define the PYPI_API_TOKEN secret in the pypi environment."
           exit 1
       - name: Verify PyPI publication
-        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          url="https://pypi.org/pypi/${{ needs.preflight.outputs.package_name }}/${{ needs.preflight.outputs.package_version }}/json"
+          name="${{ needs.preflight.outputs.package_name }}"
+          version="${{ needs.preflight.outputs.package_version }}"
+          json_url="https://pypi.org/pypi/${name}/${version}/json"
+          simple_url="https://pypi.org/simple/${name}/"
+          normalized_name="$(python -c 'import re,sys; print(re.sub(r"[-_.]+", "_", sys.argv[1]))' "$name")"
+
+          if [ "${{ steps.gate.outputs.skip }}" = "true" ]; then
+            echo "PyPI publication verified before upload gate."
+            exit 0
+          fi
+
           for attempt in 1 2 3 4 5 6; do
-            if curl -sfL "$url" > /dev/null; then
-              echo "PyPI publication verified: $url"
+            if curl -sfL "$json_url" > /dev/null; then
+              echo "PyPI publication verified through JSON API: $json_url"
               exit 0
             fi
+            listing="$(mktemp)"
+            if curl -sfL "$simple_url" -o "$listing"; then
+              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then
+                rm -f "$listing"
+                echo "PyPI publication verified through Simple API: $simple_url"
+                exit 0
+              fi
+            fi
+            rm -f "$listing"
             sleep 10
           done
+
+          if [ "${{ steps.trusted_publish.outcome }}" = "success" ] || [ "${{ steps.token_publish.outcome }}" = "success" ]; then
+            echo "::warning::PyPI public index/API propagation is delayed; upload action was accepted by PyPI and completed successfully."
+            echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
+            echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"
+            exit 0
+          fi
+
+          echo "::error::Neither an existing PyPI release nor a successful PyPI upload could be verified."
           echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
           echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"
           exit 1
