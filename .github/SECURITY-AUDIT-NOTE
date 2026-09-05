@@ -1,0 +1,1 @@
+Axiomize 1.11.2 hardening branch: release only after all final-commit CI and release-preflight gates pass.

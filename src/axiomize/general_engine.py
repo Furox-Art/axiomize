@@ -9,18 +9,46 @@ reference model.
 
 from __future__ import annotations
 
-from typing import Any
+import math
+from typing import Any, Callable
 
 from axiomize import general_engine_core as _core
 from axiomize.general_engine_core import *  # noqa: F401,F403
+from axiomize.limits import (
+    MAX_ARRAY_ITEMS,
+    MAX_BAYES_DRAWS,
+    MAX_CONTROL_DIMENSION,
+    MAX_DENSE_NETWORK_NODES,
+    MAX_MODEL_COMPONENTS,
+    MAX_OPTIMIZER_ITERATIONS,
+    MAX_POINTS,
+    MAX_SAMPLES,
+    bounded_int,
+    enforce_result_cells,
+)
 from axiomize.model_ir import ModelFamily, ModelIR
+from axiomize.safe_expression import sympy_expression as _safe_sympy_expression
 
 # A small number of internal helpers are intentionally imported by the existing
 # advanced diagnostics module. Star imports omit underscore names, so preserve
 # those compatibility symbols explicitly while the core is split behind this
 # facade.
 _parameter_values = _core._parameter_values
-_sympy_expression = _core._sympy_expression
+
+
+def _sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
+    """Compatibility name backed by the hardened shared expression parser."""
+    return _safe_sympy_expression(expression, symbols)
+
+
+def _compile_expression_hardened(expression: str, arg_names: list[str]) -> Callable[..., Any]:
+    """Advanced-family compiler using the same bounded parser as core Model IR."""
+    import sympy as sp
+
+    symbols = {name: sp.Symbol(name, real=True) for name in arg_names}
+    expr = _safe_sympy_expression(str(expression), symbols)
+    return sp.lambdify([symbols[name] for name in arg_names], expr, modules=["numpy", "math"])
+
 
 _base_select_solver = _core.select_solver
 _base_estimate_compute = _core.estimate_compute
@@ -43,6 +71,169 @@ _ADVANCED_NATIVE = {
     ModelFamily.CAUSAL,
 }
 _NUMERICALLY_REFINED = {ModelFamily.PDE, ModelFamily.DAE}
+
+
+def _validated_span(t_span: tuple[float, float]) -> tuple[float, float]:
+    if not isinstance(t_span, (tuple, list)) or len(t_span) != 2:
+        raise ValueError("t_span must contain exactly [start, stop]")
+    t0, t1 = float(t_span[0]), float(t_span[1])
+    if not math.isfinite(t0) or not math.isfinite(t1) or t1 <= t0:
+        raise ValueError("t_span must be finite and strictly increasing")
+    return t0, t1
+
+
+def _validated_points(points: int, model: ModelIR | None = None) -> int:
+    value = bounded_int(points, name="points", minimum=2, maximum=MAX_POINTS)
+    if model is not None:
+        enforce_result_cells(max(1, len(model.variables)), value, name="model trajectory")
+    return value
+
+
+def _advanced_preflight(model: ModelIR, *, points: int) -> None:
+    """Reject advanced requests whose in-memory/work dimensions are unsafe.
+
+    Approval flags never bypass these ceilings. They are implementation-safety
+    limits, not scientific-policy limits.
+    """
+    metadata = model.metadata if isinstance(model.metadata, dict) else {}
+    state_count = max(1, sum(v.role == "state" for v in model.variables))
+
+    if model.family == ModelFamily.NETWORK:
+        cfg = metadata.get("network", {})
+        if isinstance(cfg, dict):
+            nodes = cfg.get("nodes")
+            edges = cfg.get("edges", [])
+            if isinstance(nodes, list):
+                n_nodes = len(nodes)
+            elif nodes is None:
+                if isinstance(edges, list) and edges:
+                    discovered: set[str] = set()
+                    if len(edges) > MAX_ARRAY_ITEMS:
+                        raise ValueError(f"network.edges exceeds hard limit {MAX_ARRAY_ITEMS}")
+                    for edge in edges:
+                        if isinstance(edge, dict):
+                            discovered.update((str(edge.get("source")), str(edge.get("target"))))
+                        elif isinstance(edge, (list, tuple)) and len(edge) >= 2:
+                            discovered.update((str(edge[0]), str(edge[1])))
+                    n_nodes = len(discovered) if discovered else int(cfg.get("n_nodes", 1))
+                else:
+                    n_nodes = int(cfg.get("n_nodes", 1))
+            else:
+                raise ValueError("network.nodes must be an array")
+            if n_nodes < 1 or n_nodes > MAX_DENSE_NETWORK_NODES:
+                raise ValueError(
+                    f"dense network executor supports 1..{MAX_DENSE_NETWORK_NODES} nodes; got {n_nodes}"
+                )
+            enforce_result_cells(state_count, points, n_nodes, name="network trajectory")
+
+    elif model.family == ModelFamily.AGENT_BASED:
+        cfg = metadata.get("agents", metadata.get("agent_based", {}))
+        if isinstance(cfg, dict):
+            n_agents = bounded_int(
+                cfg.get("count", cfg.get("n_agents", 100)),
+                name="agent count",
+                minimum=1,
+                maximum=1_000_000,
+            )
+            enforce_result_cells(state_count, points, n_agents, name="agent trajectory")
+
+    elif model.family == ModelFamily.CONTROL:
+        cfg = metadata.get("control", metadata.get("state_space", {}))
+        if isinstance(cfg, dict):
+            matrix_source = cfg.get("state_space", cfg)
+            if isinstance(matrix_source, dict) and isinstance(matrix_source.get("A"), list):
+                n = len(matrix_source["A"])
+                if n > MAX_CONTROL_DIMENSION:
+                    raise ValueError(
+                        f"control state dimension exceeds hard limit {MAX_CONTROL_DIMENSION}"
+                    )
+                enforce_result_cells(max(1, n), points, name="control trajectory")
+
+    elif model.family == ModelFamily.BAYESIAN:
+        cfg = metadata.get("bayesian", {})
+        if isinstance(cfg, dict):
+            draws = bounded_int(
+                cfg.get("draws", max(200, points)),
+                name="bayesian.draws",
+                minimum=50,
+                maximum=MAX_BAYES_DRAWS,
+            )
+            burn = bounded_int(
+                cfg.get("burn", max(50, draws // 4)),
+                name="bayesian.burn",
+                minimum=0,
+                maximum=MAX_BAYES_DRAWS,
+            )
+            observed = cfg.get("observations", cfg.get("observed"))
+            if observed is None and isinstance(cfg.get("outcome"), str):
+                data = cfg.get("data", {})
+                if isinstance(data, dict):
+                    observed = data.get(str(cfg["outcome"]))
+            if isinstance(observed, list):
+                if len(observed) > MAX_ARRAY_ITEMS:
+                    raise ValueError(f"bayesian observations exceed hard limit {MAX_ARRAY_ITEMS}")
+                # Log-posterior evaluates the whole observation vector per draw.
+                if (draws + burn) * max(1, len(observed)) > 50_000_000:
+                    raise ValueError("Bayesian request exceeds hard 50,000,000 likelihood-work-unit limit")
+            if bool(cfg.get("return_samples", False)):
+                enforce_result_cells(draws, max(1, len(model.parameters)), name="Bayesian returned samples")
+
+    elif model.family == ModelFamily.DISCRETE_EVENT:
+        cfg = metadata.get("discrete_event", metadata.get("events", {}))
+        if isinstance(cfg, list):
+            events = cfg
+            max_events = 1_000_000
+        elif isinstance(cfg, dict):
+            events = cfg.get("events", [])
+            max_events = int(cfg.get("max_events", 1_000_000))
+        else:
+            events = []
+            max_events = 0
+        if isinstance(events, list) and len(events) > 10_000:
+            raise ValueError("discrete-event definitions exceed hard limit 10000")
+        if max_events < 1 or max_events > 1_000_000:
+            raise ValueError("discrete_event.max_events must be between 1 and 1000000")
+
+    elif model.family == ModelFamily.HYBRID:
+        cfg = metadata.get("hybrid", {})
+        if isinstance(cfg, dict):
+            events = cfg.get("events", [])
+            if isinstance(events, list) and len(events) > 1_000:
+                raise ValueError("hybrid event definitions exceed hard limit 1000")
+            bounded_int(
+                cfg.get("max_events_per_interval", 100),
+                name="hybrid.max_events_per_interval",
+                minimum=1,
+                maximum=10_000,
+            )
+
+    elif model.family == ModelFamily.OPTIMIZATION:
+        cfg = metadata.get("optimization", {})
+        if isinstance(cfg, dict):
+            bounded_int(
+                cfg.get("maxiter", 1000),
+                name="optimization.maxiter",
+                minimum=1,
+                maximum=MAX_OPTIMIZER_ITERATIONS,
+            )
+            raw_constraints = cfg.get("constraints", [])
+            if isinstance(raw_constraints, list) and len(raw_constraints) > 10_000:
+                raise ValueError("optimization constraints exceed hard limit 10000")
+
+    elif model.family == ModelFamily.MULTIPHYSICS:
+        cfg = metadata.get("multiphysics", {})
+        if isinstance(cfg, dict):
+            components = cfg.get("components", {})
+            if isinstance(components, (dict, list)) and len(components) > MAX_MODEL_COMPONENTS:
+                raise ValueError(
+                    f"multiphysics components exceed hard limit {MAX_MODEL_COMPONENTS}"
+                )
+            bounded_int(
+                cfg.get("max_iterations", 8),
+                name="multiphysics.max_iterations",
+                minimum=1,
+                maximum=100,
+            )
 
 
 def select_solver(model: ModelIR) -> dict[str, Any]:
@@ -71,7 +262,9 @@ def estimate_compute(
     points: int = 1000,
     samples: int = 1,
 ) -> dict[str, Any]:
-    """Estimate compute and preserve consent gates for multiplicative families."""
+    """Estimate compute while enforcing non-bypassable resource ceilings."""
+    points = bounded_int(points, name="points", minimum=1, maximum=MAX_POINTS)
+    samples = bounded_int(samples, name="samples", minimum=1, maximum=MAX_SAMPLES)
     if model.family != ModelFamily.MULTIPHYSICS:
         out = dict(_base_estimate_compute(model, action=action, points=points, samples=samples))
     else:
@@ -86,11 +279,11 @@ def estimate_compute(
             "experiment_design": 15,
             "numerical_verification": 4,
         }.get(action, 5)
-        evals = max(1, int(points)) * max(1, int(samples)) * 40 * action_factor
+        evals = points * samples * 40 * action_factor
         level = "low" if evals < 50_000 else "medium" if evals < 2_000_000 else "high"
         estimated_memory_mb = max(
             1.0,
-            len(model.variables) * max(1, int(points)) * 8 / 1_000_000 * max(2, int(samples)),
+            len(model.variables) * points * 8 / 1_000_000 * max(2, samples),
         )
         out = {
             "action": action,
@@ -146,13 +339,7 @@ def recommend_model_families(
 
 
 def export_model(model: ModelIR, *, format: str = "json") -> dict[str, Any]:
-    """Export core portable formats plus explicit-version scientific standards.
-
-    The unversioned ``sbml``/``cellml`` aliases intentionally preserve the old
-    conservative ADAPTER_REQUIRED behavior.  Callers must request a concrete
-    standard version (for example ``sbml-l3v2`` or ``cellml-2.0``) so Axiomize
-    never silently guesses a scientific exchange schema.
-    """
+    """Export core portable formats plus explicit-version scientific standards."""
     from axiomize.standards_export import export_versioned_standard
 
     standard = export_versioned_standard(model, format=format)
@@ -171,6 +358,8 @@ def _simulate_once(
     approve_heavy: bool = False,
 ) -> dict[str, Any]:
     """Execute one model run without recursively launching refinement studies."""
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
     structure = model.validate_structure()
     if any(check["status"] == "FAIL" for check in structure):
         return {"status": "FAIL", "stage": "structure", "checks": structure}
@@ -194,9 +383,12 @@ def _simulate_once(
         )
 
     if model.family in _ADVANCED_NATIVE:
-        from axiomize.advanced_family_engine import simulate_advanced_family
+        from axiomize import advanced_family_engine as _advanced
 
-        return simulate_advanced_family(
+        _advanced_preflight(model, points=points)
+        # Replace the duplicated legacy parser with the shared hardened parser.
+        _advanced._compile_expression = _compile_expression_hardened
+        return _advanced.simulate_advanced_family(
             model,
             t_span=t_span,
             points=points,
@@ -227,6 +419,10 @@ def numerical_refinement(
     """Run an explicit mesh/tolerance refinement study through the public engine."""
     from axiomize.numerical_verification import numerical_refinement_study
 
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
+    if not math.isfinite(float(tolerance)) or float(tolerance) <= 0:
+        raise ValueError("numerical refinement tolerance must be finite and positive")
     return numerical_refinement_study(
         model,
         simulate_once=_simulate_once,
@@ -234,7 +430,7 @@ def numerical_refinement(
         points=points,
         parameter_overrides=parameter_overrides,
         seed=seed,
-        tolerance=tolerance,
+        tolerance=float(tolerance),
         approve_heavy=approve_heavy,
     )
 
@@ -248,13 +444,9 @@ def simulate_model(
     seed: int = 0,
     approve_heavy: bool = False,
 ) -> dict[str, Any]:
-    """Execute Model IR and surface numerical verification for discretized families.
-
-    PDE and DAE runs always report the refinement requirement. Without explicit
-    heavy-compute approval, the base simulation still completes and the nested
-    ``numerical_verification`` field reports ``APPROVAL_REQUIRED``. Once approved,
-    refinement executes; a failed convergence test is a visible model-run failure.
-    """
+    """Execute Model IR and surface numerical verification for discretized families."""
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
     result = _simulate_once(
         model,
         t_span=t_span,
@@ -302,10 +494,10 @@ def simulate_model(
     return result
 
 
-# The preserved core functions (validity scans, experiment design, provenance,
-# execution planning, generated Python export, etc.) resolve these names through
-# their original module globals. Patch those globals once so every public path
-# uses the same extended runtime rather than a divergent implementation.
+# The preserved core functions resolve these names through module globals. Patch
+# them once so every public path uses the same hardened parser, safety limits and
+# extended runtime rather than a divergent implementation.
+_core._sympy_expression = _sympy_expression
 _core.select_solver = select_solver
 _core.estimate_compute = estimate_compute
 _core.recommend_model_families = recommend_model_families

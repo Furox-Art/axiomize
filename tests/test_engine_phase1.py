@@ -1,8 +1,4 @@
-"""PHASE 1 engine tests: dimensions, symbolic, numerical, routing, sandbox, run-state.
-
-TDD tracer: these tests define the new `axiomize` engine packages.
-Run with: pytest tests/ -v
-"""
+"""PHASE 1 engine tests: dimensions, symbolic, numerical, routing, sandbox, run-state."""
 
 import json
 import math
@@ -14,30 +10,13 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from axiomize.execution.sandbox import run_python
+from axiomize.execution.sandbox import UnsafeExecutionDenied, run_python
 from axiomize.routing.router import classify
 from axiomize.runs.state import RunState
-from axiomize.tools.numerical.scipy_tool import (
-    final_size_numeric,
-    solve_sir,
-)
-from axiomize.tools.symbolic.sympy_tool import (
-    check_equivalence,
-    differentiate,
-    final_size_symbolic,
-    simplify_expr,
-)
-from axiomize.validation.dimensions import (
-    Dimension,
-    DimensionalMismatch,
-    Quantity,
-    check_add,
-)
+from axiomize.tools.numerical.scipy_tool import final_size_numeric, solve_sir
+from axiomize.tools.symbolic.sympy_tool import check_equivalence, differentiate, final_size_symbolic, simplify_expr
+from axiomize.validation.dimensions import Dimension, DimensionalMismatch, Quantity, check_add
 from axiomize.validation.status import ValidationStatus
-
-# ---------------------------------------------------------------------------
-# dimensions
-# ---------------------------------------------------------------------------
 
 
 class TestDimensions:
@@ -62,14 +41,8 @@ class TestDimensions:
         assert (beta.dimension * days.dimension) == Dimension({})
 
     def test_valid_range_violation_warns(self):
-        q = Quantity("probability", "p", "dimensionless", value=7.0,
-                     valid_range=(0.0, 1.0))
+        q = Quantity("probability", "p", "dimensionless", value=7.0, valid_range=(0.0, 1.0))
         assert q.range_check().status == ValidationStatus.FAIL
-
-
-# ---------------------------------------------------------------------------
-# symbolic (SymPy)
-# ---------------------------------------------------------------------------
 
 
 class TestSymbolic:
@@ -89,11 +62,6 @@ class TestSymbolic:
 
     def test_final_size_subcritical_is_zero(self):
         assert final_size_symbolic(0.5) == 0.0
-
-
-# ---------------------------------------------------------------------------
-# numerical (SciPy)
-# ---------------------------------------------------------------------------
 
 
 class TestNumerical:
@@ -120,15 +88,9 @@ class TestNumerical:
         assert abs(num - sym) < 1e-4
 
 
-# ---------------------------------------------------------------------------
-# routing
-# ---------------------------------------------------------------------------
-
-
 class TestRouter:
     def test_sir_problem_selects_scipy_with_sympy_verification(self):
-        problem = {"signals": ["ode", "compartmental", "threshold"],
-                   "equations": ["dS/dt = -beta*S*I/N"]}
+        problem = {"signals": ["ode", "compartmental", "threshold"], "equations": ["dS/dt = -beta*S*I/N"]}
         d = classify(problem)
         assert "scipy" in d.primary_tools
         assert "sympy" in d.verification_tools
@@ -137,8 +99,7 @@ class TestRouter:
     def test_decision_schema_has_required_keys(self):
         d = classify({"signals": ["ode"]})
         payload = d.to_dict()
-        assert set(payload) >= {"problem_type", "primary_tools",
-                                "verification_tools", "reason", "alternatives"}
+        assert set(payload) >= {"problem_type", "primary_tools", "verification_tools", "reason", "alternatives"}
 
     def test_unavailable_tool_never_selected(self):
         d = classify({"signals": ["pde", "fem"]})
@@ -151,39 +112,43 @@ class TestRouter:
         assert d.status == ValidationStatus.INCONCLUSIVE
 
 
-# ---------------------------------------------------------------------------
-# sandbox
-# ---------------------------------------------------------------------------
-
-
 class TestSandbox:
+    def test_arbitrary_execution_denied_by_default(self):
+        with pytest.raises(UnsafeExecutionDenied):
+            run_python("print(6 * 7)", timeout_s=30)
+
     def test_captured_stdout(self):
-        rec = run_python("print(6 * 7)", timeout_s=30)
+        rec = run_python("print(6 * 7)", timeout_s=30, allow_unsafe_code=True)
         assert rec.exit_code == 0
         assert rec.stdout.strip() == "42"
 
     def test_timeout_kills(self):
-        rec = run_python("import time; time.sleep(60)", timeout_s=2)
+        rec = run_python("import time; time.sleep(60)", timeout_s=2, allow_unsafe_code=True)
         assert rec.timed_out is True
         assert rec.exit_code != 0
 
     def test_stderr_and_seed_recorded(self):
         rec = run_python("import sys; print('oops', file=sys.stderr); raise SystemExit(3)",
-                         timeout_s=30, seed=123)
+                         timeout_s=30, seed=123, allow_unsafe_code=True)
         assert rec.exit_code == 3
         assert "oops" in rec.stderr
         assert rec.seed == 123
         assert rec.execution_time_s >= 0.0
 
     def test_record_has_tool_versions(self):
-        rec = run_python("print('hi')", timeout_s=30)
+        rec = run_python("print('hi')", timeout_s=30, allow_unsafe_code=True)
         assert "numpy" in rec.tool_versions
         assert rec.execution_time_s >= 0.0
 
-
-# ---------------------------------------------------------------------------
-# run state
-# ---------------------------------------------------------------------------
+    def test_environment_secrets_are_not_inherited(self, monkeypatch):
+        monkeypatch.setenv("AXIOMIZE_TEST_SECRET", "do-not-leak")
+        rec = run_python(
+            "import os; print(os.environ.get('AXIOMIZE_TEST_SECRET', 'missing'))",
+            timeout_s=30,
+            allow_unsafe_code=True,
+        )
+        assert rec.stdout.strip() == "missing"
+        assert rec.environment_inherited is False
 
 
 class TestRunState:
@@ -199,11 +164,8 @@ class TestRunState:
         assert loaded.problem_definition == "SIR test"
 
     def test_reproduce_same_inputs_same_hash(self, tmp_path):
-        kwargs = {"problem_definition": "SIR test",
-                  "equations": ["dS/dt=-beta*S*I/N"],
-                  "parameters": {"beta": 0.3}}
-        a = RunState(**kwargs)
-        b = RunState(**kwargs)
+        kwargs = {"problem_definition": "SIR test", "equations": ["dS/dt=-beta*S*I/N"], "parameters": {"beta": 0.3}}
+        a = RunState(**kwargs); b = RunState(**kwargs)
         assert a.input_hash() == b.input_hash()
 
     def test_manifest_records_versions(self, tmp_path):
@@ -214,4 +176,5 @@ class TestRunState:
         assert "axiomize_version" in manifest
         assert "tool_versions" in manifest
         assert "timestamp" in manifest
+        assert "run_sha256" in manifest
         assert math.prod([1]) == 1
