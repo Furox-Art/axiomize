@@ -9,17 +9,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from axiomize.limits import MAX_ARRAY_ITEMS, MAX_RUN_JSON_BYTES
+
 
 def _dump(payload: dict, path: str | None) -> int:
-    text = json.dumps(payload, indent=2, default=str)
+    text = json.dumps(payload, indent=2, default=str, allow_nan=False)
     if path:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(text)
+        target = Path(path)
+        target.write_text(text, encoding="utf-8")
         print(f"wrote {path}")
     else:
         print(text)
@@ -29,7 +32,10 @@ def _dump(payload: dict, path: str | None) -> int:
 def _load_object(path: str | None) -> dict[str, Any]:
     if not path:
         return {}
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    source = Path(path)
+    if source.stat().st_size > MAX_RUN_JSON_BYTES:
+        raise ValueError(f"{path} exceeds hard JSON input limit of {MAX_RUN_JSON_BYTES} bytes")
+    payload = json.loads(source.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must contain a JSON object")
     return payload
@@ -127,13 +133,29 @@ def cmd_solve(args: argparse.Namespace) -> int:
 
 
 def cmd_fit(args: argparse.Namespace) -> int:
+    import csv
     import numpy as np
     from axiomize.application.services import fit_logistic_service
-    with open(args.data, encoding="utf-8-sig") as fh:
-        lines = fh.read().splitlines()[1:]
-    rows = [line.split(",") for line in lines if line.strip()]
-    t = np.array([float(r[0]) for r in rows])
-    y = np.array([float(r[1]) for r in rows])
+
+    source = Path(args.data)
+    if source.stat().st_size > 64 * 1024 * 1024:
+        raise ValueError("CSV input exceeds hard CLI limit of 64 MiB")
+    rows: list[tuple[float, float]] = []
+    with source.open(encoding="utf-8-sig", newline="") as fh:
+        reader = csv.reader(fh)
+        next(reader, None)
+        for row_number, row in enumerate(reader, start=2):
+            if not row:
+                continue
+            if len(row) < 2:
+                raise ValueError(f"CSV row {row_number} needs at least two columns")
+            rows.append((float(row[0]), float(row[1])))
+            if len(rows) > MAX_ARRAY_ITEMS:
+                raise ValueError(f"CSV exceeds hard row limit of {MAX_ARRAY_ITEMS}")
+    if len(rows) < 2:
+        raise ValueError("CSV requires at least two data rows")
+    t = np.asarray([row[0] for row in rows], dtype=float)
+    y = np.asarray([row[1] for row in rows], dtype=float)
     return _dump(fit_logistic_service({"t": t.tolist(), "y": y.tolist()}), args.json)
 
 
@@ -176,18 +198,29 @@ def cmd_benchmark(_args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     from axiomize.server import rest_server
-    server = rest_server.start_server(args.host, args.port)
+
+    token = args.auth_token or os.getenv(args.auth_token_env)
+    server = rest_server.start_server(
+        args.host,
+        args.port,
+        run_root=args.run_root,
+        allow_remote=bool(args.allow_remote),
+        auth_token=token,
+        max_concurrent_requests=args.max_concurrent_requests,
+    )
     print(f"axiomize REST v1 on http://{args.host}:{server.server_address[1]}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        server.server_close()
     return 0
 
 
-def cmd_mcp(_args: argparse.Namespace) -> int:
+def cmd_mcp(args: argparse.Namespace) -> int:
     from axiomize.server import mcp_server
-    mcp_server.serve_stdio()
+    mcp_server.serve_stdio(run_root=args.run_root)
     return 0
 
 
@@ -284,8 +317,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("serve", help="start the REST API (v1)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--run-root", default=".", help="root directory containing REST-visible run directories")
+    p.add_argument("--allow-remote", action="store_true", help="allow a non-loopback bind; requires an auth token")
+    p.add_argument("--auth-token", default=None, help="REST bearer token (prefer the environment option below)")
+    p.add_argument("--auth-token-env", default="AXIOMIZE_REST_TOKEN", help="environment variable containing REST bearer token")
+    p.add_argument("--max-concurrent-requests", type=int, default=32)
     p.set_defaults(func=cmd_serve)
     p = sub.add_parser("mcp", help="serve MCP over stdio")
+    p.add_argument("--run-root", default=".", help="root directory containing MCP-visible run directories")
     p.set_defaults(func=cmd_mcp)
     return parser
 
