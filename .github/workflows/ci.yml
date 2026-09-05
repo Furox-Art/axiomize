@@ -76,6 +76,8 @@ jobs:
         run: python .github/scripts/cli_release_smoke.py
       - name: General Model IR installed contract
         run: python .github/scripts/general_model_release_smoke.py
+      - name: Advanced Model IR installed CLI contract
+        run: python .github/scripts/advanced_family_release_smoke.py
       - name: Real LaTeX console conversion
         shell: bash
         run: |
