@@ -53,6 +53,11 @@ def load_cases(path):
         must = case.get("must_contain", [])
         if not isinstance(must, list) or len(must) > MAX_PATTERNS_PER_CASE or not all(isinstance(v, str) for v in must):
             raise SystemExit(f"benchmark case {case['id']!r} has invalid must_contain")
+        minimum_lenses = case.get("min_lenses_built", 0)
+        if isinstance(minimum_lenses, bool) or not isinstance(minimum_lenses, int) or not 0 <= minimum_lenses <= 1000:
+            raise SystemExit(
+                f"benchmark case {case['id']!r} min_lenses_built must be an integer in [0, 1000]"
+            )
         if case["id"] in cases:
             raise SystemExit(f"duplicate benchmark case id: {case['id']}")
         cases[case["id"]] = case
@@ -122,9 +127,9 @@ def grade(text, case):
                 re.MULTILINE | re.IGNORECASE,
             )
         )
-    minimum_lenses = int(case.get("min_lenses_built", 0))
-    if minimum_lenses < 0 or minimum_lenses > 1000:
-        raise ValueError("min_lenses_built must be in [0, 1000]")
+    minimum_lenses = case.get("min_lenses_built", 0)
+    if isinstance(minimum_lenses, bool) or not isinstance(minimum_lenses, int) or not 0 <= minimum_lenses <= 1000:
+        raise ValueError("min_lenses_built must be an integer in [0, 1000]")
     checks[f"perspectives built >= {minimum_lenses} (found {lenses})"] = lenses >= minimum_lenses
 
     if case.get("must_reject_at_least_one"):
