@@ -1,0 +1,1 @@
+Versioned aliases: sbml-l3v2, cellml-2.0, ipynb. Unversioned sbml/cellml remain conservative ADAPTER_REQUIRED aliases.
