@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import axiomize
-from axiomize.limits import MAX_RUN_JSON_BYTES
+from axiomize.limits import MAX_RUN_JSON_BYTES, bounded_int
 
 RUN_FORMAT_VERSION = 1
 
@@ -217,8 +217,13 @@ class RunState:
         if manifest_path.exists():
             manifest = _read_json_bounded(manifest_path)
             declared_version = manifest.get("run_format_version")
-            if declared_version is not None and int(declared_version) != RUN_FORMAT_VERSION:
-                raise ValueError(f"unsupported run format version: {declared_version}")
+            if declared_version is not None:
+                bounded_int(
+                    declared_version,
+                    name="run_format_version",
+                    minimum=RUN_FORMAT_VERSION,
+                    maximum=RUN_FORMAT_VERSION,
+                )
             expected_run_hash = manifest.get("run_sha256")
             if expected_run_hash is not None:
                 actual_run_hash = hashlib.sha256(run_path.read_bytes()).hexdigest()

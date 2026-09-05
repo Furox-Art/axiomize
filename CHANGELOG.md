@@ -2,6 +2,26 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.12.2] - 2026-09-05
+
+### Fixed / hardened
+
+- synchronized the public README package line with the actual release version and made release CI enforce README/CHANGELOG/package/trigger version lockstep
+- blocked the Release workflow from publishing when manually dispatched against any ref other than `refs/heads/main`
+- rejected boolean values at shared finite numeric boundaries instead of silently coercing `True`/`False` to `1.0`/`0.0`
+- bounded textual integer parsing before conversion so oversized integer strings fail before interpreter-dependent parsing limits are reached
+- made run-manifest format-version validation exact, rejecting booleans and fractional values that previously could be accepted through `int(...)` coercion
+- closed the superseded unmerged 1.12.0 scientific-maturity draft PR after the shipped 1.12.0/1.12.1 line replaced it
+
+### Release gates
+
+- full Python 3.10/3.11/3.12/3.13 validation
+- security contract and dependency audit
+- source and installed import-graph contracts
+- exact built-wheel CLI/Model IR/export/surrogate/LaTeX/scientific stress checks
+- Ubuntu/Linux, Windows and macOS exact-wheel CLI smoke
+- Trusted Publishing-first PyPI publication and verification
+
 ## [1.12.1] - 2026-09-05
 
 ### Fixed
@@ -220,6 +240,7 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 First tagged release: multi-perspective modeling workflow, rigor ladder, standardized report, bundled validation/fitting/sweep tools, worked examples and GitHub Actions CI.
 
+[1.12.2]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.2
 [1.12.1]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.1
 [1.12.0]: https://github.com/Furox-Art/axiomize/releases/tag/v1.12.0
 [1.11.2]: https://github.com/Furox-Art/axiomize/releases/tag/v1.11.2
