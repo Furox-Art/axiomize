@@ -12,9 +12,10 @@ from typing import Any
 
 import numpy as np
 
-from axiomize.limits import MAX_POINTS, bounded_int
+from axiomize.limits import MAX_POINTS, MAX_RESULT_CELLS, bounded_int
 
 MAX_FTCS_STEPS = 1_000_000
+MAX_FTCS_WORK_UNITS = MAX_RESULT_CELLS
 
 
 def _finite(value: Any, *, name: str) -> float:
@@ -49,6 +50,14 @@ def heat_ftcs(alpha: float, length: float, nx: int, dt: float,
     if steps < 0 or steps > MAX_FTCS_STEPS:
         raise ValueError(f"FTCS step count must be in 0..{MAX_FTCS_STEPS}")
 
+    # Per-axis limits alone are insufficient: nx=200k and steps=1M would imply
+    # ~2e11 vector-cell updates. Bound their product before allocating/iterating.
+    work_units = nx * steps
+    if work_units > MAX_FTCS_WORK_UNITS:
+        raise ValueError(
+            f"FTCS grid-time work {work_units} exceeds hard limit {MAX_FTCS_WORK_UNITS} cell-steps"
+        )
+
     dx = length / (nx - 1)
     cfl = alpha * dt / dx ** 2
     if cfl > 0.5:
@@ -62,4 +71,10 @@ def heat_ftcs(alpha: float, length: float, nx: int, dt: float,
     error = float(np.sqrt(np.mean((u - exact) ** 2)))
     if not math.isfinite(error):
         raise RuntimeError("FTCS produced a non-finite error metric")
-    return {"l2_error": error, "cfl": float(cfl), "nx": nx, "steps": steps}
+    return {
+        "l2_error": error,
+        "cfl": float(cfl),
+        "nx": nx,
+        "steps": steps,
+        "work_units": work_units,
+    }
