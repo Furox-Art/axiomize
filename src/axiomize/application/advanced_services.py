@@ -10,7 +10,7 @@ from axiomize.advanced_diagnostics import (
     stopping_decision,
 )
 from axiomize.dimensional_engine import merge_dimension_checks
-from axiomize.general_engine import provenance_snapshot, validate_model
+from axiomize.general_engine import numerical_refinement, provenance_snapshot, validate_model
 from axiomize.model_ir import MigrationApprovalRequired, ModelIR
 
 
@@ -79,6 +79,32 @@ def model_bifurcation_service(payload: dict[str, Any]) -> dict[str, Any]:
     )
     out["validation"] = validation
     out["provenance"] = provenance_snapshot(model, data_hash=payload.get("data_hash"))
+    return out
+
+
+def model_numerical_verification_service(payload: dict[str, Any]) -> dict[str, Any]:
+    """Run an explicit mesh/tolerance refinement study after scientific validation."""
+    loaded = _load(payload)
+    if isinstance(loaded, dict):
+        return loaded
+    model = loaded
+    validation = merge_dimension_checks(validate_model(model), model)
+    if validation["status"] == "FAIL":
+        return {"status": "FAIL", "stage": "pre_validation", "validation": validation}
+    span = payload.get("t_span", [0.0, 1.0])
+    if not isinstance(span, (list, tuple)) or len(span) != 2:
+        raise ValueError("t_span must contain [start, stop]")
+    out = numerical_refinement(
+        model,
+        t_span=(float(span[0]), float(span[1])),
+        points=int(payload.get("points", 200)),
+        parameter_overrides=payload.get("parameter_overrides"),
+        seed=int(payload.get("seed", 0)),
+        tolerance=float(payload.get("tolerance", 1e-3)),
+        approve_heavy=bool(payload.get("approve_heavy", False)),
+    )
+    out["validation"] = validation
+    out["provenance"] = provenance_snapshot(model, seed=int(payload.get("seed", 0)), data_hash=payload.get("data_hash"))
     return out
 
 
