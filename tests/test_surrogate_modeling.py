@@ -28,7 +28,14 @@ def _decay_model() -> ModelIR:
         "variables": [{"name": "x", "unit": "dimensionless", "initial": 1.0}],
         "parameters": [{"name": "k", "unit": "1/day", "value": 0.3, "bounds": [0.05, 0.8]}],
         "equations": [{"target": "x", "expression": "-k*x", "kind": "derivative"}],
-        "constraints": [{"name": "nonnegative", "kind": "nonnegative", "variables": ["x"], "severity": "error"}],
+        "constraints": [{
+            "name": "nonnegative_x",
+            "expression": "x",
+            "relation": "ge",
+            "threshold": 0.0,
+            "severity": "error",
+            "scientific_basis": "state is physically nonnegative",
+        }],
     })
 
 
