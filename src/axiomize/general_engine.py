@@ -9,18 +9,26 @@ reference model.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from axiomize import general_engine_core as _core
 from axiomize.general_engine_core import *  # noqa: F401,F403
+from axiomize.limits import MAX_POINTS, MAX_SAMPLES, bounded_int, enforce_result_cells
 from axiomize.model_ir import ModelFamily, ModelIR
+from axiomize.safe_expression import sympy_expression as _safe_sympy_expression
 
 # A small number of internal helpers are intentionally imported by the existing
 # advanced diagnostics module. Star imports omit underscore names, so preserve
 # those compatibility symbols explicitly while the core is split behind this
 # facade.
 _parameter_values = _core._parameter_values
-_sympy_expression = _core._sympy_expression
+
+
+def _sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
+    """Compatibility name backed by the hardened shared expression parser."""
+    return _safe_sympy_expression(expression, symbols)
+
 
 _base_select_solver = _core.select_solver
 _base_estimate_compute = _core.estimate_compute
@@ -43,6 +51,22 @@ _ADVANCED_NATIVE = {
     ModelFamily.CAUSAL,
 }
 _NUMERICALLY_REFINED = {ModelFamily.PDE, ModelFamily.DAE}
+
+
+def _validated_span(t_span: tuple[float, float]) -> tuple[float, float]:
+    if not isinstance(t_span, (tuple, list)) or len(t_span) != 2:
+        raise ValueError("t_span must contain exactly [start, stop]")
+    t0, t1 = float(t_span[0]), float(t_span[1])
+    if not math.isfinite(t0) or not math.isfinite(t1) or t1 <= t0:
+        raise ValueError("t_span must be finite and strictly increasing")
+    return t0, t1
+
+
+def _validated_points(points: int, model: ModelIR | None = None) -> int:
+    value = bounded_int(points, name="points", minimum=2, maximum=MAX_POINTS)
+    if model is not None:
+        enforce_result_cells(max(1, len(model.variables)), value, name="model trajectory")
+    return value
 
 
 def select_solver(model: ModelIR) -> dict[str, Any]:
@@ -71,7 +95,9 @@ def estimate_compute(
     points: int = 1000,
     samples: int = 1,
 ) -> dict[str, Any]:
-    """Estimate compute and preserve consent gates for multiplicative families."""
+    """Estimate compute while enforcing non-bypassable resource ceilings."""
+    points = bounded_int(points, name="points", minimum=1, maximum=MAX_POINTS)
+    samples = bounded_int(samples, name="samples", minimum=1, maximum=MAX_SAMPLES)
     if model.family != ModelFamily.MULTIPHYSICS:
         out = dict(_base_estimate_compute(model, action=action, points=points, samples=samples))
     else:
@@ -86,11 +112,11 @@ def estimate_compute(
             "experiment_design": 15,
             "numerical_verification": 4,
         }.get(action, 5)
-        evals = max(1, int(points)) * max(1, int(samples)) * 40 * action_factor
+        evals = points * samples * 40 * action_factor
         level = "low" if evals < 50_000 else "medium" if evals < 2_000_000 else "high"
         estimated_memory_mb = max(
             1.0,
-            len(model.variables) * max(1, int(points)) * 8 / 1_000_000 * max(2, int(samples)),
+            len(model.variables) * points * 8 / 1_000_000 * max(2, samples),
         )
         out = {
             "action": action,
@@ -146,13 +172,7 @@ def recommend_model_families(
 
 
 def export_model(model: ModelIR, *, format: str = "json") -> dict[str, Any]:
-    """Export core portable formats plus explicit-version scientific standards.
-
-    The unversioned ``sbml``/``cellml`` aliases intentionally preserve the old
-    conservative ADAPTER_REQUIRED behavior.  Callers must request a concrete
-    standard version (for example ``sbml-l3v2`` or ``cellml-2.0``) so Axiomize
-    never silently guesses a scientific exchange schema.
-    """
+    """Export core portable formats plus explicit-version scientific standards."""
     from axiomize.standards_export import export_versioned_standard
 
     standard = export_versioned_standard(model, format=format)
@@ -171,6 +191,8 @@ def _simulate_once(
     approve_heavy: bool = False,
 ) -> dict[str, Any]:
     """Execute one model run without recursively launching refinement studies."""
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
     structure = model.validate_structure()
     if any(check["status"] == "FAIL" for check in structure):
         return {"status": "FAIL", "stage": "structure", "checks": structure}
@@ -227,6 +249,10 @@ def numerical_refinement(
     """Run an explicit mesh/tolerance refinement study through the public engine."""
     from axiomize.numerical_verification import numerical_refinement_study
 
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
+    if not math.isfinite(float(tolerance)) or float(tolerance) <= 0:
+        raise ValueError("numerical refinement tolerance must be finite and positive")
     return numerical_refinement_study(
         model,
         simulate_once=_simulate_once,
@@ -234,7 +260,7 @@ def numerical_refinement(
         points=points,
         parameter_overrides=parameter_overrides,
         seed=seed,
-        tolerance=tolerance,
+        tolerance=float(tolerance),
         approve_heavy=approve_heavy,
     )
 
@@ -248,13 +274,9 @@ def simulate_model(
     seed: int = 0,
     approve_heavy: bool = False,
 ) -> dict[str, Any]:
-    """Execute Model IR and surface numerical verification for discretized families.
-
-    PDE and DAE runs always report the refinement requirement. Without explicit
-    heavy-compute approval, the base simulation still completes and the nested
-    ``numerical_verification`` field reports ``APPROVAL_REQUIRED``. Once approved,
-    refinement executes; a failed convergence test is a visible model-run failure.
-    """
+    """Execute Model IR and surface numerical verification for discretized families."""
+    t_span = _validated_span(t_span)
+    points = _validated_points(points, model)
     result = _simulate_once(
         model,
         t_span=t_span,
@@ -302,10 +324,10 @@ def simulate_model(
     return result
 
 
-# The preserved core functions (validity scans, experiment design, provenance,
-# execution planning, generated Python export, etc.) resolve these names through
-# their original module globals. Patch those globals once so every public path
-# uses the same extended runtime rather than a divergent implementation.
+# The preserved core functions resolve these names through module globals. Patch
+# them once so every public path uses the same hardened parser, safety limits and
+# extended runtime rather than a divergent implementation.
+_core._sympy_expression = _sympy_expression
 _core.select_solver = select_solver
 _core.estimate_compute = estimate_compute
 _core.recommend_model_families = recommend_model_families
