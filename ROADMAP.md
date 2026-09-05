@@ -1,57 +1,77 @@
 # Roadmap
 
-Public plan. Checked items ship; everything here is open for contribution, see CONTRIBUTING.md.
+Axiomize has moved from a prompt/skill-only project into a versioned scientific engine. This roadmap records shipped engine milestones and the remaining evidence/maturity work; it is not a list of promises that unimplemented features already exist.
 
-## Shipped
+## Shipped foundation — 1.0–1.7
 
-- [x] v1.0.0, 6 lenses, archetype catalog, rigor ladder, parallel dispatch, bundled tools, CI
+- [x] adaptive weak / medium / strong modeling workflow
+- [x] 15+ mathematical perspectives and archetype/first-principles routing
+- [x] report templates, LaTeX conversion, worked examples and GitHub Pages
+- [x] deterministic/stochastic/queue reference validators
+- [x] CSV quality checks and SIR/logistic calibration
+- [x] report benchmark runner and package-native scientific benchmark
+- [x] CLI, REST and MCP interfaces
+- [x] user-controlled extra-agent/provider consumption
 
-## Shipped in v1.1
+## Shipped general scientific engine — 1.8–1.10
 
-- [x] Mermaid coupling diagrams in reports
-- [x] Glossary for basic-tier readers
-- [x] Archetype catalog 16 → 30
-- [x] New lenses: game theory, causal inference, information theory (+ reliability, SPC, thermodynamic analogies in v1.2)
-- [x] Five new worked examples (network, control, growth-calibration, ruin risk, pricing game) + fleet maintenance in v1.2
-- [x] fit.py: residual diagnostics + AIC/BIC model comparison + --compare mode
-- [x] reports/INDEX.md auto-generation and cross-session referencing
-- [x] Animated demo GIF
-- [x] GitHub Pages documentation site
-- [x] CI Python version matrix
-- [x] Issue/PR templates
+- [x] versioned Model IR as solve/simulate/fit/validate/export source of truth
+- [x] explicit migration preview + approval requirement
+- [x] native algebraic, ODE and stochastic execution
+- [x] PDE, index-1 DAE, optimization, control, network, Bayesian, agent-based, discrete-event, hybrid, multiphysics and causal execution contracts
+- [x] dimensional/scientific constraints with PASS/FAIL evidence
+- [x] generic ODE fitting, residual diagnostics, identifiability and AIC/BIC ranking
+- [x] sensitivity, stability, validity scans, SINDy-style discovery and experiment ranking
+- [x] numerical verification for ODE/DAE/PDE with numerical uncertainty separated from model/data/parameter uncertainty
 
-## Shipped in v1.3
+## Shipped portability and release rigor — 1.11.0–1.11.1
 
-- [x] Lenses 12 → 15: decision theory, demographic/actuarial, spatial statistics
-- [x] Benchmark runner (benchmark_runner.py) grading reports against ideas.json
-- [x] fit.py --json machine-readable output
-- [x] Gradio playground (playground/app.py)
-- [x] Example gallery page + beginner tutorial
-- [x] Project-management domain pack
+- [x] versioned SBML L3V2, CellML 2.0 and rerunnable notebook export
+- [x] validated polynomial surrogate/reduced-order models with untouched holdout and extrapolation blocking
+- [x] package-wide source and exact-wheel import contracts
+- [x] exact installed-wheel CLI/Model IR/export/surrogate/LaTeX release smokes
+- [x] exact-wheel CLI smoke on Ubuntu/Linux, Windows and macOS
+- [x] PyPI Trusted Publishing-first release chain
 
-## Shipped in v1.2
+## Shipped root/runtime hardening — 1.11.2
 
-- [x] Lenses 9 → 12: reliability engineering, statistical process control, thermodynamic analogies
-- [x] Worked examples for reliability, causal inference, information theory lenses
-- [x] Benchmark suite: benchmarks/ideas.json + scoring rubric (8 standard test cases)
-- [x] Domain packs: economics, ecology (+ epidemiology, operations earlier)
-- [x] Beginner tutorial (docs/tutorial.md)
-- [x] CSV data quality pre-check tool (csv_check.py)
+- [x] AST-restricted mathematical-expression boundary and removal of arbitrary `eval` paths
+- [x] Model IR namespace/schema/migration validation hardening
+- [x] hard non-bypassable compute/allocation ceilings
+- [x] arbitrary Python/Lean explicit-trust boundary and reduced environment exposure
+- [x] REST/MCP request, concurrency, path and error hardening
+- [x] run-state integrity hashes and atomic persistence
+- [x] provider redirect/size/timeout hardening
+- [x] Z3 timeout and real-arithmetic domain guards
+- [x] LaTeX macro allow-list and `-no-shell-escape`
+- [x] immutable GitHub Action SHAs, security contract and dependency audit
+- [x] direct runtime/tool adversarial regression suite
 
-## Shipped in v1.5
+## Axiomize 1.12.0 scientific upgrade
 
-- [x] First-principles protocol for novel territory (7-step method)
-- [x] Novel-domain benchmark reports (telephone fidelity, async alignment)
-- [x] Report template: novel-territory appendix
+- [x] **full scientific benchmark/stress matrix** covering every Model IR family with bounded runtime budgets
+- [x] permanent exact-wheel scientific stress CI/release gate
+- [x] **Causal Engine 2.0**: DAG cycle validation, backdoor adjustment, AIPW/IPW/outcome regression, positivity/ESS/balance diagnostics and interventions
+- [x] **Bayesian diagnostics/PPC**: bounded multi-chain MH, split R-hat, ESS, MCSE, posterior intervals and posterior predictive checks
+- [x] **real optional FEniCS FEM executor** for structured bounded Poisson P1 problems through DOLFINx or legacy FEniCS when installed
+- [x] **numerical verification contract for every Model IR family**, without mislabeling stochastic variation as numerical error
+- [x] **extended export**: Modelica 3.6, GraphML, causal DOT and integrity-hashed portable bundle, alongside existing JSON/Python/notebook/SBML/CellML
+- [x] README / ROADMAP / CHANGELOG synchronized with the hardened scientific engine
 
-## Later / candidates
+## Next evidence/maturity work
 
-- [ ] Benchmark suite: 10 standard test ideas + scoring rubric for skill quality regression
-- [ ] Web playground (Gradio/Streamlit) demo deployment
-- [ ] Submission to agent-skill registries and awesome lists
-- [ ] JSON export of parameter tables for downstream tooling
+- [ ] broaden independent end-to-end benchmark corpora across physics, biology, chemistry, operations and causal datasets
+- [ ] compare selected numerical results against external reference implementations, not only internal regression oracles
+- [ ] add optional full schema/tool validation for CellML/Modelica where ecosystem validators are available
+- [ ] broaden FEM problem classes beyond bounded scalar Poisson while preserving structured/non-executable input contracts
+- [ ] broaden causal identification beyond backdoor/randomized studies (front-door, IV and longitudinal designs only when identification can be made explicit)
+- [ ] add richer Bayesian likelihood families and gradient-based optional samplers while retaining package-native fallback and diagnostics
+- [ ] collect independent-user reliability/performance evidence before declaring production/stable status
 
 ## Non-goals
 
-- Becoming a solver engine (we generate and validate models; heavy numerics belong to established solvers)
-- Fine-tuning models on modeling corpora (prompt-discipline first; revisit only if evidence shows ceiling)
+- silently inventing scientific mechanisms when the evidence does not identify them
+- claiming causality from fit/correlation alone
+- treating temporary directories/subprocess timeouts as hostile-code OS sandboxes
+- silently multiplying paid model/API calls or expensive scientific computation
+- claiming an optional scientific backend ran when its real availability probe failed
