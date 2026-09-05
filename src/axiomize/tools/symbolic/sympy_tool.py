@@ -1,9 +1,14 @@
-"""SymPy symbolic-validation adapter (PHASE 1)."""
+"""SymPy symbolic-validation adapter (PHASE 1).
+
+All user expressions pass through :mod:`axiomize.safe_expression` before SymPy;
+``sympify`` is never called on unchecked Python-like text.
+"""
 
 from __future__ import annotations
 
 from typing import Any, ClassVar
 
+from axiomize.safe_expression import auto_symbol_map, sympy_expression, validate_identifier
 from axiomize.tools.base import ScientificTool
 
 
@@ -13,25 +18,19 @@ def _sympy():  # type: ignore[no-any-unimported]
     return sympy
 
 
-def _sympify(text: str):
-    """Parse an expression, forcing bare parameter names to Symbols.
-
-    ``beta`` and ``gamma`` collide with ``sympy.beta`` / ``sympy.gamma``
-    (special functions). A name that is a SymPy FunctionClass but is NOT
-    called like a function in the text is treated as a plain symbol, so
-    SIR-style equations parse as the modeler means them.
-    """
-    import re
-
+def _symbols_for(*expressions: str, extra: tuple[str, ...] = ()) -> dict[str, Any]:
     sp = _sympy()
-    local = {}
-    for name in set(re.findall(r"[A-Za-z_]\w*", text)):
-        obj = getattr(sp, name, None)
-        if isinstance(obj, sp.FunctionClass) and not re.search(
-            rf"\b{name}\s*\(", text
-        ):
-            local[name] = sp.Symbol(name)
-    return sp.sympify(text, locals=local)
+    names: set[str] = set()
+    for expression in expressions:
+        names.update(auto_symbol_map(str(expression)))
+    for name in extra:
+        names.add(validate_identifier(str(name), what="symbol"))
+    return {name: sp.Symbol(name, real=True) for name in sorted(names)}
+
+
+def _sympify(text: str, *, symbols: dict[str, Any] | None = None):
+    mapping = symbols if symbols is not None else _symbols_for(text)
+    return sympy_expression(str(text), mapping)
 
 
 class SymPyTool(ScientificTool):
@@ -48,6 +47,8 @@ class SymPyTool(ScientificTool):
     def validate_input(self, payload: dict[str, Any]) -> None:
         if "expression" not in payload:
             raise ValueError("sympy: payload needs an 'expression' string")
+        if not isinstance(payload["expression"], str) or not payload["expression"].strip():
+            raise ValueError("sympy: expression must be a non-empty string")
 
     def execute(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.validate_input(payload)
@@ -73,20 +74,30 @@ def simplify_expr(expression: str) -> str:
 
 def differentiate(expression: str, variable: str) -> str:
     sp = _sympy()
-    symbol = sp.Symbol(variable)
-    return str(sp.diff(_sympify(expression), symbol))
+    variable = validate_identifier(variable, what="differentiation variable")
+    symbols = _symbols_for(expression, extra=(variable,))
+    return str(sp.diff(_sympify(expression, symbols=symbols), symbols[variable]))
 
 
 def jacobian_matrix(expressions: list[str], variables: list[str]) -> list[list[str]]:
     sp = _sympy()
-    vec = sp.Matrix([_sympify(e) for e in expressions])
-    syms = [sp.Symbol(v) for v in variables]
+    if not isinstance(expressions, list) or not expressions:
+        raise ValueError("expressions must be a non-empty array")
+    if not isinstance(variables, list) or not variables:
+        raise ValueError("variables must be a non-empty array")
+    checked_variables = tuple(validate_identifier(v, what="Jacobian variable") for v in variables)
+    symbols = _symbols_for(*expressions, extra=checked_variables)
+    vec = sp.Matrix([_sympify(e, symbols=symbols) for e in expressions])
+    syms = [symbols[v] for v in checked_variables]
     return [[str(entry) for entry in row] for row in vec.jacobian(syms).tolist()]
 
 
 def check_equivalence(first: str, second: str) -> bool:
     sp = _sympy()
-    return bool(sp.simplify(_sympify(first) - _sympify(second)) == 0)
+    symbols = _symbols_for(first, second)
+    return bool(sp.simplify(
+        _sympify(first, symbols=symbols) - _sympify(second, symbols=symbols)
+    ) == 0)
 
 
 def final_size_symbolic(r0: float) -> float:
@@ -101,9 +112,10 @@ def final_size_symbolic(r0: float) -> float:
 
 def find_singularities(expression: str, variable: str) -> list[str]:
     sp = _sympy()
-    symbol = sp.Symbol(variable)
-    expr = _sympify(expression)
+    variable = validate_identifier(variable, what="singularity variable")
+    symbols = _symbols_for(expression, extra=(variable,))
+    expr = _sympify(expression, symbols=symbols)
     _, denominator = sp.fraction(sp.together(expr))
     if denominator == 1:
         return []
-    return [str(s) for s in sp.solve(denominator, symbol)]
+    return [str(s) for s in sp.solve(denominator, symbols[variable])]
