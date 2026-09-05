@@ -12,6 +12,7 @@ CLI entry points installed with the package::
     axiomize-fit        calibrate SIR / logistic models to CSV data
     axiomize-csv-check  data-quality pre-check before calibrating
     axiomize-benchmark  grade modeling reports against benchmark cases
+    axiomize-stress     bounded end-to-end scientific benchmark/stress matrix
     axiomize-to-latex   convert a modeling report to compilable LaTeX
     axiomize-sweep      parallel parameter sweeps / Monte Carlo
     axiomize-index-reports  build an index over produced reports
@@ -20,7 +21,7 @@ The skill documents (SKILL.md, adaptive-workflow.md, perspectives/, templates/)
 ship inside the ``axiomize`` package for agent loaders.
 """
 
-__version__ = "1.11.2"
+__version__ = "1.12.0"
 
 # Initialize the public engine once. This installs hardened parser/resource hooks
 # into legacy modules before callers can resolve those submodules directly.
@@ -31,9 +32,6 @@ from axiomize.runtime_guard import install_general_engine_guards as _install_run
 
 _install_runtime_guards(_general_engine)
 _install_notebook_schema_alias()
-# ``advanced_family_engine`` retains an internal compatibility parser. Replace
-# it immediately, not only when simulate_model is called, so direct submodule
-# imports cannot reach the older parser implementation.
 _advanced_family_engine._compile_expression = _general_engine._compile_expression_hardened
 
 del _install_runtime_guards, _install_notebook_schema_alias, _advanced_family_engine
