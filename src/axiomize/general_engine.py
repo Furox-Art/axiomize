@@ -10,11 +10,22 @@ reference model.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Callable
 
 from axiomize import general_engine_core as _core
 from axiomize.general_engine_core import *  # noqa: F401,F403
-from axiomize.limits import MAX_POINTS, MAX_SAMPLES, bounded_int, enforce_result_cells
+from axiomize.limits import (
+    MAX_ARRAY_ITEMS,
+    MAX_BAYES_DRAWS,
+    MAX_CONTROL_DIMENSION,
+    MAX_DENSE_NETWORK_NODES,
+    MAX_MODEL_COMPONENTS,
+    MAX_OPTIMIZER_ITERATIONS,
+    MAX_POINTS,
+    MAX_SAMPLES,
+    bounded_int,
+    enforce_result_cells,
+)
 from axiomize.model_ir import ModelFamily, ModelIR
 from axiomize.safe_expression import sympy_expression as _safe_sympy_expression
 
@@ -28,6 +39,15 @@ _parameter_values = _core._parameter_values
 def _sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
     """Compatibility name backed by the hardened shared expression parser."""
     return _safe_sympy_expression(expression, symbols)
+
+
+def _compile_expression_hardened(expression: str, arg_names: list[str]) -> Callable[..., Any]:
+    """Advanced-family compiler using the same bounded parser as core Model IR."""
+    import sympy as sp
+
+    symbols = {name: sp.Symbol(name, real=True) for name in arg_names}
+    expr = _safe_sympy_expression(str(expression), symbols)
+    return sp.lambdify([symbols[name] for name in arg_names], expr, modules=["numpy", "math"])
 
 
 _base_select_solver = _core.select_solver
@@ -67,6 +87,153 @@ def _validated_points(points: int, model: ModelIR | None = None) -> int:
     if model is not None:
         enforce_result_cells(max(1, len(model.variables)), value, name="model trajectory")
     return value
+
+
+def _advanced_preflight(model: ModelIR, *, points: int) -> None:
+    """Reject advanced requests whose in-memory/work dimensions are unsafe.
+
+    Approval flags never bypass these ceilings. They are implementation-safety
+    limits, not scientific-policy limits.
+    """
+    metadata = model.metadata if isinstance(model.metadata, dict) else {}
+    state_count = max(1, sum(v.role == "state" for v in model.variables))
+
+    if model.family == ModelFamily.NETWORK:
+        cfg = metadata.get("network", {})
+        if isinstance(cfg, dict):
+            nodes = cfg.get("nodes")
+            edges = cfg.get("edges", [])
+            if isinstance(nodes, list):
+                n_nodes = len(nodes)
+            elif nodes is None:
+                if isinstance(edges, list) and edges:
+                    discovered: set[str] = set()
+                    if len(edges) > MAX_ARRAY_ITEMS:
+                        raise ValueError(f"network.edges exceeds hard limit {MAX_ARRAY_ITEMS}")
+                    for edge in edges:
+                        if isinstance(edge, dict):
+                            discovered.update((str(edge.get("source")), str(edge.get("target"))))
+                        elif isinstance(edge, (list, tuple)) and len(edge) >= 2:
+                            discovered.update((str(edge[0]), str(edge[1])))
+                    n_nodes = len(discovered) if discovered else int(cfg.get("n_nodes", 1))
+                else:
+                    n_nodes = int(cfg.get("n_nodes", 1))
+            else:
+                raise ValueError("network.nodes must be an array")
+            if n_nodes < 1 or n_nodes > MAX_DENSE_NETWORK_NODES:
+                raise ValueError(
+                    f"dense network executor supports 1..{MAX_DENSE_NETWORK_NODES} nodes; got {n_nodes}"
+                )
+            enforce_result_cells(state_count, points, n_nodes, name="network trajectory")
+
+    elif model.family == ModelFamily.AGENT_BASED:
+        cfg = metadata.get("agents", metadata.get("agent_based", {}))
+        if isinstance(cfg, dict):
+            n_agents = bounded_int(
+                cfg.get("count", cfg.get("n_agents", 100)),
+                name="agent count",
+                minimum=1,
+                maximum=1_000_000,
+            )
+            enforce_result_cells(state_count, points, n_agents, name="agent trajectory")
+
+    elif model.family == ModelFamily.CONTROL:
+        cfg = metadata.get("control", metadata.get("state_space", {}))
+        if isinstance(cfg, dict):
+            matrix_source = cfg.get("state_space", cfg)
+            if isinstance(matrix_source, dict) and isinstance(matrix_source.get("A"), list):
+                n = len(matrix_source["A"])
+                if n > MAX_CONTROL_DIMENSION:
+                    raise ValueError(
+                        f"control state dimension exceeds hard limit {MAX_CONTROL_DIMENSION}"
+                    )
+                enforce_result_cells(max(1, n), points, name="control trajectory")
+
+    elif model.family == ModelFamily.BAYESIAN:
+        cfg = metadata.get("bayesian", {})
+        if isinstance(cfg, dict):
+            draws = bounded_int(
+                cfg.get("draws", max(200, points)),
+                name="bayesian.draws",
+                minimum=50,
+                maximum=MAX_BAYES_DRAWS,
+            )
+            burn = bounded_int(
+                cfg.get("burn", max(50, draws // 4)),
+                name="bayesian.burn",
+                minimum=0,
+                maximum=MAX_BAYES_DRAWS,
+            )
+            observed = cfg.get("observations", cfg.get("observed"))
+            if observed is None and isinstance(cfg.get("outcome"), str):
+                data = cfg.get("data", {})
+                if isinstance(data, dict):
+                    observed = data.get(str(cfg["outcome"]))
+            if isinstance(observed, list):
+                if len(observed) > MAX_ARRAY_ITEMS:
+                    raise ValueError(f"bayesian observations exceed hard limit {MAX_ARRAY_ITEMS}")
+                # Log-posterior evaluates the whole observation vector per draw.
+                if (draws + burn) * max(1, len(observed)) > 50_000_000:
+                    raise ValueError("Bayesian request exceeds hard 50,000,000 likelihood-work-unit limit")
+            if bool(cfg.get("return_samples", False)):
+                enforce_result_cells(draws, max(1, len(model.parameters)), name="Bayesian returned samples")
+
+    elif model.family == ModelFamily.DISCRETE_EVENT:
+        cfg = metadata.get("discrete_event", metadata.get("events", {}))
+        if isinstance(cfg, list):
+            events = cfg
+            max_events = 1_000_000
+        elif isinstance(cfg, dict):
+            events = cfg.get("events", [])
+            max_events = int(cfg.get("max_events", 1_000_000))
+        else:
+            events = []
+            max_events = 0
+        if isinstance(events, list) and len(events) > 10_000:
+            raise ValueError("discrete-event definitions exceed hard limit 10000")
+        if max_events < 1 or max_events > 1_000_000:
+            raise ValueError("discrete_event.max_events must be between 1 and 1000000")
+
+    elif model.family == ModelFamily.HYBRID:
+        cfg = metadata.get("hybrid", {})
+        if isinstance(cfg, dict):
+            events = cfg.get("events", [])
+            if isinstance(events, list) and len(events) > 1_000:
+                raise ValueError("hybrid event definitions exceed hard limit 1000")
+            bounded_int(
+                cfg.get("max_events_per_interval", 100),
+                name="hybrid.max_events_per_interval",
+                minimum=1,
+                maximum=10_000,
+            )
+
+    elif model.family == ModelFamily.OPTIMIZATION:
+        cfg = metadata.get("optimization", {})
+        if isinstance(cfg, dict):
+            bounded_int(
+                cfg.get("maxiter", 1000),
+                name="optimization.maxiter",
+                minimum=1,
+                maximum=MAX_OPTIMIZER_ITERATIONS,
+            )
+            raw_constraints = cfg.get("constraints", [])
+            if isinstance(raw_constraints, list) and len(raw_constraints) > 10_000:
+                raise ValueError("optimization constraints exceed hard limit 10000")
+
+    elif model.family == ModelFamily.MULTIPHYSICS:
+        cfg = metadata.get("multiphysics", {})
+        if isinstance(cfg, dict):
+            components = cfg.get("components", {})
+            if isinstance(components, (dict, list)) and len(components) > MAX_MODEL_COMPONENTS:
+                raise ValueError(
+                    f"multiphysics components exceed hard limit {MAX_MODEL_COMPONENTS}"
+                )
+            bounded_int(
+                cfg.get("max_iterations", 8),
+                name="multiphysics.max_iterations",
+                minimum=1,
+                maximum=100,
+            )
 
 
 def select_solver(model: ModelIR) -> dict[str, Any]:
@@ -216,9 +383,12 @@ def _simulate_once(
         )
 
     if model.family in _ADVANCED_NATIVE:
-        from axiomize.advanced_family_engine import simulate_advanced_family
+        from axiomize import advanced_family_engine as _advanced
 
-        return simulate_advanced_family(
+        _advanced_preflight(model, points=points)
+        # Replace the duplicated legacy parser with the shared hardened parser.
+        _advanced._compile_expression = _compile_expression_hardened
+        return _advanced.simulate_advanced_family(
             model,
             t_span=t_span,
             points=points,
