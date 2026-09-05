@@ -20,7 +20,7 @@ The skill documents (SKILL.md, adaptive-workflow.md, perspectives/, templates/)
 ship inside the ``axiomize`` package for agent loaders.
 """
 
-__version__ = "1.11.1"
+__version__ = "1.11.2"
 
 # Initialize the public engine once. This installs hardened parser/resource hooks
 # into legacy modules before callers can resolve those submodules directly.
