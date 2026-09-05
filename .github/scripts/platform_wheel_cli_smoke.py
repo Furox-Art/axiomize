@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import platform
 import shutil
 import subprocess
@@ -118,6 +117,9 @@ def _smoke_cli(work: Path) -> None:
     if "cli" not in caps.get("interfaces", []):
         raise SmokeFailure("capabilities does not report CLI interface")
 
+    # Use the same converged horizon as the permanent full CLI release smoke.
+    # A short horizon can legitimately disagree with the asymptotic final-size
+    # theory and would make this platform gate test model truncation, not CLI portability.
     validation = _json(
         [
             axiomize,
@@ -131,7 +133,7 @@ def _smoke_cli(work: Path) -> None:
             "--N",
             "10000",
             "--days",
-            "60",
+            "120",
         ],
         cwd=work,
         timeout=120,
