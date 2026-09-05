@@ -10,7 +10,7 @@ import pytest
 
 from axiomize.bayesian.mh import metropolis_hastings, normal_mean_posterior
 from axiomize.limits import MAX_BAYES_DRAWS, bounded_int
-from axiomize.pde.diffusion import MAX_FTCS_STEPS, heat_ftcs
+from axiomize.pde.diffusion import MAX_FTCS_STEPS, MAX_FTCS_WORK_UNITS, heat_ftcs
 from axiomize.safe_expression import auto_symbol_map, sympy_expression
 from axiomize.tools.logic.z3_tool import check_constraints
 from axiomize.tools.numerical.scipy_tool import final_size_numeric, solve_sir
@@ -128,11 +128,14 @@ def test_scipy_direct_solver_rejects_invalid_physical_parameters() -> None:
         final_size_numeric(0.1, 0.0)
 
 
-def test_ftcs_direct_solver_enforces_grid_step_and_cfl_bounds() -> None:
+def test_ftcs_direct_solver_enforces_grid_step_cfl_and_combined_work_bounds() -> None:
     with pytest.raises(ValueError):
         heat_ftcs(alpha=1.0, length=1.0, nx=2, dt=1e-4, t_end=1.0)
     with pytest.raises(ValueError, match="step count"):
         heat_ftcs(alpha=0.0, length=1.0, nx=10, dt=1e-9, t_end=(MAX_FTCS_STEPS + 1) * 1e-9)
+    with pytest.raises(ValueError, match="grid-time work"):
+        # Both axis limits are individually legal, but their product is not.
+        heat_ftcs(alpha=0.0, length=1.0, nx=100_000, dt=1.0, t_end=MAX_FTCS_WORK_UNITS // 100_000 + 1)
     with pytest.raises(ValueError, match="unstable"):
         heat_ftcs(alpha=1.0, length=1.0, nx=10, dt=1.0, t_end=1.0)
 
