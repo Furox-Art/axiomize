@@ -7,6 +7,7 @@ matching uses a small literal-alternative grammar rather than arbitrary regex.
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -63,11 +64,7 @@ _WORD_BOUNDARY_LITERAL = re.compile(r"^\\b([A-Za-z0-9_.+/-]+)\\b$")
 
 
 def _literal_alt_present(alt, text_lower):
-    """Safe matching grammar: ``a|b`` alternatives + optional ``\bword\b``.
-
-    No caller-controlled text is compiled as a regular expression, preventing a
-    custom benchmark file from turning grading into a regex denial-of-service.
-    """
+    """Safe matching grammar: ``a|b`` alternatives + optional ``\bword\b``."""
     alt = alt.strip()
     if not alt:
         return False
@@ -208,5 +205,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import math
     sys.exit(main())
