@@ -72,6 +72,8 @@ jobs:
         run: python .github/scripts/portable_export_release_smoke.py
       - name: Validated surrogate installed contract
         run: python .github/scripts/surrogate_release_smoke.py
+      - name: Scientific benchmark/stress matrix installed contract
+        run: python .github/scripts/scientific_benchmark_release_smoke.py
       - name: Real LaTeX console conversion
         shell: bash
         run: |
@@ -159,11 +161,7 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         shell: bash
         run: |
-          if [ -n "$PYPI_TOKEN" ]; then
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-          fi
+          if [ -n "$PYPI_TOKEN" ]; then echo "has_token=true" >> "$GITHUB_OUTPUT"; else echo "has_token=false" >> "$GITHUB_OUTPUT"; fi
       - name: Publish to PyPI with Trusted Publishing
         id: trusted_publish
         if: steps.gate.outputs.skip != 'true'
@@ -195,40 +193,21 @@ jobs:
           json_url="https://pypi.org/pypi/${name}/${version}/json"
           simple_url="https://pypi.org/simple/${name}/"
           normalized_name="$(python -c 'import re,sys; print(re.sub(r"[-_.]+", "_", sys.argv[1]))' "$name")"
-
-          if [ "${{ steps.gate.outputs.skip }}" = "true" ]; then
-            echo "PyPI publication verified before upload gate."
-            exit 0
-          fi
-
+          if [ "${{ steps.gate.outputs.skip }}" = "true" ]; then echo "PyPI publication verified before upload gate."; exit 0; fi
           for attempt in 1 2 3 4 5 6; do
-            if curl -sfL "$json_url" > /dev/null; then
-              echo "PyPI publication verified through JSON API: $json_url"
-              exit 0
-            fi
+            if curl -sfL "$json_url" > /dev/null; then echo "PyPI publication verified through JSON API: $json_url"; exit 0; fi
             listing="$(mktemp)"
             if curl -sfL "$simple_url" -o "$listing"; then
-              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then
-                rm -f "$listing"
-                echo "PyPI publication verified through Simple API: $simple_url"
-                exit 0
-              fi
+              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then rm -f "$listing"; echo "PyPI publication verified through Simple API: $simple_url"; exit 0; fi
             fi
-            rm -f "$listing"
-            sleep 10
+            rm -f "$listing"; sleep 10
           done
-
           if [ "${{ steps.trusted_publish.outcome }}" = "success" ] || [ "${{ steps.token_publish.outcome }}" = "success" ]; then
             echo "::warning::PyPI public index/API propagation is delayed; upload action was accepted by PyPI and completed successfully."
-            echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
-            echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"
-            exit 0
+            echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"; echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"; exit 0
           fi
-
           echo "::error::Neither an existing PyPI release nor a successful PyPI upload could be verified."
-          echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"
-          echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"
-          exit 1
+          echo "Trusted publishing outcome: ${{ steps.trusted_publish.outcome }}"; echo "Token fallback outcome: ${{ steps.token_publish.outcome }}"; exit 1
       - name: Create GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
