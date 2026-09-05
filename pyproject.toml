@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.11.0"
+version = "1.11.1"
 description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
 readme = "README.md"
 license = "MIT"
@@ -43,7 +43,8 @@ dependencies = [
     "networkx>=3.0",
     "statsmodels>=0.14",
     "matplotlib>=3.7",
-    "z3-solver>=4.12",
+    "z3-solver>=4.13,<5; sys_platform == 'darwin'",
+    "z3-solver>=4.12; sys_platform != 'darwin'",
     "control>=0.10",
     "cvxpy>=1.5",
     "casadi>=3.6",
