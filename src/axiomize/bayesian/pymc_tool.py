@@ -63,7 +63,12 @@ class PyMCTool(ScientificTool):
         import numpy as np
         import pymc as pm
 
-        y = np.asarray(payload["y"], dtype=float).ravel()
+        try:
+            y = np.asarray(payload["y"], dtype=float)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("pymc: 'y' must be a numeric 1D observation array") from exc
+        if y.ndim != 1:
+            raise ValueError("pymc: 'y' must be one-dimensional; multidimensional data are not silently flattened")
         if y.size == 0 or y.size > MAX_ARRAY_ITEMS:
             raise ValueError(f"pymc: 'y' must contain 1..{MAX_ARRAY_ITEMS} observations")
         if not np.all(np.isfinite(y)):
@@ -89,7 +94,12 @@ class PyMCTool(ScientificTool):
                 random_seed=seed,
             )
 
-        mu_samples = trace.posterior["mu"].to_numpy().ravel()
+        mu_samples = np.asarray(trace.posterior["mu"].to_numpy(), dtype=float).ravel()
+        expected_samples = 2 * draws
+        if mu_samples.size != expected_samples or not np.all(np.isfinite(mu_samples)):
+            raise RuntimeError(
+                f"pymc returned malformed/non-finite posterior samples: expected {expected_samples}, got {mu_samples.size}"
+            )
         r_hat: Any = ""
         ess_bulk: Any = ""
         diag_note = ""
