@@ -26,6 +26,7 @@ _base_select_solver = _core.select_solver
 _base_estimate_compute = _core.estimate_compute
 _base_recommend_model_families = _core.recommend_model_families
 _base_simulate_model = _core.simulate_model
+_base_export_model = _core.export_model
 
 _CORE_NATIVE = {ModelFamily.ODE, ModelFamily.STOCHASTIC, ModelFamily.ALGEBRAIC}
 _ADVANCED_NATIVE = {
@@ -142,6 +143,22 @@ def recommend_model_families(
     for index, row in enumerate(combined, start=1):
         row["rank"] = index
     return combined
+
+
+def export_model(model: ModelIR, *, format: str = "json") -> dict[str, Any]:
+    """Export core portable formats plus explicit-version scientific standards.
+
+    The unversioned ``sbml``/``cellml`` aliases intentionally preserve the old
+    conservative ADAPTER_REQUIRED behavior.  Callers must request a concrete
+    standard version (for example ``sbml-l3v2`` or ``cellml-2.0``) so Axiomize
+    never silently guesses a scientific exchange schema.
+    """
+    from axiomize.standards_export import export_versioned_standard
+
+    standard = export_versioned_standard(model, format=format)
+    if standard is not None:
+        return standard
+    return _base_export_model(model, format=format)
 
 
 def _simulate_once(
@@ -292,4 +309,5 @@ def simulate_model(
 _core.select_solver = select_solver
 _core.estimate_compute = estimate_compute
 _core.recommend_model_families = recommend_model_families
+_core.export_model = export_model
 _core.simulate_model = simulate_model
