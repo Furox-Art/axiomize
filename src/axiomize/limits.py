@@ -141,6 +141,8 @@ def enforce_result_cells(*dimensions: int, name: str = "requested result") -> No
 
 def enforce_finite_values(values: Iterable[Any], *, name: str) -> None:
     for index, value in enumerate(values):
+        if isinstance(value, bool):
+            raise ValueError(f"{name}[{index}] must be numeric, not a boolean")
         try:
             number = float(value)
         except (TypeError, ValueError, OverflowError) as exc:
