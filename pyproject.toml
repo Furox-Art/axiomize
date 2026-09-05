@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.10.0"
+version = "1.11.0"
 description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
 readme = "README.md"
 license = "MIT"
