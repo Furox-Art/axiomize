@@ -66,6 +66,7 @@ class Z3Tool(ScientificTool):
             "model": result["model"],
             "status": result["status"].value,
             "timeout_ms": timeout_ms,
+            **({"reason": result["reason"]} if "reason" in result else {}),
         }
 
 
@@ -85,7 +86,7 @@ def _ast_depth(node: ast.AST) -> int:
 
 
 def _parse_constraint(text: str, symbols: dict[str, Any]) -> Any:
-    """Translate a restricted Python-like arithmetic/logic expression to Z3."""
+    """Translate restricted arithmetic/logic text to Z3 with domain guards."""
     import z3  # type: ignore[import-untyped]
 
     if not isinstance(text, str) or not text.strip():
@@ -101,6 +102,11 @@ def _parse_constraint(text: str, symbols: dict[str, Any]) -> Any:
         raise ValueError(f"constraint exceeds hard AST-node limit of {MAX_EXPRESSION_NODES}")
     if _ast_depth(tree) > MAX_EXPRESSION_DEPTH:
         raise ValueError(f"constraint exceeds hard nesting limit of {MAX_EXPRESSION_DEPTH}")
+
+    # Z3's arithmetic division is totalized: division by zero receives an
+    # unspecified value. Scientific real-arithmetic constraints do not have
+    # that semantics, so every denominator introduces an explicit != 0 guard.
+    domain_guards: list[Any] = []
 
     def visit(node: ast.AST) -> Any:
         if isinstance(node, ast.Expression):
@@ -135,6 +141,7 @@ def _parse_constraint(text: str, symbols: dict[str, Any]) -> Any:
             if isinstance(node.op, ast.Mult):
                 return left * right
             if isinstance(node.op, ast.Div):
+                domain_guards.append(right != 0)
                 return left / right
             if isinstance(node.op, ast.Pow):
                 exponent_node = node.right
@@ -155,19 +162,28 @@ def _parse_constraint(text: str, symbols: dict[str, Any]) -> Any:
             clauses: list[Any] = []
             for op, comparator in zip(node.ops, node.comparators):
                 right = visit(comparator)
-                if isinstance(op, ast.Lt): clauses.append(current < right)
-                elif isinstance(op, ast.LtE): clauses.append(current <= right)
-                elif isinstance(op, ast.Gt): clauses.append(current > right)
-                elif isinstance(op, ast.GtE): clauses.append(current >= right)
-                elif isinstance(op, ast.Eq): clauses.append(current == right)
-                elif isinstance(op, ast.NotEq): clauses.append(current != right)
-                else: raise ValueError(f"unsupported comparison operator: {type(op).__name__}")
+                if isinstance(op, ast.Lt):
+                    clauses.append(current < right)
+                elif isinstance(op, ast.LtE):
+                    clauses.append(current <= right)
+                elif isinstance(op, ast.Gt):
+                    clauses.append(current > right)
+                elif isinstance(op, ast.GtE):
+                    clauses.append(current >= right)
+                elif isinstance(op, ast.Eq):
+                    clauses.append(current == right)
+                elif isinstance(op, ast.NotEq):
+                    clauses.append(current != right)
+                else:
+                    raise ValueError(f"unsupported comparison operator: {type(op).__name__}")
                 current = right
             return clauses[0] if len(clauses) == 1 else z3.And(*clauses)
         if isinstance(node, ast.BoolOp):
             values = [visit(value) for value in node.values]
-            if isinstance(node.op, ast.And): return z3.And(*values)
-            if isinstance(node.op, ast.Or): return z3.Or(*values)
+            if isinstance(node.op, ast.And):
+                return z3.And(*values)
+            if isinstance(node.op, ast.Or):
+                return z3.Or(*values)
             raise ValueError(f"unsupported boolean operator: {type(node.op).__name__}")
         if isinstance(node, ast.Call):
             if not isinstance(node.func, ast.Name) or node.func.id not in {"And", "Or", "Not"}:
@@ -187,6 +203,8 @@ def _parse_constraint(text: str, symbols: dict[str, Any]) -> Any:
     translated = visit(tree)
     if not z3.is_bool(translated):
         raise ValueError("constraint expression must evaluate to a Boolean relation")
+    if domain_guards:
+        translated = z3.And(translated, *domain_guards)
     return translated
 
 
