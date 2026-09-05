@@ -105,13 +105,20 @@ def test_explicit_service_is_approval_gated() -> None:
     assert "provenance" in approved
 
 
-def test_non_discretized_family_is_not_applicable_for_explicit_refinement() -> None:
-    ode = _model({
-        "name": "decay",
+def test_non_discretized_family_uses_reproducibility_verification() -> None:
+    algebraic = _model({
+        "name": "algebraic-verification",
         "family": "algebraic",
         "variables": [{"name": "y", "initial": 1.0}],
         "parameters": [],
         "equations": [{"target": "y", "expression": "1", "kind": "algebraic"}],
     })
-    out = model_numerical_verification_service({"model_ir": ode.to_dict(), "approve_heavy": True})
-    assert out["status"] == "NOT_APPLICABLE"
+    payload = {"model_ir": algebraic.to_dict(), "points": 20, "tolerance": 1e-12}
+    blocked = model_numerical_verification_service(payload)
+    assert blocked["status"] == "APPROVAL_REQUIRED"
+    assert blocked["study"] == "same_seed_reproducibility"
+    approved = model_numerical_verification_service({**payload, "approve_heavy": True})
+    assert approved["status"] == "PASS"
+    assert approved["study"] == "same_seed_reproducibility"
+    assert approved["converged"] is True
+    assert float(approved["estimated_numerical_error"]) <= 1e-12

@@ -4,289 +4,263 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-informational)
 ![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)
 
-**Turn a vague idea into multiple rigorous, testable mathematical models.**
+**A versioned scientific modeling engine and Agent Skill for turning an idea into explicit, testable, reproducible mathematical models.**
 
-Axiomize is an Agent Skill plus a Python scientific engine for Claude Code, opencode, Cursor and other compatible agents. It clarifies missing mechanisms, recommends an analysis depth, builds competing models from multiple mathematical lenses, fits and validates them with real scientific tools, reports uncertainty honestly, and records enough state to reproduce the work.
+Axiomize combines a machine-readable Model IR with native scientific executors, validation, fitting, uncertainty analysis, causal/Bayesian inference, formal/numerical checks, portable export, and an adaptive modeling workflow. It is designed to make assumptions, solver choices, uncertainty and failure modes visible rather than burying them in generated prose.
 
-Version **1.7** adds an adaptive, user-controlled workflow: Axiomize may manage the scientific analysis, but it does not silently spawn extra agents, repeat the whole analysis, or multiply paid/provider calls.
+Current package line: **1.12.0**. Version **1.11.2** was the repository-wide security/runtime hardening release; 1.12.0 builds on those gates with a full scientific stress matrix, Causal Engine 2.0, Bayesian convergence/PPC diagnostics, real optional FEniCS FEM execution, numerical verification contracts for every Model IR family, and broader export.
 
-![SIR epidemic curve animation](docs/sir-demo.gif)
-
-## What happens when you give it an idea
-
-```text
-idea
- │
- ├── clarify missing system / goal / measurement / horizon / mechanism
- ├── recommend weak / medium / strong depth
- ├── identify required data and assumptions
- ├── build several defensible candidate models
- ├── fit / simulate / optimize with real scientific tools
- ├── compare and rank the best 2–3 models
- ├── search for errors, conflicts and invalid assumptions
- ├── quantify uncertainty and sensitivity
- ├── visualize behavior and variable interactions
- ├── produce falsifiers + testable hypotheses / experiment plan
- └── record a reproducible run
-```
-
-If the core mechanism is unclear, Axiomize says so and asks for the missing information instead of hiding the uncertainty inside an equation.
-
-## Adaptive depth
-
-Axiomize recommends the level automatically and tells you why. You can override it.
-
-| Level | Intended use | What changes |
-|---|---|---|
-| **weak** | quick exploration, low-stakes/simple problems | lightweight candidate models and core checks |
-| **medium** | default scientific analysis | formal models, fitting/validation, uncertainty, sensitivity |
-| **strong** | research, high stakes, unclear mechanisms, conflicting models, causal/experimental work | more independent tools, cross-checks, model criticism, stronger UQ and reproducibility |
-
-Legacy names remain accepted by the Python API: `basic → weak`, `standard → medium`, `research → strong`.
-
-Strong mode means **more evidence and verification**, not merely longer prose.
-
-## Clarification is user-controlled
-
-Axiomize can ask missing questions:
-
-- one at a time; or
-- all at once.
-
-If no preference is known, it defaults to one short question at a time.
+## Install
 
 ```bash
-axiomize intake "A city wants to reduce traffic congestion"
+pip install -U axiomize
 ```
 
-Once the system boundary, goal, measurable outcome, horizon and mechanism are sufficiently clear, the intake returns a ready scientific workflow plan.
-
-## Multiple models, not one plausible guess
-
-Axiomize does not force the first reasonable equation it finds. Whenever possible it builds multiple candidates, then reports:
-
-1. the strongest 2–3 models in rank order;
-2. why each ranks where it does;
-3. under which conditions each becomes the better choice;
-4. why weaker candidates were rejected;
-5. what observation would falsify each important claim.
-
-If methods or tools disagree, the disagreement is exposed and investigated rather than averaged away.
-
-## Fifteen mathematical lenses
-
-| Lens | Typical questions | Core methods |
-|---|---|---|
-| [Deterministic](skills/axiomize/perspectives/deterministic.md) | trends, equilibria, thresholds | ODEs, difference equations, stability |
-| [Stochastic](skills/axiomize/perspectives/stochastic.md) | risk, rare events, random dynamics | Markov chains, Monte Carlo |
-| [Optimization](skills/axiomize/perspectives/optimization.md) | best decision under constraints | LP/NLP/ILP |
-| [Agent-based](skills/axiomize/perspectives/agent-based.md) | emergence from local rules | agent simulations |
-| [Network](skills/axiomize/perspectives/network.md) | interaction topology | graphs, centrality, network dynamics |
-| [Control](skills/axiomize/perspectives/control.md) | steering a system | feedback, stability margins |
-| [Game theory](skills/axiomize/perspectives/game-theory.md) | strategic interaction | equilibria, mechanisms |
-| [Causal inference](skills/axiomize/perspectives/causal-inference.md) | intervention effects | DAGs, DiD, IV, adjustment |
-| [Information theory](skills/axiomize/perspectives/information-theory.md) | information limits | entropy, mutual information |
-| [Reliability](skills/axiomize/perspectives/reliability.md) | failure and maintenance | hazards, renewal models |
-| [SPC](skills/axiomize/perspectives/spc.md) | signal vs noise | control charts, EWMA/CUSUM |
-| [Thermodynamic analogies](skills/axiomize/perspectives/thermodynamic.md) | stock-flow constraints | conservation and resistance maps |
-| [Decision theory](skills/axiomize/perspectives/decision-theory.md) | choices under deep uncertainty | payoff models, EVPI, maximin |
-| [Demographic / actuarial](skills/axiomize/perspectives/demographic.md) | populations and liabilities | life tables, Leslie matrices |
-| [Spatial statistics](skills/axiomize/perspectives/spatial.md) | geographic patterns | Moran's I, LISA, kriging |
-
-The lenses can compose; Axiomize selects only the ones that materially help the problem.
-
-## Scientific tool stack
-
-The Python engine probes tools live and never claims an unavailable backend ran.
-
-Core package:
-
-- NumPy
-- SciPy
-- SymPy
-- statsmodels
-- NetworkX
-- Matplotlib (2D + 3D visualization)
-- Z3
-- python-control
-- CVXPY
-- CasADi
-
-Optional heavy backends:
+Optional PyMC/JAX support:
 
 ```bash
-pip install axiomize[full]
+pip install -U "axiomize[full]"
 ```
 
-adds PyMC and JAX when available. Lean and FEniCS are probed as external/optional backends and report unavailable explicitly when absent.
+FEniCS/DOLFINx is intentionally an external optional backend because its installation is platform/HPC dependent. When present, Axiomize probes the real runtime before advertising it.
 
-Inspect the current environment:
+## Core contract
+
+Axiomize uses a versioned **Model IR** as the single source of truth for solve/simulate/fit/validate/export. A model can describe:
+
+- variables, parameters and units;
+- equations and equation roles;
+- initial and boundary conditions;
+- scientific assumptions and validity domain;
+- solver settings and fallbacks;
+- causal-identification metadata;
+- provenance and migration history.
+
+Schema migration is never silent: unsupported/newer schemas are rejected and supported migrations require explicit approval with a visible preview.
+
+## Native model families
+
+The Model IR supports native execution contracts for:
+
+| Family | Native path |
+|---|---|
+| algebraic | SymPy nonlinear solve |
+| ODE | SciPy IVP with solver fallbacks |
+| PDE | bounded method-of-lines reaction/diffusion |
+| DAE | semi-explicit index-1 solve |
+| stochastic | Euler-Maruyama / stochastic executors |
+| optimization | bounded nonlinear optimization |
+| control | state-space simulation/stability |
+| network | graph-coupled dynamics |
+| Bayesian | bounded multi-chain Metropolis inference |
+| agent-based | per-agent trajectories |
+| discrete-event | bounded event queue/Gillespie-style execution |
+| hybrid | event-driven piecewise ODE |
+| multiphysics | approval-gated partitioned co-simulation |
+| causal | identified treatment-effect estimation |
+
+No unsupported family is silently replaced with a toy reference model.
+
+## Causal Engine 2.0
+
+Causal conclusions require identification evidence. Fit/correlation alone is not treated as causality.
+
+The 1.12 engine adds:
+
+- acyclic DAG validation;
+- explicit or DAG-derived backdoor adjustment sets;
+- rejection of post-treatment adjustment variables;
+- AIPW doubly-robust estimation for binary treatment;
+- IPW and outcome-regression estimates alongside AIPW;
+- robust linear backdoor adjustment for continuous treatment;
+- propensity overlap/positivity diagnostics;
+- effective sample size under weighting;
+- standardized mean-difference balance before/after weighting;
+- intervention/counterfactual mean predictions;
+- explicit causal scope and assumptions in every result.
+
+If identification is insufficient, the engine returns `INSUFFICIENT_CAUSAL_EVIDENCE` and states what evidence is missing.
+
+## Bayesian diagnostics and posterior predictive checks
+
+The package-native Bayesian engine now runs bounded multi-chain random-walk Metropolis sampling and reports:
+
+- split R-hat;
+- bulk effective sample size;
+- Monte Carlo standard error of the mean;
+- 95% posterior interval/HDI-style summary;
+- per-chain acceptance rate;
+- posterior predictive RMSE;
+- 90%/95% predictive coverage;
+- Bayesian p-values for replicated mean and standard deviation.
+
+Sampling remains approval-gated when the compute estimate is material, and hard likelihood/allocation ceilings cannot be bypassed with an approval flag.
+
+## Numerical verification for every family
+
+Numerical/discretization uncertainty is reported separately from parameter, data, aleatoric and structural uncertainty.
+
+Dedicated studies:
+
+- ODE: tolerance refinement;
+- DAE: tolerance refinement;
+- PDE: mesh refinement with observed-order/Richardson-style estimates.
+
+Other executable families receive an explicit bounded verification contract using either output-resolution refinement or deterministic same-seed replay, whichever is scientifically meaningful. For stochastic/Bayesian/agent/event models, same-seed replay checks implementation/numerical reproducibility; **between-seed variation is not mislabeled as numerical error**.
+
+Repeated refinement multiplies solver work, so it requires explicit approval.
+
+## Real optional FEniCS FEM executor
+
+`FEniCSAdapter` no longer claims availability merely because an import exists. In 1.12 it contains a real, structured FEM path for scalar Poisson problems using:
+
+- DOLFINx + UFL + PETSc when available; or
+- legacy FEniCS when available.
+
+The bounded contract currently supports P1 Lagrange elements on a unit interval or unit square with constant source and Dirichlet boundary data. It deliberately does **not** execute arbitrary user-supplied Python/UFL strings.
+
+Check availability:
 
 ```bash
 axiomize tools
 axiomize capabilities
 ```
 
-The router maps explicit problem signals to the real installed stack: e.g. convex optimization → CVXPY, nonlinear optimization → CasADi, regression → statsmodels/SciPy, logical constraints → Z3, formal proofs → Lean when available.
+## Scientific benchmark and stress gates
 
-## Data quality and fitting
+Axiomize has two complementary regression layers:
 
-Axiomize's adaptive data layer follows a conservative rule: **never silently destroy the original data**.
+1. package/reference benchmark cases for correctness and model-selection behavior;
+2. an **all-family scientific stress matrix** that executes every Model IR family through the installed wheel, checks adversarial parser boundaries, verifies the numerical-verification approval contract, exercises extended exports, and enforces per-case/total runtime budgets.
 
-It can:
+The scientific stress matrix is a permanent exact-wheel CI and release prerequisite. A PyPI release cannot proceed unless it passes together with the ordinary tests, dependency/security audit, import graph checks, installed CLI checks and cross-platform wheel smoke tests.
 
-- remove structurally invalid/non-finite rows with a recorded audit trail;
-- sort time coordinates when required;
-- merge duplicate time points under an explicit policy;
-- flag possible outliers without deleting them automatically;
-- preserve original and cleaned arrays;
-- warn when cleaning materially changes the dataset;
-- compare candidate fits using diagnostics such as residuals and BIC when statistically appropriate.
+## Export
 
-Bundled reference fitting commands remain available:
+Portable/native formats include:
 
-```bash
-python skills/axiomize/tools/fit.py --model sir --data mycases.csv --plot fit.png
-python skills/axiomize/tools/fit.py --model logistic --data adoption.csv
-```
+- JSON Model IR;
+- generated Python;
+- Jupyter notebook (`ipynb` / nbformat 4);
+- SBML Level 3 Version 2 for the conservative supported subset;
+- CellML 2.0 for the conservative supported subset;
+- Modelica 3.6 textual models for supported algebraic/ODE/DAE equations;
+- GraphML for network models;
+- Graphviz DOT for causal DAGs;
+- `axiomize.portable-bundle.v1`, containing canonical Model IR, assumptions, provenance and SHA-256 integrity metadata;
+- YAML when the optional YAML dependency is available.
 
-## Visualization
+Standards adapters fail honestly with `ADAPTER_REQUIRED` when a model cannot be represented without changing its meaning.
 
-Matplotlib is a core dependency in 1.7. The engine includes helpers for:
+## Scientific tool stack
 
-- ranked sensitivity plots;
-- 3D response surfaces;
-- directed variable/mechanism dependency graphs.
+Core runtime dependencies include NumPy, SciPy, SymPy, statsmodels, NetworkX, Matplotlib, Z3, python-control, CVXPY and CasADi. Optional integrations include PyMC, JAX, Lean and FEniCS/DOLFINx.
 
-Visuals are intended to explain both the result and **how variables affect each other**, not merely decorate the report.
+The router only selects a backend whose availability probe actually passes. Optional-backend absence is surfaced explicitly instead of being disguised as a successful tool call.
 
-## Hypotheses and empirical testing
+## Data, fitting and model criticism
 
-For engineering, biology, physics, chemistry and other empirical domains, Axiomize converts the model into a testable hypothesis and states:
+The engine supports:
 
-- expected observation if the hypothesis is true;
-- observation that would refute it;
-- data/measurement needed;
-- experiment/test design;
-- validity domain and failure modes.
+- conservative data cleaning with original-data preservation and an audit trail;
+- SIR/logistic reference fitting and generic ODE fitting;
+- identifiability and residual diagnostics;
+- AIC/BIC comparison and simplest-sufficient-model preference;
+- sensitivity and validity scans;
+- local stability analysis;
+- sparse dynamics/SINDy-style discovery;
+- experiment-time ranking by a Fisher-information proxy;
+- validated polynomial surrogate/reduced-order models with untouched holdout data and extrapolation blocking.
 
-When a physical experiment is costly, dangerous or destructive, the workflow prefers simulation/virtual testing first when feasible. If a hypothesis fails, Axiomize can generate and rank replacement hypotheses and say what evidence would distinguish them.
+Constraint violations are visible PASS/FAIL records. Rebuild/refit after a failed scientific constraint requires approval and preserves the failed model/result.
 
-## User-controlled consumption
+## Security and trust boundaries
 
-Axiomize does **not** silently expand the number of agents or paid calls.
+The 1.11.2 hardening line remains part of the 1.12 contract:
 
-These actions require explicit permission unless the user already requested them:
+- AST-whitelisted mathematical expressions translated without arbitrary Python evaluation;
+- hard expression, array, graph, draw, event, process and solver ceilings;
+- arbitrary Python/Lean execution disabled by default and explicitly marked as not being an OS sandbox;
+- REST request/concurrency/read-time limits, loopback-by-default binding and auth for remote binding;
+- run-root path confinement and run-state integrity hashes;
+- provider URL/redirect/response limits;
+- LaTeX macro allow-list and `-no-shell-escape` compilation;
+- Z3 timeout/domain guards;
+- immutable-SHA GitHub Actions dependencies;
+- dependency vulnerability audit and security-contract CI.
 
-- spawning extra agents/subtasks;
-- repeating the whole analysis with independent alternative methods;
-- making extra paid/provider calls beyond the selected workflow.
+See [SECURITY.md](SECURITY.md) and [docs/security.md](docs/security.md).
 
-Local deterministic computation, validation and plotting that are already part of the requested analysis can proceed normally.
+## Release integrity
 
-Inspect or configure the policy:
+Every package release must pass:
 
-```bash
-axiomize policy
-axiomize policy --allow-subtasks --allow-repeat --allow-extra-paid-calls
-```
+- Python 3.10 / 3.11 / 3.12 / 3.13 validation;
+- security contract and dependency audit;
+- source and installed import-graph checks;
+- exact built-wheel install and full CLI contract;
+- Model IR, advanced-family, export, surrogate and LaTeX release smokes;
+- all-family scientific stress matrix;
+- exact-wheel CLI smoke on **Ubuntu/Linux, Windows and macOS**;
+- Trusted Publishing-first PyPI publication and post-publication verification.
+
+## Adaptive workflow
+
+The Agent Skill can clarify a vague idea, recommend weak/medium/strong depth, construct multiple defensible candidate models, compare the best candidates, expose conflicts, quantify uncertainty, and produce falsifiers/experiment plans.
+
+Expensive work is not silently multiplied. Large Monte Carlo runs, broad sweeps, Bayesian sampling, multiphysics co-simulation, repeated numerical refinement, extra paid model calls and whole-analysis reruns are approval-gated.
 
 ## Interfaces
 
-The same core services are exposed through:
+The same application-service layer is available through:
 
-- Python
-- CLI
-- REST API v1
-- MCP over stdio
-
-Start the servers:
+- Python;
+- CLI;
+- REST API v1;
+- MCP over stdio.
 
 ```bash
+axiomize capabilities
 axiomize serve --port 8765
 axiomize mcp
 ```
 
-Adaptive intake is also available over REST (`POST /v1/intake`) and MCP (`axiomize.intake`). MCP tools publish real JSON input schemas instead of empty placeholder schemas.
+REST binds to loopback by default. Remote binding requires explicit opt-in plus authentication.
+
+## Reference checks
+
+```bash
+# package-native benchmark
+axiomize benchmark
+
+# deterministic SIR reference validation
+axiomize-validate --model sir --beta 0.3 --gamma 0.1
+
+# stochastic validation
+axiomize-validate --model gillespie --N 10000 --I0 1 --runs 300
+
+# report conversion
+axiomize-to-latex --input report.md --output report.tex
+```
 
 ## Reproducibility
 
-`RunState` can preserve:
-
-- problem definition and inputs;
-- original data references and transformations;
-- parameters, assumptions and provenance;
-- candidate model ranking;
-- equations and solver settings;
-- tools and library versions;
-- validation conflicts;
-- uncertainty and confidence labels;
-- validity domain and sensitivity results;
-- falsifiers and hypotheses;
-- generated visualizations/artifacts.
-
-This allows an older run to be inspected or repeated and gives Axiomize enough metadata to investigate why a rerun changed.
-
-## Install from PyPI
-
-```bash
-pip install axiomize
-```
-
-Or install the Agent Skill directly from the repository:
-
-```bash
-git clone https://github.com/Furox-Art/axiomize
-
-# Claude Code
-cp -r axiomize/skills/axiomize ~/.claude/skills/
-
-# opencode
-cp -r axiomize/skills/axiomize ~/.config/opencode/skills/
-```
-
-Then ask your agent, for example:
-
-> Model this idea mathematically: a coffee shop wants to decide how many baristas to schedule.
-
-## Reference implementation checks
-
-```bash
-# deterministic SIR + theory checks
-python skills/axiomize/tools/validate.py --model sir --beta 0.3 --gamma 0.1 --sweep --plot curve.png
-
-# stochastic CTMC validation
-python skills/axiomize/tools/validate.py --model gillespie --N 10000 --I0 1
-
-# queueing example
-python skills/axiomize/tools/validate.py --model queue --lam 60 --mu 20 --target-wait 3
-
-# package-native benchmark
-axiomize benchmark
-```
-
-## Worked examples
-
-| Idea | Model family | File |
-|---|---|---|
-| Disease in a city | SIR + stochastic fade-out | [epidemic-sir.md](examples/epidemic-sir.md) |
-| Uncertain retailer inventory | newsvendor + safety stock | [supply-chain-inventory.md](examples/supply-chain-inventory.md) |
-| Coffee-shop staffing | Erlang-C + staffing optimization | [coffee-shop-staffing.md](examples/coffee-shop-staffing.md) |
+Axiomize records the information needed to explain and reproduce a run: Model IR/schema version, parameters, solver/method, tool/package versions, seeds, data hashes, preprocessing, assumptions, validation results and outputs. Run-state persistence uses atomic writes and integrity verification.
 
 ## Design rules
 
-1. **No undefined symbols.** Every equation defines its terms.
-2. **Units are mandatory where they exist.**
-3. **Mechanism uncertainty is explicit.**
-4. **Multiple plausible models are compared whenever possible.**
-5. **Assumptions state what breaks when violated.**
-6. **Falsifiability is required.**
-7. **Original data are preserved during cleaning.**
-8. **Tool/model conflicts are shown, not hidden.**
-9. **Extra agent/API consumption is user-controlled.**
-10. **Runs should be reproducible.**
+1. No undefined model symbols.
+2. Units/dimensional consistency are checked where defined.
+3. Mechanism uncertainty is explicit.
+4. Multiple plausible models are compared when evidence permits.
+5. Causal claims require identification, not correlation.
+6. Numerical error is not conflated with scientific uncertainty.
+7. Original data and failed models are preserved.
+8. Tool/solver conflicts are shown, not hidden.
+9. Expensive or paid work is approval-gated.
+10. Release claims must be demonstrated on the exact wheel that is published.
 
-See [skills/axiomize/adaptive-workflow.md](skills/axiomize/adaptive-workflow.md) for the full behavioral contract and [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
+See [skills/axiomize/adaptive-workflow.md](skills/axiomize/adaptive-workflow.md), [ROADMAP.md](ROADMAP.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
