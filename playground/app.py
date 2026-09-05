@@ -70,9 +70,13 @@ def _uploaded_path(csv_file):
 def analyze(csv_file, model, N):
     if csv_file is None:
         return None, "Upload a CSV first (time column first, value second)."
+    if model not in {"sir", "logistic"}:
+        return None, "Model must be either 'sir' or 'logistic'."
     try:
         path = _uploaded_path(csv_file)
-        df = pd.read_csv(path, nrows=MAX_DATA_ROWS + 1)
+        # Only the two declared input columns are needed. Avoid materializing a
+        # hostile/accidental extremely-wide CSV into a large DataFrame.
+        df = pd.read_csv(path, usecols=[0, 1], nrows=MAX_DATA_ROWS + 1)
     except (OSError, ValueError, UnicodeError, pd.errors.ParserError) as exc:
         return None, f"CSV read failed: {exc}"
     if len(df) > MAX_DATA_ROWS:
