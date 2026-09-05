@@ -83,7 +83,7 @@ class TestFit:
     def test_fit_sir_requires_n(self):
         t = np.linspace(0, 30, 15)
         y = 10 * np.exp(0.15 * t)
-        with pytest.raises(SystemExit):
+        with pytest.raises(ValueError):
             fit_sir(t, y)
 
     def test_fit_sir_recovers_truth(self):
