@@ -14,6 +14,13 @@ from axiomize import general_engine_core as _core
 from axiomize.general_engine_core import *  # noqa: F401,F403
 from axiomize.model_ir import ModelFamily, ModelIR
 
+# A small number of internal helpers are intentionally imported by the existing
+# advanced diagnostics module.  Star imports omit underscore names, so preserve
+# those compatibility symbols explicitly while the core is split behind this
+# facade.
+_parameter_values = _core._parameter_values
+_sympy_expression = _core._sympy_expression
+
 _base_select_solver = _core.select_solver
 _base_estimate_compute = _core.estimate_compute
 _base_recommend_model_families = _core.recommend_model_families
