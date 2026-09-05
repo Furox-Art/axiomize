@@ -82,6 +82,17 @@ class LeanAdapter(ScientificTool):
         """Elaborate trusted theorem text with the real local Lean toolchain."""
         self.validate_input(payload)
         theorem = str(payload["theorem"])
+
+        # Availability is a capability fact and does not execute user theorem
+        # text. Report it before the trust gate so an absent toolchain is never
+        # misreported as a consent problem.
+        meta = self.availability()
+        if not meta.available:
+            result = {"status": ValidationStatus.TOOL_UNAVAILABLE.value, "theorem": theorem, "proved": False,
+                      "proof": None, "reason": meta.reason or "lean toolchain unavailable"}
+            self.validate_output(result)
+            return result
+
         if not bool(payload.get("allow_unsafe_execution", False)):
             result = {
                 "status": ValidationStatus.INCONCLUSIVE.value,
@@ -90,13 +101,6 @@ class LeanAdapter(ScientificTool):
                 "proof": None,
                 "reason": "Lean elaboration executes trusted local code and is disabled by default; retry with allow_unsafe_execution=true only for trusted theorem text",
             }
-            self.validate_output(result)
-            return result
-
-        meta = self.availability()
-        if not meta.available:
-            result = {"status": ValidationStatus.TOOL_UNAVAILABLE.value, "theorem": theorem, "proved": False,
-                      "proof": None, "reason": meta.reason or "lean toolchain unavailable"}
             self.validate_output(result)
             return result
 
