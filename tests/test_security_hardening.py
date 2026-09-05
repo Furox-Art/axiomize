@@ -54,6 +54,13 @@ def test_expression_parser_accepts_bounded_math() -> None:
     assert expr is not None
 
 
+def test_direct_general_engine_core_uses_hardened_parser() -> None:
+    from axiomize import general_engine_core as core
+
+    with pytest.raises(ValueError):
+        core._sympy_expression("__import__('os').system('echo nope')", {})
+
+
 def test_model_ir_rejects_duplicate_derivative_targets() -> None:
     payload = _decay_model()
     payload["equations"].append({"target": "x", "kind": "derivative", "expression": "0"})
@@ -68,6 +75,55 @@ def test_future_model_ir_never_silently_migrates() -> None:
         ModelIR.from_dict(payload)
     with pytest.raises(UnsupportedSchemaVersion):
         ModelIR.from_dict(payload, allow_migration=True)
+
+
+def test_pde_result_allocation_is_bounded_before_solver_runs() -> None:
+    from axiomize.general_engine import simulate_model
+
+    payload = {
+        "schema_version": "1.0",
+        "name": "large-pde",
+        "domain": "physics",
+        "family": "pde",
+        "variables": [{"name": "u", "unit": "dimensionless", "initial": 1.0}],
+        "parameters": [],
+        "equations": [{"target": "u", "kind": "derivative", "expression": "0"}],
+        "metadata": {"pde": {"grid_points": 4096}},
+    }
+    model = ModelIR.from_dict(payload)
+    with pytest.raises(ValueError, match="PDE trajectory"):
+        simulate_model(model, points=200_000, approve_heavy=True)
+
+
+def test_causal_design_matrix_has_hard_dimension_bound() -> None:
+    from axiomize.general_engine import simulate_model
+
+    n = 10_000
+    covariates = [f"c{i}" for i in range(2048)]
+    # The guard derives matrix width from the adjustment set before the native
+    # estimator can allocate a dense design matrix. We do not need to materialize
+    # 2,048 full covariate vectors to prove that ceiling.
+    payload = {
+        "schema_version": "1.0",
+        "name": "large-causal",
+        "domain": "general",
+        "family": "causal",
+        "variables": [{"name": "y", "unit": "dimensionless", "initial": 0.0}],
+        "parameters": [],
+        "equations": [{"target": "y", "kind": "causal", "expression": "y"}],
+        "metadata": {
+            "causal": {
+                "data": {"treatment": [0.0] * n, "outcome": [0.0] * n},
+                "treatment": "treatment",
+                "outcome": "outcome",
+                "adjustment_set": covariates,
+                "identification": {"randomized": True},
+            }
+        },
+    }
+    model = ModelIR.from_dict(payload)
+    with pytest.raises(ValueError, match="design matrix"):
+        simulate_model(model, points=2, approve_heavy=True)
 
 
 def test_untrusted_python_execution_is_blocked() -> None:
@@ -90,6 +146,16 @@ def test_rest_json_body_limit_constant_is_positive() -> None:
     from axiomize.server.rest_server import MAX_JSON_BYTES
 
     assert MAX_JSON_BYTES > 0
+
+
+def test_rest_connections_have_bounded_io_timeout(tmp_path: Path) -> None:
+    from axiomize.server.rest_server import start_server
+
+    server = start_server("127.0.0.1", 0, run_root=tmp_path, connection_timeout_s=5)
+    try:
+        assert server.connection_timeout_s == 5.0
+    finally:
+        server.server_close()
 
 
 def test_run_state_detects_tampering(tmp_path: Path) -> None:
