@@ -81,9 +81,6 @@ def install_general_engine_guards(engine_module: Any) -> None:
         guarded.__axiomize_runtime_guard__ = True  # type: ignore[attr-defined]
         engine_module._advanced_preflight = guarded
 
-    # Replace legacy advanced-family causal/Bayesian implementations with the
-    # versioned engines. advanced_family_engine is already imported by package
-    # initialization, so direct callers cannot bypass these replacements.
     from axiomize import advanced_family_engine as advanced
     from axiomize.bayesian_engine import infer_bayesian
     from axiomize.causal_engine import estimate_causal
@@ -94,16 +91,14 @@ def install_general_engine_guards(engine_module: Any) -> None:
         model, t_span=t_span, points=points, parameter_overrides=parameter_overrides, seed=seed
     )
 
-    # Every family now exposes an explicit numerical-verification contract. The
-    # contract remains family-specific and never labels sampling/conditioning
-    # diagnostics as discretization error.
+    # numerical_refinement(...) supports every family. Automatic attachment to
+    # simulate_model intentionally keeps the historical PDE/DAE scope so a
+    # successful non-discretized simulation is not turned into a failure merely
+    # because an optional sampling/multistart study did not converge.
     from axiomize import numerical_verification as verification_module
     from axiomize.numerical_verification_ext import install_family_complete_verification
     install_family_complete_verification(verification_module)
-    engine_module._NUMERICALLY_REFINED = set(ModelFamily)
 
-    # Extend portable/document exports while preserving existing JSON/Python/
-    # YAML/SBML/CellML/notebook behavior.
     if not getattr(engine_module.export_model, "__axiomize_extended_export__", False):
         from axiomize.export_extensions import export_extended
         original_export = engine_module.export_model
