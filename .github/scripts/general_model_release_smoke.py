@@ -83,6 +83,33 @@ def _model() -> dict[str, Any]:
     }
 
 
+def _pde_model() -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "name": "release-reaction-diffusion",
+        "domain": "physics",
+        "family": "pde",
+        "variables": [{"name": "u", "unit": "dimensionless", "initial": 1.0}],
+        "parameters": [{"name": "k", "unit": "1/day", "value": 0.5}],
+        "independent_variable": "t",
+        "independent_unit": "day",
+        "equations": [{"target": "u", "expression": "-k*u", "kind": "derivative"}],
+        "metadata": {
+            "pde": {
+                "grid_points": 9,
+                "space_span": [0.0, 1.0],
+                "diffusion": {"u": 0.1},
+                "boundary_conditions": {
+                    "u": {
+                        "left": {"type": "neumann", "value": 0.0},
+                        "right": {"type": "neumann", "value": 0.0},
+                    }
+                },
+            }
+        },
+    }
+
+
 def _test_cli(work: Path) -> None:
     axiomize = _exe()
     help_text = subprocess.run([axiomize, "--help"], text=True, capture_output=True, timeout=30, check=True).stdout
@@ -112,6 +139,24 @@ def _test_cli(work: Path) -> None:
     _assert(exported.get("format") == "json", "general model JSON export failed")
     decoded = json.loads(exported["content"])
     _assert(decoded.get("schema_version") == "1.0", "export lost Model IR schema version")
+
+    numerical_request = work / "numerical-request.json"
+    numerical_request.write_text(json.dumps({
+        "model_ir": _pde_model(),
+        "t_span": [0.0, 1.0],
+        "points": 21,
+        "tolerance": 1e-3,
+    }), encoding="utf-8")
+    blocked = _run([axiomize, "model", "--action", "numerical-verify", "--input-json", str(numerical_request)])
+    _assert(blocked.get("status") == "APPROVAL_REQUIRED", f"numerical verification was not approval-gated: {blocked}")
+    verified = _run([
+        axiomize, "model", "--action", "numerical-verify", "--input-json", str(numerical_request), "--approve-heavy",
+    ], timeout=90)
+    _assert(verified.get("status") == "PASS", f"installed numerical refinement failed: {verified}")
+    _assert(verified.get("study") == "mesh_refinement", "installed numerical gate did not run mesh refinement")
+    _assert(bool(verified.get("converged")), "installed numerical refinement did not converge")
+    separated = verified.get("uncertainty_separation", {})
+    _assert("numerical" in separated and "parameter" in separated, "numerical uncertainty was not separated")
 
 
 def _free_port() -> int:
@@ -159,6 +204,12 @@ def _test_rest() -> None:
         else:
             raise SmokeFailure(f"REST general-model endpoint never became ready: {last!r}")
         _assert(result.get("status") == "PASS" and result.get("family") == "ode", f"REST model failed: {result}")
+
+        numerical = _post(
+            f"http://127.0.0.1:{port}/v1/model/numerical-verify",
+            {"model_ir": _pde_model(), "t_span": [0.0, 1.0], "points": 21},
+        )
+        _assert(numerical.get("status") == "APPROVAL_REQUIRED", f"REST numerical gate missing: {numerical}")
     finally:
         if proc.poll() is None:
             proc.terminate()
@@ -183,6 +234,15 @@ def _test_mcp() -> None:
                 "arguments": {"model_ir": _model(), "t_span": [0.0, 1.0], "points": 20},
             },
         },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "axiomize.model_simulate",
+                "arguments": {"model_ir": _pde_model(), "t_span": [0.0, 1.0], "points": 21},
+            },
+        },
     ]
     proc = subprocess.run(
         [axiomize, "mcp"],
@@ -205,11 +265,17 @@ def _test_mcp() -> None:
     result = json.loads(text)
     _assert(result.get("status") == "PASS" and result.get("family") == "ode", f"MCP general model failed: {result}")
 
+    pde_call = by_id.get(4, {})
+    _assert("result" in pde_call and "error" not in pde_call, f"MCP PDE call failed: {pde_call}")
+    pde_result = json.loads(pde_call["result"]["content"][0]["text"])
+    verification = pde_result.get("numerical_verification", {})
+    _assert(verification.get("status") == "APPROVAL_REQUIRED", f"MCP did not surface numerical verification gate: {pde_result}")
+
 
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="axiomize-general-model-smoke-") as tmp:
         _test_cli(Path(tmp))
-        print("PASS installed general-model CLI")
+        print("PASS installed general-model CLI + numerical refinement")
         _test_rest()
         print("PASS installed general-model REST")
         _test_mcp()
