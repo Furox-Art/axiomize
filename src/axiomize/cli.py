@@ -95,6 +95,7 @@ def cmd_model(args: argparse.Namespace) -> int:
         "experiment-design": gs.experiment_design_service,
         "uncertainty": ads.model_uncertainty_service,
         "bifurcation": ads.model_bifurcation_service,
+        "numerical-verify": ads.model_numerical_verification_service,
         "stop-check": ads.model_stopping_service,
     }
     out = dispatch[args.action](payload)
@@ -224,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--action", choices=[
         "plan", "validate", "simulate", "fit", "compare", "repair", "export",
         "stability", "validity", "discover", "experiment-design", "uncertainty",
-        "bifurcation", "stop-check",
+        "bifurcation", "numerical-verify", "stop-check",
     ], default="plan")
     p.add_argument("--approve-heavy", action="store_true", help="approve heavy local compute for this invocation")
     p.add_argument("--approve-migration", action="store_true", help="approve displayed Model IR migration")
