@@ -107,6 +107,8 @@ jobs:
         run: python .github/scripts/portable_export_release_smoke.py
       - name: Validated surrogate installed contract
         run: python .github/scripts/surrogate_release_smoke.py
+      - name: Scientific all-family stress matrix
+        run: python .github/scripts/scientific_stress_gate.py
       - name: Real LaTeX console conversion
         shell: bash
         run: |
