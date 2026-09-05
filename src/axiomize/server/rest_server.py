@@ -6,7 +6,7 @@ payloads remain supported while Model IR payloads use the general engine.
 Security boundary:
 - localhost is the default and requires no token;
 - non-loopback binding requires *both* ``allow_remote=True`` and an auth token;
-- request bodies, concurrency and run-file access are bounded;
+- request bodies, concurrency, connection time and run-file access are bounded;
 - run identifiers are confined beneath a configured run root.
 """
 
@@ -25,6 +25,7 @@ from axiomize.limits import MAX_JSON_BYTES
 from axiomize.runs.state import RunState, resolve_run_directory
 
 _MAX_CONCURRENT_REQUESTS = 32
+_DEFAULT_CONNECTION_TIMEOUT_S = 30.0
 
 
 class RequestTooLarge(ValueError):
@@ -65,6 +66,7 @@ def _send(handler: BaseHTTPRequestHandler, code: int, payload: Any) -> None:
     handler.send_header("X-Content-Type-Options", "nosniff")
     handler.send_header("Cache-Control", "no-store")
     handler.send_header("Referrer-Policy", "no-referrer")
+    handler.send_header("Connection", "close")
     handler.end_headers()
     handler.wfile.write(body)
 
@@ -99,11 +101,20 @@ class BoundedThreadingHTTPServer(ThreadingHTTPServer):
         run_root: Path,
         auth_token: str | None,
         max_concurrent_requests: int,
+        connection_timeout_s: float,
     ) -> None:
         super().__init__(server_address, handler_class)
         self.run_root = run_root.resolve()
         self.auth_token = auth_token
+        self.connection_timeout_s = float(connection_timeout_s)
         self._request_slots = threading.BoundedSemaphore(max_concurrent_requests)
+
+    def get_request(self) -> tuple[Any, Any]:
+        request, client_address = super().get_request()
+        # Bound slow/incomplete header and body reads. This is deliberately a
+        # per-connection wall-clock I/O timeout, independent of compute gates.
+        request.settimeout(self.connection_timeout_s)
+        return request, client_address
 
     def process_request(self, request: Any, client_address: Any) -> None:
         if not self._request_slots.acquire(blocking=False):
@@ -130,13 +141,13 @@ class BoundedThreadingHTTPServer(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "AxiomizeREST/1.1"
+    protocol_version = "HTTP/1.1"
 
     @property
     def _server(self) -> BoundedThreadingHTTPServer:
         return self.server  # type: ignore[return-value]
 
     def log_message(self, *args: Any) -> None:
-        # Library server stays quiet by default. Never echo request bodies/tokens.
         pass
 
     def _authorized(self) -> bool:
@@ -263,8 +274,6 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, KeyError) as exc:
             _send(self, 400, {"error": str(exc)})
         except Exception:
-            # Do not leak filesystem paths, dependency internals or secrets to a
-            # remote caller. Detailed tracebacks belong in the embedding app.
             _send(self, 500, {"error": "internal server error"})
 
 
@@ -276,7 +285,8 @@ def start_server(
     allow_remote: bool = False,
     auth_token: str | None = None,
     max_concurrent_requests: int = _MAX_CONCURRENT_REQUESTS,
-) -> ThreadingHTTPServer:
+    connection_timeout_s: float = _DEFAULT_CONNECTION_TIMEOUT_S,
+) -> BoundedThreadingHTTPServer:
     host = str(host).strip()
     if not host:
         raise ValueError("host must be non-empty")
@@ -291,11 +301,15 @@ def start_server(
     max_concurrent_requests = int(max_concurrent_requests)
     if max_concurrent_requests < 1 or max_concurrent_requests > 256:
         raise ValueError("max_concurrent_requests must be between 1 and 256")
+    try:
+        connection_timeout_s = float(connection_timeout_s)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("connection_timeout_s must be numeric") from exc
+    if not 1.0 <= connection_timeout_s <= 300.0:
+        raise ValueError("connection_timeout_s must be between 1 and 300 seconds")
     root = Path(run_root).expanduser().resolve()
     return BoundedThreadingHTTPServer(
-        (host, port),
-        Handler,
-        run_root=root,
-        auth_token=auth_token,
+        (host, port), Handler, run_root=root, auth_token=auth_token,
         max_concurrent_requests=max_concurrent_requests,
+        connection_timeout_s=connection_timeout_s,
     )
