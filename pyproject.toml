@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.11.2"
-description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
+version = "1.12.0"
+description = "Rigorous scientific modeling engine and agent skill pack with native multi-family simulation, validation, causal/Bayesian inference and reproducible export"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -14,15 +14,8 @@ authors = [
     { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
 ]
 keywords = [
-    "modeling",
-    "simulation",
-    "first-principles",
-    "calibration",
-    "sir",
-    "gillespie",
-    "monte-carlo",
-    "erlang-c",
-    "agent-skills",
+    "modeling", "simulation", "first-principles", "calibration", "causal-inference",
+    "bayesian", "finite-elements", "scientific-computing", "agent-skills",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -51,19 +44,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-full = [
-    "pymc>=5.0",
-    "jax>=0.4",
-]
-playground = [
-    "gradio>=4.0",
-    "pandas>=1.5",
-]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.4",
-    "mypy>=1.10",
-]
+full = ["pymc>=5.0", "jax>=0.4"]
+playground = ["gradio>=4.0", "pandas>=1.5"]
+dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.10"]
 
 [project.urls]
 Homepage = "https://github.com/Furox-Art/axiomize"
@@ -81,15 +64,9 @@ axiomize-to-latex = "axiomize.tools.report_to_latex:main"
 axiomize-index-reports = "axiomize.tools.index_reports:main"
 axiomize-sweep = "axiomize.tools.parallel_sweep:main"
 
-# check_skill.py is intentionally NOT an entry point: it is a repo-development
-# linter that walks the filesystem around its own location, which is only
-# meaningful inside a source checkout.
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/axiomize"]
 
-# Single source of truth: the wheel is assembled from the files that already
-# live under skills/axiomize/ - nothing is duplicated into src/.
 [tool.hatch.build.targets.wheel.force-include]
 "skills/axiomize/tools" = "axiomize/tools"
 "skills/axiomize/SKILL.md" = "axiomize/SKILL.md"
@@ -99,27 +76,19 @@ packages = ["src/axiomize"]
 "skills/axiomize/first-principles.md" = "axiomize/first-principles.md"
 "skills/axiomize/perspectives" = "axiomize/perspectives"
 "skills/axiomize/templates" = "axiomize/templates"
-# Runtime data for the packaged axiomize-benchmark entry point.
 "benchmarks/ideas.json" = "axiomize/data/benchmark_ideas.json"
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "dist",
-    "site",
-]
+exclude = [".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "site"]
 
 [tool.mypy]
 python_version = "3.13"
 
-# Third-party scientific wheels ship without stubs; probe them at runtime
-# instead of type-checking their internals.
 [[tool.mypy.overrides]]
 module = [
     "sympy.*", "scipy.*", "numpy.*", "networkx.*", "statsmodels.*",
-    "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics",
+    "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics", "dolfin.*",
+    "dolfinx.*", "ufl", "ufl.*", "petsc4py", "petsc4py.*", "mpi4py", "mpi4py.*",
 ]
 ignore_missing_imports = true
 
