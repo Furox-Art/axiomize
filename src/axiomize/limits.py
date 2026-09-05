@@ -71,6 +71,9 @@ def bounded_int(value: Any, *, name: str, minimum: int = 0, maximum: int) -> int
         text = value.strip()
         if not _INTEGER_TEXT.fullmatch(text):
             raise ValueError(f"{name} must be an integer")
+        digits = text.lstrip("+-")
+        if len(digits) > MAX_INTEGER_DIGITS:
+            raise ValueError(f"{name} integer text exceeds {MAX_INTEGER_DIGITS} digits")
         try:
             result = int(text, 10)
         except (TypeError, ValueError, OverflowError) as exc:
@@ -91,6 +94,8 @@ def bounded_float(
     minimum_inclusive: bool = True,
 ) -> float:
     """Coerce a finite float and enforce optional hard bounds."""
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be numeric, not a boolean")
     try:
         result = float(value)
     except (TypeError, ValueError, OverflowError) as exc:
