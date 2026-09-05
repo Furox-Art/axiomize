@@ -1,0 +1,14 @@
+{
+  "model_ir": {
+    "schema_version": "1.0",
+    "name": "decay",
+    "domain": "physics",
+    "family": "ode",
+    "independent_variable": "t",
+    "independent_unit": "day",
+    "variables": [{"name": "x", "unit": "dimensionless", "initial": 1.0}],
+    "parameters": [{"name": "k", "unit": "1/day", "value": 0.5}],
+    "equations": [{"target": "x", "expression": "-k*x", "kind": "derivative"}]
+  },
+  "format": "sbml-l3v2"
+}
