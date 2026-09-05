@@ -96,7 +96,7 @@ _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
         {"model_ir": _OBJECT, "model": _OBJECT, "validation": _OBJECT,
          "approve_repair": {"type": "boolean"}, "approve_migration": {"type": "boolean"}}, additional=True),
     "axiomize.model_export": _schema(
-        "Export Model IR as JSON/Python/YAML, or report when a standards adapter is required.",
+        "Export Model IR as JSON/Python/YAML/notebook or explicit versioned SBML/CellML subsets.",
         {"model_ir": _OBJECT, "model": _OBJECT, "format": {"type": "string"},
          "approve_migration": {"type": "boolean"}}, additional=True),
     "axiomize.model_stability": _schema(
@@ -116,6 +116,17 @@ _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
         {"model_ir": _OBJECT, "model": _OBJECT, "parameter": {"type": "string"},
          "candidate_times": _NUMBER_ARRAY, "horizon": _NUMBER,
          "delta_fraction": _NUMBER, "approve_heavy": {"type": "boolean"}}, additional=True),
+    "axiomize.model_surrogate": _schema(
+        "Fit, generate, or evaluate a holdout-validated surrogate. Full-model training-data generation is approval-gated and extrapolation is blocked by default.",
+        {"mode": {"type": "string", "enum": ["fit", "generate", "evaluate"]},
+         "model_ir": _OBJECT, "model": _OBJECT, "training_data": _OBJECT,
+         "surrogate": _OBJECT, "inputs": _OBJECT, "parameter_ranges": _OBJECT,
+         "output_specs": {"type": "array", "items": _OBJECT}, "t_span": _NUMBER_ARRAY,
+         "points": {"type": "integer"}, "samples": {"type": "integer"},
+         "degree": {"type": "integer"}, "holdout_fraction": _NUMBER,
+         "minimum_r2": _NUMBER, "maximum_nrmse": _NUMBER, "seed": {"type": "integer"},
+         "approve_heavy": {"type": "boolean"}, "allow_extrapolation": {"type": "boolean"},
+         "allow_unvalidated": {"type": "boolean"}, "approve_migration": {"type": "boolean"}}, additional=True),
 }
 
 _LEGACY_TOOL_NAMES = {
@@ -129,6 +140,7 @@ _LEGACY_TOOL_NAMES = {
 
 def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     from axiomize.application import general_services as gs
+    from axiomize.application import surrogate_services as ss
     from axiomize.application import services
     from axiomize.routing.router import classify
     from axiomize.runs.state import RunState
@@ -146,6 +158,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         "axiomize.model_validity": gs.model_validity_service,
         "axiomize.model_discovery": gs.model_discovery_service,
         "axiomize.experiment_design": gs.experiment_design_service,
+        "axiomize.model_surrogate": ss.model_surrogate_service,
     }
     if name in general:
         return general[name](arguments)
