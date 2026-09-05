@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.11.2"
-description = "Turn any idea into a rigorous mathematical model - agent skill pack with 15+ modeling perspectives plus calibration, validation and benchmark tools"
+version = "1.12.0"
+description = "Rigorous scientific Model IR engine with multi-family simulation, validation, causal/Bayesian diagnostics, verification and portable export"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -14,15 +14,8 @@ authors = [
     { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
 ]
 keywords = [
-    "modeling",
-    "simulation",
-    "first-principles",
-    "calibration",
-    "sir",
-    "gillespie",
-    "monte-carlo",
-    "erlang-c",
-    "agent-skills",
+    "modeling", "simulation", "first-principles", "calibration", "causal-inference",
+    "bayesian", "finite-elements", "scientific-computing", "agent-skills",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -77,6 +70,7 @@ axiomize-validate = "axiomize.tools.validate:main"
 axiomize-fit = "axiomize.tools.fit:main"
 axiomize-csv-check = "axiomize.tools.csv_check:main"
 axiomize-benchmark = "axiomize.tools.benchmark_runner:main"
+axiomize-stress = "axiomize.scientific_stress_cli:main"
 axiomize-to-latex = "axiomize.tools.report_to_latex:main"
 axiomize-index-reports = "axiomize.tools.index_reports:main"
 axiomize-sweep = "axiomize.tools.parallel_sweep:main"
@@ -99,27 +93,22 @@ packages = ["src/axiomize"]
 "skills/axiomize/first-principles.md" = "axiomize/first-principles.md"
 "skills/axiomize/perspectives" = "axiomize/perspectives"
 "skills/axiomize/templates" = "axiomize/templates"
-# Runtime data for the packaged axiomize-benchmark entry point.
 "benchmarks/ideas.json" = "axiomize/data/benchmark_ideas.json"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "dist",
-    "site",
+    ".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "site",
 ]
 
 [tool.mypy]
 python_version = "3.13"
 
-# Third-party scientific wheels ship without stubs; probe them at runtime
-# instead of type-checking their internals.
 [[tool.mypy.overrides]]
 module = [
     "sympy.*", "scipy.*", "numpy.*", "networkx.*", "statsmodels.*",
-    "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics",
+    "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc",
+    "fenics", "dolfin", "dolfin.*", "dolfinx", "dolfinx.*", "mpi4py.*",
+    "petsc4py.*", "ufl", "ufl.*",
 ]
 ignore_missing_imports = true
 
