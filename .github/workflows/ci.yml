@@ -27,6 +27,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
         run: pip install -r requirements-test.txt
+      - name: Validate dependency graph
+        run: python -m pip check
+      - name: Source import graph contract
+        run: python .github/scripts/import_contract_smoke.py --source
       - name: Run test suite
         run: pytest tests/ -v
       - name: Skill lint (frontmatter + links + compile)
@@ -72,6 +76,10 @@ jobs:
           python -m pip install build
           python -m build --wheel
           python -m pip install --force-reinstall dist/*.whl
+      - name: Validate installed dependency graph
+        run: python -m pip check
+      - name: Installed package import graph contract
+        run: python .github/scripts/import_contract_smoke.py --installed
       - name: Full installed CLI contract
         run: python .github/scripts/cli_release_smoke.py
       - name: General Model IR installed contract
