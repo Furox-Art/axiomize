@@ -68,7 +68,7 @@ class Handler(BaseHTTPRequestHandler):
             _send(self, 404, {"error": f"unknown route: {path}"})
 
     def do_POST(self) -> None:
-        from axiomize.application import advanced_services, general_services, services
+        from axiomize.application import advanced_services, general_services, services, surrogate_services
 
         path = _strip_api_prefix(urlparse(self.path).path)
         try:
@@ -114,6 +114,8 @@ class Handler(BaseHTTPRequestHandler):
                 _send(self, 200, general_services.experiment_design_service(payload))
             elif path == "/model/numerical-verify":
                 _send(self, 200, advanced_services.model_numerical_verification_service(payload))
+            elif path == "/model/surrogate":
+                _send(self, 200, surrogate_services.model_surrogate_service(payload))
             elif path == "/cross-validate":
                 _send(self, 200, services.solve_sir_service(payload)["cross_validation"])
             elif path == "/falsify":
