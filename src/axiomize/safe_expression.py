@@ -1,9 +1,9 @@
 """Hardened parser for user-supplied mathematical expressions.
 
-Axiomize accepts equations from Model IR and symbolic-tool calls.  This module is
+Axiomize accepts equations from Model IR and symbolic-tool calls. This module is
 the single parser policy for those strings: only a small arithmetic AST is
 accepted, symbols/functions are explicit, and complexity is bounded before
-SymPy sees the expression.  This prevents Python-evaluation constructs and
+SymPy sees the expression. This prevents Python-evaluation constructs and
 pathological parser inputs from crossing an interface boundary.
 """
 
@@ -50,7 +50,7 @@ _ALLOWED_NODES = (
     ast.USub,
     ast.UAdd,
     ast.Call,
-    ast.Tuple,  # required by Piecewise pair syntax: Piecewise((x, cond), ...)
+    ast.Tuple,  # Piecewise pair syntax: Piecewise((x, cond), ...)
     ast.Compare,
     ast.Lt,
     ast.LtE,
@@ -83,12 +83,32 @@ def _depth(node: ast.AST) -> int:
 
 
 def _check_constant(value: Any) -> None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("only real numeric constants are allowed")
+    # Boolean constants are allowed only as declarative mathematical conditions
+    # (notably Piecewise(..., True)). They cannot introduce executable behavior.
+    if isinstance(value, bool):
+        return
+    if not isinstance(value, (int, float)):
+        raise ValueError("only real numeric or boolean constants are allowed")
     if isinstance(value, int) and len(str(abs(value))) > MAX_INTEGER_DIGITS:
         raise ValueError(f"integer literal exceeds {MAX_INTEGER_DIGITS} digits")
     if isinstance(value, float) and not math.isfinite(value):
         raise ValueError("numeric constants must be finite")
+
+
+def _constant_number(node: ast.AST) -> float | None:
+    """Return a finite literal numeric value, including a unary +/- literal."""
+    sign = 1.0
+    current = node
+    if isinstance(current, ast.UnaryOp) and isinstance(current.op, (ast.UAdd, ast.USub)):
+        sign = -1.0 if isinstance(current.op, ast.USub) else 1.0
+        current = current.operand
+    if not isinstance(current, ast.Constant) or isinstance(current.value, bool):
+        return None
+    if not isinstance(current.value, (int, float)):
+        return None
+    _check_constant(current.value)
+    value = sign * float(current.value)
+    return value if math.isfinite(value) else None
 
 
 def validate_expression(
@@ -139,10 +159,9 @@ def validate_expression(
                 raise ValueError("keyword arguments are not allowed in mathematical expressions")
             if len(node.args) > 32:
                 raise ValueError("mathematical function has too many arguments")
-        elif isinstance(node, ast.Pow) and isinstance(node.right, ast.Constant):
-            _check_constant(node.right.value)
-            exponent = float(node.right.value)
-            if abs(exponent) > MAX_ABS_CONSTANT_EXPONENT:
+        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            exponent = _constant_number(node.right)
+            if exponent is not None and abs(exponent) > MAX_ABS_CONSTANT_EXPONENT:
                 raise ValueError(
                     f"constant exponent magnitude exceeds hard limit {MAX_ABS_CONSTANT_EXPONENT:g}"
                 )
@@ -160,10 +179,9 @@ def sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
     validate_expression(expression, allowed_names=set(symbols))
     local_dict = dict(symbols)
     for name in ALLOWED_FUNCTIONS:
-        # Explicit model symbols win over built-in math names. Model IR itself
-        # forbids function-name collisions, but this keeps the helper robust.
         if name not in local_dict and hasattr(sp, name):
             local_dict[name] = getattr(sp, name)
+    # SymPy sees only AST-whitelisted text and an explicit local namespace.
     return sp.sympify(expression, locals=local_dict)
 
 
