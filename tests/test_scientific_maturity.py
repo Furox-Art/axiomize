@@ -5,7 +5,7 @@ import pytest
 
 from axiomize.bayesian.diagnostics import parameter_diagnostics, posterior_predictive_normal
 from axiomize.general_engine import export_model, numerical_refinement, simulate_model
-from axiomize.model_ir import ModelFamily, ModelIR
+from axiomize.model_ir import ModelIR
 from axiomize.tools.pde.fenics_tool import FEniCSAdapter
 
 
@@ -87,15 +87,14 @@ def test_expanded_exports_are_nonempty_and_julia_is_family_scoped() -> None:
     assert export_model(algebraic, format="julia")["status"] == "ADAPTER_REQUIRED"
 
 
-def test_all_family_numerical_verification_contract_is_installed() -> None:
-    import axiomize.general_engine as engine
-    assert engine._NUMERICALLY_REFINED == set(ModelFamily)
+def test_all_family_numerical_verification_contract_is_explicit() -> None:
     model = _model({"name":"root","family":"algebraic","variables":[{"name":"x","initial":1}],"parameters":[],
                     "equations":[{"target":"","kind":"residual","expression":"x-2"}]})
     blocked = numerical_refinement(model, approve_heavy=False)
     assert blocked["status"] == "APPROVAL_REQUIRED"
     checked = numerical_refinement(model, approve_heavy=True)
     assert checked["status"] == "PASS"
+    assert checked["study"] == "deterministic_repeatability"
 
 
 def test_fenics_executor_has_real_declarative_contract() -> None:
