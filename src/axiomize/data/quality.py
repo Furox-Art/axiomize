@@ -55,7 +55,8 @@ def clean_numeric_xy(t: Any, y: Any, *, drop_nonfinite: bool = True,
     """Clean paired numeric observations without hiding transformations.
 
     ``duplicate_policy`` may be ``mean``, ``first`` or ``error``. Outliers are
-    reported in ``warnings`` and are deliberately retained.
+    reported in ``warnings`` and are deliberately retained. When ``sort_time``
+    is false, duplicate merging preserves the first-occurrence order exactly.
     """
     _precheck_length(t, name="t")
     _precheck_length(y, name="y")
@@ -102,19 +103,34 @@ def clean_numeric_xy(t: Any, y: Any, *, drop_nonfinite: bool = True,
         y_arr = y_arr[order]
         audit.append({"operation": "sort_by_time", "reason": "time coordinate was not monotonic"})
 
-    unique, counts = np.unique(t_arr, return_counts=True)
-    duplicate_times = unique[counts > 1]
+    unique, first_indices, counts = np.unique(
+        t_arr,
+        return_index=True,
+        return_counts=True,
+    )
+    duplicate_mask = counts > 1
+    duplicate_times = unique[duplicate_mask]
     if len(duplicate_times):
         if duplicate_policy == "error":
             raise ValueError(f"duplicate time coordinates: {duplicate_times[:100].tolist()}")
+
+        # np.unique sorts its output. That is desired after an explicit time
+        # sort, but it would silently reorder data when sort_time=False. In that
+        # mode restore first-occurrence order before merging duplicate groups.
+        if sort_time:
+            merge_times = unique
+        else:
+            merge_times = unique[np.argsort(first_indices, kind="stable")]
+
         new_t: list[float] = []
         new_y: list[float] = []
         duplicate_records: list[dict[str, Any]] = []
-        for time_value in unique:
+        for time_value in merge_times:
             idx = np.flatnonzero(t_arr == time_value)
             vals = y_arr[idx]
             value = float(np.mean(vals)) if duplicate_policy == "mean" else float(vals[0])
-            new_t.append(float(time_value)); new_y.append(value)
+            new_t.append(float(time_value))
+            new_y.append(value)
             if len(idx) > 1 and len(duplicate_records) < 1000:
                 duplicate_records.append({
                     "time": float(time_value),
@@ -131,6 +147,7 @@ def clean_numeric_xy(t: Any, y: Any, *, drop_nonfinite: bool = True,
             "duplicates": duplicate_records,
             "duplicate_groups": int(len(duplicate_times)),
             "duplicates_truncated": len(duplicate_times) > 1000,
+            "order_policy": "sorted_time" if sort_time else "first_occurrence",
         })
 
     outliers = _robust_outlier_indices(y_arr)
