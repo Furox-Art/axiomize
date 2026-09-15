@@ -1,0 +1,6 @@
+{"id":"math-arithmetic-001","domain":"mathematics","prompt":"Compute 17 * 19.","accepted_answers":["323"],"notes":"Exact-answer sanity case."}
+{"id":"math-algebra-001","domain":"mathematics","prompt":"Solve x^2 - 5x + 6 = 0. Return the roots in ascending order separated by a comma.","accepted_answers":["2, 3","2,3"],"notes":"Checks independent verification of a simple factorization."}
+{"id":"logic-contradiction-001","domain":"logic","prompt":"Premises: All A are B. No B are C. Some A are C. Are the premises jointly consistent? Answer yes or no.","accepted_answers":["no"],"notes":"Requires contradiction detection."}
+{"id":"debug-python-001","domain":"debugging","prompt":"A Python function is intended to return the first item of xs: def first(xs): return xs[1]. What integer index should replace 1?","accepted_answers":["0"],"notes":"Minimal root-cause diagnosis."}
+{"id":"science-units-001","domain":"scientific-reasoning","prompt":"A car travels at 20 m/s for 15 s at constant speed. How many meters does it travel? Return only the number.","accepted_answers":["300"],"notes":"Simple quantitative verification case."}
+{"id":"probability-001","domain":"probability","prompt":"A fair coin is flipped twice. What is the probability of exactly one head? Return a decimal.","accepted_answers":["0.5",".5"],"notes":"Checks enumeration versus shortcut reasoning."}

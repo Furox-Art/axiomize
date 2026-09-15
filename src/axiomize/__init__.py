@@ -1,6 +1,6 @@
 """Axiomize: rigorous, reproducible scientific modeling engine and agent skill pack."""
 
-__version__ = "1.12.2"
+__version__ = "2.0.0"
 
 # Initialize compatibility/security hooks before callers can import submodules.
 from axiomize import general_engine as _general_engine  # noqa: E402,F401

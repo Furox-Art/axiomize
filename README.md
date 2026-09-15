@@ -8,7 +8,7 @@
 
 Axiomize combines a machine-readable Model IR with native scientific executors, validation, fitting, uncertainty analysis, causal/Bayesian inference, formal/numerical checks, portable export, and an adaptive modeling workflow. It is designed to make assumptions, solver choices, uncertainty and failure modes visible rather than burying them in generated prose.
 
-Current package line: **1.12.2**. Version **1.11.2** was the repository-wide security/runtime hardening release; 1.12.0 added the full scientific stress matrix, Causal Engine 2.0, Bayesian convergence/PPC diagnostics, real optional FEniCS FEM execution, family-wide numerical verification and broader export. Version 1.12.1 fixed DOLFINx-aware PDE solver selection; 1.12.2 tightens release/documentation consistency and exact numeric/run-integrity boundaries after a follow-up repository audit.
+Current package line: **2.0.0**. Axiomize 2.0 merges the standalone `quantum-reasoning-skill` (v0.3.1) into the engine as `axiomize.reasoning` — multi-branch hypothesis management (score/prune/revive/collapse) now lives next to Model IR execution. The quantum-reasoning reference defaults (thresholds/weights) are ported verbatim; they remain reference defaults, not validated constants.
 
 ## Install
 

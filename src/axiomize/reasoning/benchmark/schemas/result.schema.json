@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Furox-Art/quantum-reasoning-skill/blob/main/benchmark/schemas/result.schema.json",
+  "title": "Quantum Reasoning benchmark result row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["case_id", "answer", "tokens", "tool_calls", "latency_ms"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "answer": {},
+    "tokens": {"type": "number", "minimum": 0},
+    "tool_calls": {"type": "number", "minimum": 0},
+    "latency_ms": {"type": "number", "minimum": 0},
+    "status": {
+      "type": "string",
+      "enum": ["ok", "refusal", "timeout", "error"]
+    },
+    "branches_total": {"type": "number", "minimum": 0},
+    "branches_distinct": {"type": "number", "minimum": 0},
+    "revived_branches": {"type": "number", "minimum": 0},
+    "recovered_errors": {"type": "number", "minimum": 0},
+    "contradictions_found": {"type": "number", "minimum": 0},
+    "contradictions_resolved": {"type": "number", "minimum": 0}
+  }
+}

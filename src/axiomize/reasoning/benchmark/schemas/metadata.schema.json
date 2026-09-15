@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Furox-Art/quantum-reasoning-skill/blob/main/benchmark/schemas/metadata.schema.json",
+  "title": "Quantum Reasoning community benchmark metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "provider",
+    "model",
+    "run_date",
+    "skill_version",
+    "repetitions_per_case",
+    "baseline",
+    "skill",
+    "failures_recorded"
+  ],
+  "properties": {
+    "provider": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "model_version": {"type": ["string", "null"]},
+    "run_date": {"type": "string", "format": "date"},
+    "skill_version": {"type": "string", "minLength": 1},
+    "skill_commit": {"type": ["string", "null"]},
+    "cases_source": {"type": ["string", "null"]},
+    "repetitions_per_case": {"type": "integer", "minimum": 1},
+    "random_seed": {"type": ["integer", "string", "null"]},
+    "hardware_runtime": {"type": ["string", "null"]},
+    "failures_recorded": {"const": true},
+    "baseline": {"$ref": "#/$defs/condition"},
+    "skill": {"$ref": "#/$defs/condition"},
+    "notes": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "instruction_config",
+        "sampling",
+        "tool_availability",
+        "context_limit",
+        "output_limit"
+      ],
+      "properties": {
+        "instruction_config": {"type": "string", "minLength": 1},
+        "sampling": {"type": "object"},
+        "tool_availability": {"type": ["array", "object", "string"]},
+        "context_limit": {"type": ["integer", "null"], "minimum": 1},
+        "output_limit": {"type": ["integer", "null"], "minimum": 1}
+      }
+    }
+  }
+}

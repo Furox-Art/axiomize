@@ -2,6 +2,18 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [2.0.0] - 2026-09-16
+
+### Merged
+
+- merged standalone `quantum-reasoning-skill` v0.3.1 into `axiomize.reasoning` (same `axiomize` repo name, now version 2.0)
+  - `src/axiomize/reasoning/branch_controller.py` — deterministic branch score/prune/revive/collapse logic, ported verbatim
+  - `src/axiomize/reasoning/benchmark/` — evaluator, submission validator, seed cases + JSON schemas
+  - `src/axiomize/reasoning/docs/` — MEASUREMENT + COMPATIBILITY contracts
+  - `skills/quantum-reasoning-SKILL.md` — model-facing protocol, kept alongside the existing axiomize skill
+  - `tests/test_reasoning_quantum.py` — 8 ported tests, all passing
+- previous `quantum-reasoning-skill` repo is superseded; its README now points here and the repo will be archived
+
 ## [1.12.2] - 2026-09-05
 
 ### Fixed / hardened

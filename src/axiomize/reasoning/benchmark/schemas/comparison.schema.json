@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Furox-Art/quantum-reasoning-skill/blob/main/benchmark/schemas/comparison.schema.json",
+  "title": "Quantum Reasoning benchmark comparison output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["baseline", "skill", "comparison"],
+  "properties": {
+    "baseline": {"$ref": "#/$defs/summary"},
+    "skill": {"$ref": "#/$defs/summary"},
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accuracy_delta",
+        "tokens_percent_change",
+        "tool_calls_percent_change",
+        "latency_percent_change",
+        "branch_diversity_delta",
+        "contradiction_resolution_delta"
+      ],
+      "properties": {
+        "accuracy_delta": {"type": ["number", "null"]},
+        "tokens_percent_change": {"type": ["number", "null"]},
+        "tool_calls_percent_change": {"type": ["number", "null"]},
+        "latency_percent_change": {"type": ["number", "null"]},
+        "branch_diversity_delta": {"type": ["number", "null"]},
+        "contradiction_resolution_delta": {"type": ["number", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cases_defined",
+        "cases_evaluated",
+        "missing_case_ids",
+        "accuracy",
+        "mean_tokens",
+        "mean_tool_calls",
+        "mean_latency_ms",
+        "branch_diversity_ratio",
+        "revival_rate_per_case",
+        "error_recovery_rate_per_case",
+        "contradiction_resolution_rate"
+      ],
+      "properties": {
+        "cases_defined": {"type": "integer", "minimum": 0},
+        "cases_evaluated": {"type": "integer", "minimum": 0},
+        "missing_case_ids": {"type": "array", "items": {"type": "string"}},
+        "accuracy": {"type": ["number", "null"]},
+        "mean_tokens": {"type": ["number", "null"]},
+        "mean_tool_calls": {"type": ["number", "null"]},
+        "mean_latency_ms": {"type": ["number", "null"]},
+        "branch_diversity_ratio": {"type": ["number", "null"]},
+        "revival_rate_per_case": {"type": ["number", "null"]},
+        "error_recovery_rate_per_case": {"type": ["number", "null"]},
+        "contradiction_resolution_rate": {"type": ["number", "null"]}
+      }
+    }
+  }
+}
