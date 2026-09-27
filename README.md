@@ -3,6 +3,8 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-informational)
 ![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)
+[![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)
+[![Downloads](https://img.shields.io/pypi/dm/axiomize)](https://pypi.org/project/axiomize/)
 
 **A versioned scientific modeling engine and Agent Skill for turning an idea into explicit, testable, reproducible mathematical models.**
 
