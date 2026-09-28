@@ -1,0 +1,1 @@
+const { spawn } = require('child_process'); function runAxiomize(args) { const python = process.platform === 'win32' ? 'python' : 'python3'; const proc = spawn(python, ['-m', 'axiomize.cli', ...args], { stdio: 'inherit', cwd: __dirname }); proc.on('close', (code) =; } module.exports = { runAxiomize }; if (require.main === module) { runAxiomize(process.argv.slice(2)); } 
