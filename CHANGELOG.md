@@ -2,6 +2,10 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.12.3] - 2026-09-29
+
+- Metadata-only patch release: refreshed PyPI keywords, classifiers, and discovery metadata; no functional API changes.
+
 ## [1.12.2] - 2026-09-05
 
 ### Fixed / hardened

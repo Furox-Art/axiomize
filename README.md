@@ -1,6 +1,6 @@
 # Axiomize  
   
-Current package line: **1.12.2**  
+Current package line: **1.12.3**  
   
 ![License](https://img.shields.io/badge/license-MIT-blue)  
 ![Python](https://img.shields.io/badge/python-3.10%2B-informational)  
