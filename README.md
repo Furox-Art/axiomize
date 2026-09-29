@@ -15,6 +15,23 @@ You know the pattern: someone writes a beautiful simulation, it works on their m
   
 Axiomize is my attempt to fix that. It forces you to write models as explicit, versioned, testable code-not as exploratory spaghetti. Every assumption is written down. Every parameter has units. Every result can be reproduced by someone else, on a different machine, years later.  
   
+## Quick Start
+
+```bash
+pip install axiomize
+```
+
+```python
+from axiomize import Model
+
+m = Model.from_yaml("seir_model.yaml")   # explicit, versioned model IR
+m.fit(observed_data, uncertainty=True)   # calibrated, with CIs
+m.validate(holdout=validation_set)       # pass/fail against held-out data
+m.export("v1.2.0/")                     # reproducible provenance bundle
+```
+
+CLI, REST, and MCP surfaces included: `axiomize serve`, `axiomize fit`, `axiomize validate`. Also on npm: `npm i axiomize`.
+
 ## What it actually does  
   
 - Turns vague ideas into explicit mathematical models with real constraints  

@@ -18,7 +18,8 @@ keywords = [
     "bayesian", "finite-elements", "scientific-computing", "agent-skills",
     "mathematical-modeling", "parameter-estimation", "uncertainty-quantification",
     "sensitivity-analysis", "system-identification", "differential-equations",
-    "optimization", "reproducibility",
+    "optimization", "reproducibility", "mcp-server", "verification",
+    "model-registry", "provenance", "ode", "pde", "surrogate-model",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
