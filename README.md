@@ -1,5 +1,7 @@
 # Axiomize  
   
+Current package line: **1.12.2**  
+  
 ![License](https://img.shields.io/badge/license-MIT-blue)  
 ![Python](https://img.shields.io/badge/python-3.10%2B-informational)  
 ![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)  
@@ -38,3 +40,4 @@ That shouldn't be normal. Science should be checkable.
 ## License  
   
 MIT. Use it, break it, fix it. 
+
