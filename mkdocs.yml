@@ -1,5 +1,5 @@
 site_name: Axiomize
-site_description: Turn any idea into a rigorous mathematical model - an adaptive agent skill with multiple mathematical lenses.
+site_description: Rigorous mathematical modeling and scientific simulation for parameter estimation, calibration, sensitivity analysis, uncertainty quantification, causal and Bayesian inference, model comparison, and reproducible research workflows.
 repo_url: https://github.com/Furox-Art/axiomize
 theme:
   name: material

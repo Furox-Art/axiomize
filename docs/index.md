@@ -6,6 +6,12 @@ Axiomize now starts by clarifying missing mechanisms in plain language, recommen
 
 Extra agents, full alternative-method reruns and extra paid/provider calls are **user-controlled** rather than silently spawned.
 
+Axiomize is intended for **mathematical modeling**, **parameter estimation**,
+**model calibration**, **sensitivity analysis**, **uncertainty quantification**,
+**causal inference**, **Bayesian inference**, **finite-element modeling**, and
+reproducible scientific workflows where assumptions and model-selection choices
+need to remain inspectable.
+
 - Install: copy `skills/axiomize/` into `~/.config/opencode/skills/` or `~/.claude/skills/`
 - Ask: *"Model this idea mathematically: ..."*
 - CLI intake: `axiomize intake "your idea"`

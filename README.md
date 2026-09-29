@@ -23,6 +23,14 @@ Axiomize is my attempt to fix that. It forces you to write models as explicit, v
 - Exports to LaTeX, PDF, and portable formats that don't require Python  
 - Keeps a full audit trail so you can prove what you did and why  
   
+## Common modeling use cases
+
+- Turn a vague scientific idea into an explicit **mathematical model** with assumptions and constraints.
+- Perform **parameter estimation, calibration, sensitivity analysis, and uncertainty quantification**.
+- Compare alternative model families and document why one formulation was selected.
+- Build reproducible **causal inference, Bayesian inference, finite-element, and dynamical-system** workflows.
+- Produce auditable model artifacts for research, engineering, and scientific review.
+
 ## Quick start  
   
 ```bash  
