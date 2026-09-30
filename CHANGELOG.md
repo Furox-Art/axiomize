@@ -4,6 +4,30 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 ## [1.12.3] - 2026-09-29
 
+### Added
+
+- runnable `examples/quickstart_sir.py`, plus a README and `docs/quickstart.md` quickstart that quote its real output
+- `docs/quickstart.md`, a five-minute path from install to a validated result with the actual expected output for each command
+- `.github/scripts/readme_example_check.py`: CI gate asserting that README and docs links resolve, that the documented quickstart output still matches a real run, and that documented CLI entry points answer on real input
+- `.github/scripts/stage_docs.py`: single implementation of the docs staging step, shared by the Pages workflow and the new CI docs job so a local build matches the deployed site
+- mkdocs navigation now covers every page under `docs/`, including the tutorials, integrations, portable export, benchmark results, and the full security series
+- `pyproject.toml`: added `Changelog`, `Security`, `Contributing`, and `Benchmarks` project URLs; regrouped and expanded keywords; added Bio-Informatics, Physics, Information Analysis, Education, MIT, and `Python :: 3 :: Only` classifiers
+- CI now builds documentation in strict mode and runs the README/docs contract gate against the installed wheel
+
+### Fixed
+
+- README no longer advertises a nonexistent `Model.from_yaml` API, and no longer instructs the reader to add meters to seconds as if it were checked
+- README and `docs/index.md` no longer duplicate a "Quick Start" section or leave the first screen without an install command, use cases, or documentation links
+- README npm section now states that the published npm entry point is broken instead of advertising `npx axiomize` as a working install path
+- docs build failed `mkdocs build --strict` on a clean checkout because four nav targets were generated only inside the Pages workflow; the staging step is now runnable locally
+- `SECURITY.md` now gives a concrete supported-version table and the actual private-reporting URL, matching the now-enabled repository setting
+- `CONTRIBUTING.md` states Python 3.10+ instead of 3.9+, and lists the local commands CI actually runs
+- `.gitignore` covers `docs/adaptive-workflow.md` (a staged page that was previously left untracked), plus `.venv/`, `dist/`, and build artifacts
+
+### Changed
+
+- Package summary rewritten to describe the verifiable feature set: versioned Model IR, explicit units, dimensional and numerical validation, calibration, sensitivity and uncertainty analysis, causal/Bayesian inference, portable export via CLI/REST/MCP
+
 - Metadata-only patch release: refreshed PyPI keywords, classifiers, and discovery metadata; no functional API changes.
 
 ## [1.12.2] - 2026-09-05

@@ -1,14 +1,45 @@
 site_name: Axiomize
-site_description: Rigorous mathematical modeling and scientific simulation for parameter estimation, calibration, sensitivity analysis, uncertainty quantification, causal and Bayesian inference, model comparison, and reproducible research workflows.
+site_description: "Reproducible scientific modeling with explicit units, dimensional validation, numerical verification, and portable export for parameter estimation, calibration, sensitivity analysis, uncertainty quantification, and causal or Bayesian inference."
 repo_url: https://github.com/Furox-Art/axiomize
+edit_uri: blob/main/docs/
+
 theme:
   name: material
   palette:
     primary: indigo
+  features:
+    - navigation.sections
+    - navigation.top
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+
 nav:
   - Home: index.md
-  - Adaptive workflow: adaptive-workflow.md
-  - Workflow & lenses: skill.md
-  - Rigor ladder: rigor.md
-  - Archetypes: archetypes.md
-  - Example gallery: example-gallery.md
+  - Quickstart: quickstart.md
+  - Workflow:
+      - Adaptive workflow: adaptive-workflow.md
+      - The workflow and lenses: skill.md
+      - Rigor ladder: rigor.md
+      - Archetypes: archetypes.md
+  - Examples:
+      - Worked examples index: examples.md
+      - Example gallery: example-gallery.md
+  - Reference:
+      - Agent integration (MCP/REST/CLI): integrations.md
+      - Portable export formats: portable-export.md
+      - Benchmark results: benchmark-results.md
+  - Security:
+      - Trust boundaries: security.md
+      - Security CI contract: security-ci-contract.md
+      - Security non-goals: security-non-goals.md
+      - Patch versioning: security-versioning.md
+      - Maintenance: security-maintenance.md
+      - Release checklist: security-release-checklist.md
+      - Audit 1.11.2: security-audit-1.11.2.md
+  - Project:
+      - Publishing checklist: publishing-checklist.md
+      - Beginner walkthrough: tutorial.md
+      - Agent tutorials: tutorials.md

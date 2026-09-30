@@ -27,38 +27,12 @@ jobs:
         # SKILL.md and the perspective heads are written to be browsed inside
         # skills/axiomize/, so their relative links do not survive being
         # concatenated into a single docs/ page. Everything that is NOT staged
-        # into docs/ is rewritten to an absolute GitHub URL. `mkdocs build
-        # --strict` below keeps this list honest.
-        run: |
-          cp skills/axiomize/rigor.md docs/rigor.md
-          cp skills/axiomize/archetypes.md docs/archetypes.md
-          cp skills/axiomize/adaptive-workflow.md docs/adaptive-workflow.md
-          SKILL_URL='https://github.com/Furox-Art/axiomize/tree/main/skills/axiomize'
-          {
-            echo "# The workflow"
-            cat skills/axiomize/SKILL.md
-            printf '\n\n# The lenses\n\n'
-            for f in skills/axiomize/perspectives/*.md; do
-              echo "## $(basename "$f" .md)"
-              echo
-              head -n 12 "$f"
-              echo
-            done
-          } | sed -E "
-              s#\]\(perspectives/#](${SKILL_URL}/perspectives/#g
-              s#\]\(templates/#](${SKILL_URL}/templates/#g
-              s#\]\(first-principles\.md#](${SKILL_URL}/first-principles.md#g
-              s#\]\((agent-based|causal-inference|control|decision-theory|demographic|deterministic|game-theory|information-theory|network|optimization|reliability|spatial|spc|stochastic|thermodynamic)\.md#](${SKILL_URL}/perspectives/\1.md#g
-            " > docs/skill.md
-          {
-            echo "# Worked examples"
-            for f in examples/*.md; do
-              echo "## $(basename "$f" .md)"
-              echo
-              head -n 8 "$f"
-              echo
-            done
-          } > docs/examples.md
+        # into docs/ is rewritten to an absolute GitHub URL.
+        #
+        # This lives in a script rather than inline shell so that a local
+        # `mkdocs build --strict` and the CI docs job stage exactly the same
+        # tree as this deploy. `mkdocs build --strict` keeps the result honest.
+        run: python .github/scripts/stage_docs.py
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:

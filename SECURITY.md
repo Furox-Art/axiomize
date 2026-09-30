@@ -2,11 +2,27 @@
 
 ## Supported versions
 
-The latest published Axiomize release is the supported line. Security fixes are developed on protected branches and released as patch versions when they affect distributed code.
+The latest published release is the supported line. Earlier lines receive fixes only when
+a vulnerability also affects the current line, in which case both are patched.
+
+| Version | Supported |
+|---|---|
+| 1.12.x | yes |
+| < 1.12 | no |
+
+A fix affecting distributed runtime behavior ships as a patch version built and tested
+from the final merged commit on `main`. Unmerged branch artifacts are not release evidence
+(see [docs/security-versioning.md](docs/security-versioning.md)).
 
 ## Reporting a vulnerability
 
-Please do not publish an exploit or sensitive reproduction in a public issue. Use GitHub's private vulnerability reporting for this repository when available, or contact the repository maintainer privately through the contact information on the project profile.
+Please do not publish an exploit or sensitive reproduction in a public issue.
+
+Private vulnerability reporting is enabled for this repository. Use
+**Security → Report a vulnerability** on
+[github.com/Furox-Art/axiomize](https://github.com/Furox-Art/axiomize/security/advisories/new),
+which opens a private channel visible only to the maintainer. If that path is unavailable,
+contact the maintainer through the contact information on the project profile.
 
 Include the affected version, entry point, minimal reproduction, impact, and any proposed mitigation. Reports are evaluated against the actual trust boundary: Model IR, REST/MCP inputs, provider endpoints, generated-code execution, formal-tool adapters, file paths, and document conversion are all treated as untrusted-input surfaces unless explicitly documented otherwise.
 

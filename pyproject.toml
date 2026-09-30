@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "axiomize"
 version = "1.12.3"
-description = "Rigorous scientific modeling engine and agent skill pack with native multi-family simulation, validation, causal/Bayesian inference and reproducible export"
+description = "Reproducible scientific modeling engine and agent skill pack: versioned Model IR with explicit units, dimensional and numerical validation, calibration, sensitivity and uncertainty analysis, causal/Bayesian inference, and portable export via CLI, REST and MCP"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -14,26 +14,38 @@ authors = [
     { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
 ]
 keywords = [
-    "modeling", "simulation", "first-principles", "calibration", "causal-inference",
-    "bayesian", "finite-elements", "scientific-computing", "agent-skills",
-    "mathematical-modeling", "parameter-estimation", "uncertainty-quantification",
-    "sensitivity-analysis", "system-identification", "differential-equations",
-    "optimization", "reproducibility", "mcp-server", "verification",
-    "model-registry", "provenance", "ode", "pde", "surrogate-model",
+    # what it does
+    "modeling", "simulation", "scientific-computing", "mathematical-modeling",
+    "first-principles", "calibration", "parameter-estimation", "system-identification",
+    "sensitivity-analysis", "uncertainty-quantification", "cross-validation",
+    "dimensional-analysis", "model-comparison", "surrogate-model",
+    # method families
+    "ode", "pde", "differential-equations", "finite-elements", "optimization",
+    "bayesian", "causal-inference", "agent-based-modeling", "system-dynamics",
+    # trust and delivery
+    "reproducibility", "provenance", "verification", "validation", "mcp-server",
+    "agent-skills", "rest-api", "modelica", "sbml", "cellml",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
@@ -58,8 +70,12 @@ dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.10"]
 [project.urls]
 Homepage = "https://github.com/Furox-Art/axiomize"
 Repository = "https://github.com/Furox-Art/axiomize"
-Issues = "https://github.com/Furox-Art/axiomize/issues"
 Documentation = "https://furox-art.github.io/axiomize/"
+Changelog = "https://github.com/Furox-Art/axiomize/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Furox-Art/axiomize/issues"
+Security = "https://github.com/Furox-Art/axiomize/blob/main/SECURITY.md"
+Contributing = "https://github.com/Furox-Art/axiomize/blob/main/CONTRIBUTING.md"
+Benchmarks = "https://github.com/Furox-Art/axiomize/tree/main/benchmarks/reports"
 
 [project.scripts]
 axiomize = "axiomize.cli:main"

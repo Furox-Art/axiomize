@@ -1,68 +1,194 @@
-# Axiomize  
-  
-Current package line: **1.12.3**  
-  
-![License](https://img.shields.io/badge/license-MIT-blue)  
-![Python](https://img.shields.io/badge/python-3.10%2B-informational)  
-![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)  
-[![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)  
-[![npm](https://img.shields.io/npm/v/axiomize)](https://www.npmjs.com/package/axiomize)  
-[![Downloads](https://img.shields.io/pypi/dm/axiomize)](https://pypi.org/project/axiomize/)  
-  
-I got tired of scientific models that live in Jupyter notebooks and die there.  
-  
-You know the pattern: someone writes a beautiful simulation, it works on their machine, they graduate or change jobs, and six months later nobody can run it. The dependencies are broken, the data is missing, and the "documentation" is a 47-cell notebook with no explanation.  
-  
-Axiomize is my attempt to fix that. It forces you to write models as explicit, versioned, testable code-not as exploratory spaghetti. Every assumption is written down. Every parameter has units. Every result can be reproduced by someone else, on a different machine, years later.  
-  
-## Quick Start
+# Axiomize
+
+**Reproducible scientific modeling that survives contact with reality.** Axiomize turns a
+vague idea into an explicit, versioned mathematical model, validates it dimensionally and
+numerically, and exports an artifact someone else can re-run years from now.
+
+[![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml)
+[![Pages](https://github.com/Furox-Art/axiomize/actions/workflows/pages.yml/badge.svg)](https://furox-art.github.io/axiomize/)
+[![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)
+[![npm](https://img.shields.io/npm/v/axiomize)](https://www.npmjs.com/package/axiomize)
+[![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Current package line: **1.12.3**
+
+Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
+Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Security: **[SECURITY.md](SECURITY.md)** ·
+Contributing: **[CONTRIBUTING.md](CONTRIBUTING.md)**
+
+## Why
+
+I got tired of scientific models that live in Jupyter notebooks and die there.
+
+Someone writes a beautiful simulation, it works on their machine, they graduate or change
+jobs, and six months later nobody can run it. The dependencies are broken, the data is
+missing, and the "documentation" is a 47-cell notebook with no explanation.
+
+Axiomize forces models to be explicit, versioned, testable code instead of exploratory
+spaghetti. Every assumption is written down. Every parameter carries a unit. Every result
+carries enough provenance that another person, on another machine, can reproduce it.
+
+## Who it is for
+
+| If you are… | Start here |
+|---|---|
+| A scientist whose result has to be defensible in review | [Why](#why) and the [example gallery](https://furox-art.github.io/axiomize/example-gallery/) |
+| An engineer sizing capacity, reliability, or inventory | [CLI quickstart](#cli-in-five-minutes) and `axiomize solve` / `axiomize fit` |
+| Building an agent that should reason with numbers, not vibes | `axiomize capabilities`, then [MCP or REST](docs/integrations.md) |
+| Reproducing or auditing someone else's published model | `axiomize model --action numerical-verify` and [portable export](docs/portable-export.md) |
+
+Not a fit: if you want a black-box predictor with no inspectable assumptions, or if you
+need the engine to make scientific claims for you without a human in the loop.
+
+## Install
 
 ```bash
 pip install axiomize
 ```
 
-```python
-from axiomize import Model
+Optional extras: `pip install "axiomize[full]"` (PyMC/JAX Bayesian sampling),
+`pip install "axiomize[playground]"` (the Gradio playground).
 
-m = Model.from_yaml("seir_model.yaml")   # explicit, versioned model IR
-m.fit(observed_data, uncertainty=True)   # calibrated, with CIs
-m.validate(holdout=validation_set)       # pass/fail against held-out data
-m.export("v1.2.0/")                     # reproducible provenance bundle
+## Python in five minutes
+
+Declare the model, then let Axiomize check it. Units are mandatory, so dimensional
+mistakes fail loudly instead of producing a meaningless number.
+
+```python
+from axiomize.general_engine import simulate_model
+from axiomize.model_ir import ModelIR
+
+model = ModelIR.from_dict({
+    "schema_version": "1.0",
+    "name": "sir-outbreak",
+    "family": "ode",
+    "independent_variable": "t",
+    "independent_unit": "day",
+    "variables": [
+        {"name": "S", "unit": "person", "initial": 990.0, "bounds": [0.0, None]},
+        {"name": "I", "unit": "person", "initial": 10.0, "bounds": [0.0, None]},
+    ],
+    "parameters": [
+        {"name": "beta", "unit": "1/day", "value": 0.3},
+        {"name": "gamma", "unit": "1/day", "value": 0.1},
+        {"name": "N", "unit": "persons", "value": 1000.0},
+    ],
+    "equations": [
+        {"target": "S", "expression": "-beta*I*S/N", "kind": "derivative"},
+        {"target": "I", "expression": "beta*I*S/N - gamma*I", "kind": "derivative"},
+    ],
+    "constraints": [
+        {"name": "cases_nonnegative", "expression": "I", "relation": "ge",
+         "threshold": 0.0, "scientific_basis": "case counts cannot be negative"},
+    ],
+    "assumptions": ["closed population of 1000", "homogeneous mixing"],
+})
+
+result = simulate_model(model, t_span=(0.0, 30.0), points=4)
+print(result["status"])
+print([round(v, 3) for v in result["states"]["I"]])
 ```
 
-CLI, REST, and MCP surfaces included: `axiomize serve`, `axiomize fit`, `axiomize validate`. Also on npm: `npm i axiomize`.
+Real output, reproducible by running `python examples/quickstart_sir.py`:
 
-## What it actually does  
-  
-- Turns vague ideas into explicit mathematical models with real constraints  
-- Validates dimensional consistency (no more adding meters to seconds)  
-- Runs sensitivity analysis so you know which parameters actually matter  
-- Exports to LaTeX, PDF, and portable formats that don't require Python  
-- Keeps a full audit trail so you can prove what you did and why  
-  
-## Common modeling use cases
+```text
+status: PASS
+solver: scipy / DOP853
+days:   [0.0, 10.0, 20.0, 30.0]
+infected: [10.0, 65.393, 239.869, 290.024]
+checks: PASS (25 of them)
+```
 
-- Turn a vague scientific idea into an explicit **mathematical model** with assumptions and constraints.
-- Perform **parameter estimation, calibration, sensitivity analysis, and uncertainty quantification**.
-- Compare alternative model families and document why one formulation was selected.
-- Build reproducible **causal inference, Bayesian inference, finite-element, and dynamical-system** workflows.
-- Produce auditable model artifacts for research, engineering, and scientific review.
+## CLI in five minutes
 
-## Quick start  
-  
-```bash  
-pip install axiomize  
-# or  
-npx axiomize  
-```  
-  
-## Why I built this  
-  
-I was reviewing a paper last year and the authors claimed their model predicted some chemical reaction yield within 2%. I spent three days trying to reproduce it. The code was a mess of global variables, the data wasn't available, and when I finally got it running, the answer was off by 40%.  
-  
-That shouldn't be normal. Science should be checkable.  
-  
-## License  
-  
-MIT. Use it, break it, fix it. 
+No Python required. Every command prints JSON you can pipe.
 
+```bash
+pip install axiomize
+
+# What is actually installed, and is it usable? Backends report honestly.
+axiomize capabilities
+
+# Clarify a vague idea before any numbers get committed.
+axiomize intake "Reduce traffic congestion in a mid-size city"
+
+# Check a model against closed-form theory, not just vibes.
+axiomize-validate --model sir --beta 0.3 --gamma 0.1
+```
+
+`axiomize-validate` output on those inputs:
+
+```text
+=== SIR validation ===
+horizon                = 180 days  (final-size theory is the t->infinity limit)
+R0                     = 3.000  (outbreak)
+Peak infected          = 300,465 at day 61.4
+Final size (simulated) = 0.9404
+Final size (theory)    = 0.9405
+Theory match           = True
+
+--- sanity checks ---
+population_conserved                PASS
+compartments_nonnegative            PASS
+R_monotonic_increase                PASS
+```
+
+Other surfaces: `axiomize solve` (reference SIR), `axiomize fit` (calibrate from CSV),
+`axiomize model --action {plan,validate,simulate,fit,export,numerical-verify}`,
+`axiomize serve` (REST, loopback by default), `axiomize mcp` (MCP over stdio).
+See [docs/integrations.md](docs/integrations.md).
+
+## Adoption path
+
+1. **Try it on something you already believe.** Recreate a model you trust with
+   `axiomize-validate` or one `axiomize model` run. If the engine disagrees with a result
+   you can defend, stop here and open an issue.
+2. **Move one real question onto Model IR.** Declare units and constraints explicitly. The
+   dimensional checks are where the value shows up first.
+3. **Gate the expensive steps.** Numerical refinement, mesh refinement, and heavy fitting
+   return `APPROVAL_REQUIRED` until you pass `--approve-heavy`. Approval authorizes compute;
+   it never disables a resource ceiling.
+4. **Export something portable.** `axiomize model --action export` emits canonical Model IR
+   JSON plus SBML, CellML, and Modelica for supported models, so the artifact outlives this
+   library.
+5. **Wire it into review.** Ship the exported IR and the validation record alongside the
+   result, not just a figure.
+
+## What it actually does
+
+- Validates dimensional consistency, so you cannot add meters to seconds
+- Enforces scientific constraints as named, justified checks rather than prose
+- Separates numerical error from stochastic variability before claiming convergence
+- Compares candidate model families and records why one was chosen
+- Exports to JSON, Python, YAML, notebooks, SBML, CellML, Modelica, GraphML, and LaTeX
+- Keeps an integrity-checked run ledger, so a stored result can be verified before use
+
+## Honest limits
+
+- It does not make a bad model good. It makes a bad model fail loudly.
+- Bayesian sampling needs the `full` extra (PyMC/JAX); FEM needs FEniCS/DOLFINx. Both are
+  reported as unavailable rather than silently substituted.
+- `[benchmark results](docs/benchmark-results.md)` measure template compliance in blind
+  runs, not modeling correctness. The rubric says so explicitly.
+- Generated-code execution and theorem elaboration are not an OS sandbox. See
+  [SECURITY.md](SECURITY.md).
+
+## Documentation
+
+- Quickstart and workflow: [furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)
+- Worked examples: [example gallery](https://furox-art.github.io/axiomize/example-gallery/)
+- Agent integration (MCP, REST, CLI): [docs/integrations.md](docs/integrations.md)
+- Portable export formats: [docs/portable-export.md](docs/portable-export.md)
+- Trust boundaries and reporting: [SECURITY.md](SECURITY.md), [docs/security.md](docs/security.md)
+- Agent skill pack: [skills/axiomize/SKILL.md](skills/axiomize/SKILL.md)
+
+## npm
+
+An `axiomize` package exists on npm but the published entry point is currently broken,
+so PyPI is the supported install path until that is fixed. See
+[issue tracking](https://github.com/Furox-Art/axiomize/issues).
+
+## License
+
+MIT. Use it, break it, fix it.
