@@ -7,6 +7,8 @@ gate executes the real installed package and compares it against those claims,
 so a refactor cannot quietly invalidate the first thing a reader tries.
 
 Checks performed:
+  0. ``stage_docs.py`` runs first, so the generated docs pages the site and the
+     documentation link to exist in a clean checkout.
   1. ``pip install axiomize`` is documented in README and docs/quickstart.md.
   2. Every markdown link target in README.md and docs/quickstart.md resolves
      (relative paths, in-repo anchors, or an absolute http(s) URL).
@@ -56,6 +58,29 @@ def _read(path: Path) -> str:
     if not path.is_file():
         _fail(f"required file is missing: {path.relative_to(ROOT)}")
     return path.read_text(encoding="utf-8")
+
+
+def _stage_docs() -> None:
+    """Run the shared docs staging step before resolving any docs paths.
+
+    ``docs/rigor.md``, ``docs/archetypes.md``, ``docs/adaptive-workflow.md``,
+    ``docs/skill.md``, and ``docs/examples.md`` are generated into ``docs/`` from
+    ``skills/axiomize/`` and ``examples/``. They are git-ignored, so a clean
+    checkout does not contain them until this runs. Both the documentation links
+    below and the ``mkdocs.yml`` nav check resolve those pages.
+    """
+    script = ROOT / ".github" / "scripts" / "stage_docs.py"
+    completed = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+        cwd=str(ROOT),
+    )
+    if completed.returncode != 0:
+        _fail(f"stage_docs.py failed ({completed.returncode}):\n{completed.stderr}")
+    print("- docs pages staged from skills/axiomize")
 
 
 def _check_install_documented() -> None:
@@ -196,6 +221,7 @@ def _check_nav_targets() -> None:
 
 def main() -> int:
     checks = (
+        _stage_docs,
         _check_install_documented,
         lambda: _check_links(README),
         lambda: _check_links(QUICKSTART),
