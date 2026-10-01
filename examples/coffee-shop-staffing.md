@@ -2,6 +2,10 @@
 
 Third worked example, demonstrates queueing + optimization on an operations question, including a rejected-lens rationale.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea (user)**: "A coffee shop wants to decide how many baristas to schedule per hour of the day."

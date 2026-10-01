@@ -2,6 +2,10 @@
 
 Demonstrates Monod-coupled logistic + LV grazing + bistable switch.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 0: Rigor Level
 
 **Rigor: standard.** Plain summary: *Lake algae's carrying capacity follows dissolved P via Michaelis-Menten; lake tips when loading exceeds ~4-5 mg P m⁻² day⁻¹, and cutting fertilizer a little does not clear bloom due to hysteresis.*

@@ -7,15 +7,21 @@ numerically, and exports an artifact someone else can re-run years from now.
 [![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml)
 [![Pages](https://github.com/Furox-Art/axiomize/actions/workflows/pages.yml/badge.svg)](https://furox-art.github.io/axiomize/)
 [![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)
-[![npm](https://img.shields.io/npm/v/axiomize)](https://www.npmjs.com/package/axiomize)
+[![PyPI downloads](https://img.shields.io/pypi/dm/axiomize)](https://pypi.org/project/axiomize/)
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.12.3**
+Current package line: **1.12.3** (PyPI is the supported install path; see [npm](#npm))
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
-Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Security: **[SECURITY.md](SECURITY.md)** ·
-Contributing: **[CONTRIBUTING.md](CONTRIBUTING.md)**
+Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
+Security: **[SECURITY.md](SECURITY.md)** · Contributing: **[CONTRIBUTING.md](CONTRIBUTING.md)** ·
+Code of conduct: **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** ·
+Cite: **[CITATION.cff](CITATION.cff)**
+
+There is deliberately still no npm version badge: the fix for the npm entry point has landed in
+this repository but has not been published yet, so the registry and this README disagree on the
+version (see [npm](#npm)).
 
 ## Why
 
@@ -169,25 +175,41 @@ See [docs/integrations.md](docs/integrations.md).
 - It does not make a bad model good. It makes a bad model fail loudly.
 - Bayesian sampling needs the `full` extra (PyMC/JAX); FEM needs FEniCS/DOLFINx. Both are
   reported as unavailable rather than silently substituted.
-- `[benchmark results](docs/benchmark-results.md)` measure template compliance in blind
-  runs, not modeling correctness. The rubric says so explicitly.
+- [Benchmark results](docs/benchmark-results.md) grade report *structure* in blind runs, not
+  modeling correctness. Only the table carrying script, case-set and commit hashes is
+  reproducible; the older waves are kept as history and cannot be rerun.
+- Worked examples use illustrative parameter ranges labelled `lit.` / `data` / `est.`. No
+  example cites an external source, so treat the numbers as reading material rather than
+  literature-backed results.
 - Generated-code execution and theorem elaboration are not an OS sandbox. See
   [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
 - Quickstart and workflow: [furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)
-- Worked examples: [example gallery](https://furox-art.github.io/axiomize/example-gallery/)
+- Worked examples: [example gallery](https://furox-art.github.io/axiomize/example-gallery/),
+  or the [18 example files](examples/)
+- Domain packs (which lenses matter per field):
+  [packs/domain-packs.md](packs/domain-packs.md)
 - Agent integration (MCP, REST, CLI): [docs/integrations.md](docs/integrations.md)
 - Portable export formats: [docs/portable-export.md](docs/portable-export.md)
 - Trust boundaries and reporting: [SECURITY.md](SECURITY.md), [docs/security.md](docs/security.md)
-- Agent skill pack: [skills/axiomize/SKILL.md](skills/axiomize/SKILL.md)
+- Agent skill pack: [skills/axiomize/SKILL.md](skills/axiomize/SKILL.md), plus the
+  [15 perspective lenses](skills/axiomize/perspectives/)
 
 ## npm
 
-An `axiomize` package exists on npm but the published entry point is currently broken,
-so PyPI is the supported install path until that is fixed. See
-[issue tracking](https://github.com/Furox-Art/axiomize/issues).
+`pip install axiomize` is the supported install path. Use npm only if you already depend on it.
+
+The npm `index.js` syntax error is fixed on `main`, and `package.json` is at 1.12.3 in lockstep
+with the Python package. **That fix is not published yet.** The npm registry still serves 1.12.2,
+whose tarball carries the broken entry point, so `npx axiomize` still fails to load today.
+
+The fix ships with the next release, which publishes the npm shim from the same commit as the
+Python distributions. Until that release lands, check
+[registry.npmjs.org/axiomize](https://registry.npmjs.org/axiomize) before using npm: if the
+reported version is lower than the PyPI version, the registry copy is still the old one. Tracked
+in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

@@ -2,6 +2,10 @@
 
 Demonstration of the full workflow on a concrete idea.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea (user)**: "A new contagious disease appears in a city of 1M people. What happens?"

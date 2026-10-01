@@ -2,6 +2,81 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## Unreleased
+
+Documentation and repository visibility. No library code, CLI surface, or public API changed, so
+the next release may still be cut as a patch.
+
+Note for the next release: `.github/scripts/check_release_contract.py` reads the first
+`## [version]` heading as the released version, so this section stays unbracketed on purpose.
+
+### Fixed
+
+- `docs/example-gallery.md` linked to a `README.md#the-fifteen-lenses` anchor that does not exist;
+  the README no longer contains that section. The gallery now points at the perspective lens
+  directory that actually backs the claim.
+- the example gallery listed 11 of the 18 files in `examples/`; the 7 unlisted examples are now
+  present, and the two 20-line phase skeletons are labelled as condensed skeletons rather than
+  presented as full worked examples
+- `docs/benchmark-results.md` presented historical wave scores in the same table as reproducible
+  ones, with no commit or script identity. The page is now split into a reproducible run that
+  records commit, runner sha256, case-set sha256, rubric sha256, interpreter and timestamp, and a
+  clearly labelled history section that states its runs cannot be rerun
+- `docs/benchmark-results.md` labelled automated-layer scores with a `PASS` verdict as if it were
+  the rubric's gate. It now states that the rubric gate is a combined automatic plus human score
+  of 15/20 per case, that the human layer is not recorded in this repository, and that no
+  combined score is published
+- the two stored reports whose cases are absent from `benchmarks/ideas.json`
+  (`novel-async-alignment.md`, `novel-telephone-fidelity.md`) were unlabelled; they are now
+  identified as stored samples that CI neither grades nor checks
+- worked examples carried `lit.` / `data.` / `est.` source classes with no citation behind them.
+  Every example now opens with a provenance note saying the values are illustrative and uncited
+- the README advertised an npm version badge for a package whose entry point was broken, and its
+  npm section did not say what the failure was. The badge is still absent, and the section now
+  separates the two states accurately: the `index.js` fix landed on `main` via #32/#33, but the
+  registry still serves the old 1.12.2 tarball, so the published package is still broken. The
+  section tells readers how to check the registry version themselves. The npm badge returns when
+  the registry version matches PyPI
+- `docs/index.md` had no route to the domain packs, which were not linked from anywhere
+
+### Added
+
+- `docs/documentation.md`: what builds what, which pages are excluded from the site nav and why,
+  what CI enforces, how to publish a benchmark number with provenance, and the **manual PyPI
+  description sync step**. `README.md` is the PyPI long description as of build time, so README
+  edits merged after a release do not reach the PyPI page until the next release; the page gives
+  the command that shows the difference and states that a new release is the only correct fix
+- `.github/ISSUE_TEMPLATE/feature_request.md` and `.github/ISSUE_TEMPLATE/question.md`
+- `.github/ISSUE_TEMPLATE/config.yml` routing security reports away from public issues
+- the bug report template now covers the Python API, CLI, MCP, REST and agent skill surfaces
+  instead of assuming an agent runtime, and asks for version, Python version and
+  `axiomize capabilities` output
+- `README.md` links to `ROADMAP.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, the example directory
+  and the domain packs
+
+### Changed
+
+- `mkdocs.yml`: maintainer-only pages (`publishing-checklist.md`, `security-ci-contract.md`,
+  `security-maintenance.md`, `security-release-checklist.md`, `security-audit-1.11.2.md`) are
+  removed from the user-facing nav and moved to `exclude_docs`. They still build and stay
+  reachable by direct link. User-facing security pages are untouched.
+- `CITATION.cff`: added `type`, `abstract`, `license`, `repository-code` and `keywords` so the
+  file is usable by citation tooling rather than only parseable
+- `SECURITY.md`: the claim that private reporting is enabled now names the API endpoint that
+  proves it and gives a profile link as the fallback contact
+- the pull request template covers documentation, provenance and release-lockstep checks
+
+### Not changed here
+
+- `pyproject.toml`, `package.json` and `index.js` were fixed on `main` by #33 (`be8d347`) and #32
+  (`0854fe5`), both merged after this documentation branch was cut. This branch merges `main`
+  rather than reimplementing them, so those fixes are present and were not re-derived here. What
+  is still outstanding is publication: the npm shim and the Python distributions ship together
+  from the next release commit, and until that release the registry keeps serving the broken
+  1.12.2 tarball.
+- the published PyPI long description still reflects the README at the 1.12.3 release. Only a new
+  release can change it. See `docs/documentation.md`.
+
 ## [1.12.3] - 2026-09-29
 
 ### Added

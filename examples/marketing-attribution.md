@@ -2,6 +2,10 @@
 
 Demonstrates the **causal inference lens**, turning correlation into intervention logic.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "Users who see our retargeting ads buy 3× more. Should we spend more on retargeting?"

@@ -1,9 +1,27 @@
-cff-version: 1.2.0  
-message: "If you use this software, please cite it as below."  
-authors:  
-  - family-names: "Furox"  
-    given-names: "Art"  
-title: "Axiomize: Rigorous scientific modeling engine and agent skill pack"  
-version: 1.12.3  
-date-released: 2026-09-29  
-url: "https://github.com/Furox-Art/axiomize" 
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Axiomize: Reproducible scientific modeling engine and agent skill pack"
+abstract: >-
+  Axiomize turns an idea into an explicit, versioned mathematical model with mandatory
+  units, validates it dimensionally and numerically, and exports a portable artifact
+  that another person can re-run. It ships a Python library, a CLI, REST and MCP
+  servers, and an agent skill pack, all backed by the same Model IR and validation
+  contract.
+authors:
+  - family-names: "Furox"
+    given-names: "Art"
+version: 1.12.3
+date-released: "2026-09-29"
+license: MIT
+repository-code: "https://github.com/Furox-Art/axiomize"
+url: "https://github.com/Furox-Art/axiomize"
+keywords:
+  - scientific modeling
+  - reproducibility
+  - dimensional analysis
+  - numerical verification
+  - uncertainty quantification
+  - causal inference
+  - model IR
+  - agent skills

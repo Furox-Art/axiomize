@@ -1,4 +1,12 @@
-# Example: Climate-Energy -- Decarbonization Mix (Stub)
+# Example: Climate-Energy -- Decarbonization Mix (Condensed Skeleton)
+
+> **Status:** this is a 20-line phase outline, not a full worked example and not a validated
+> model. It shows the shape of the 8-phase report. Read a full-length example first; see
+> [docs/example-gallery.md](https://github.com/Furox-Art/axiomize/blob/main/docs/example-gallery.md).
+>
+> **Parameter provenance:** the values below are illustrative placeholders and cite no external
+> source.
+
 ## Phase 1 -- Parse
 Idea: "City plans 100% clean electricity by 2035." System: grid; State: mix GW; Goal: cost-optimal warming limit.
 ## Phase 2 -- Decompose

@@ -2,6 +2,10 @@
 
 Demonstrates **archetype-first workflow** (Bass diffusion) and Phase 7 calibration with real data.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "We launched an app; signups are growing. How big can this get and when does growth stall?"

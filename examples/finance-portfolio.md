@@ -1,4 +1,12 @@
-# Example: Finance-Portfolio -- Mean-Variance Allocation (Stub)
+# Example: Finance-Portfolio -- Mean-Variance Allocation (Condensed Skeleton)
+
+> **Status:** this is a 20-line phase outline, not a full worked example and not a validated
+> model. It shows the shape of the 8-phase report. Read a full-length example first; see
+> [docs/example-gallery.md](https://github.com/Furox-Art/axiomize/blob/main/docs/example-gallery.md).
+>
+> **Parameter provenance:** the values below are illustrative placeholders and cite no external
+> source.
+
 ## Phase 1 -- Parse
 Idea: "Allocate across 5 assets for max Sharpe at 12% vol." System: portfolio; State: weights; Goal: optimal w.
 ## Phase 2 -- Decompose

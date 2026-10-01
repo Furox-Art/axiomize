@@ -2,6 +2,10 @@
 
 Demonstrates control primary + stochastic + optimization + SPC on literal engineering system.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 0: Rigor Level
 
 **Rigor: standard.** Plain summary: *Quadrotor hover is double-integrator, without feedback any gust makes it drift. PID/LQR with ~45° phase margin and thrust margin >1.3× weight keeps altitude within ±0.2 m in 2 m/s RMS wind.*

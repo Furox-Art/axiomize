@@ -2,6 +2,10 @@
 
 Demonstrates the **game theory lens**, strategic interaction that single-actor optimization cannot see.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "Two cafés face each other on the same street. One considers cutting prices 20%. Will it work, or start a war nobody wins?"

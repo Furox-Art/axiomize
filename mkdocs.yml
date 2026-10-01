@@ -25,21 +25,27 @@ nav:
       - Rigor ladder: rigor.md
       - Archetypes: archetypes.md
   - Examples:
-      - Worked examples index: examples.md
       - Example gallery: example-gallery.md
+      - Worked examples index: examples.md
   - Reference:
       - Agent integration (MCP/REST/CLI): integrations.md
       - Portable export formats: portable-export.md
       - Benchmark results: benchmark-results.md
   - Security:
       - Trust boundaries: security.md
-      - Security CI contract: security-ci-contract.md
       - Security non-goals: security-non-goals.md
       - Patch versioning: security-versioning.md
-      - Maintenance: security-maintenance.md
-      - Release checklist: security-release-checklist.md
-      - Audit 1.11.2: security-audit-1.11.2.md
   - Project:
-      - Publishing checklist: publishing-checklist.md
       - Beginner walkthrough: tutorial.md
       - Agent tutorials: tutorials.md
+      - Maintaining this documentation: documentation.md
+
+# Maintainer-only pages. They stay in docs/ and keep building (README links some of
+# them directly), but they are not user-facing navigation, so they are excluded from
+# the site nav rather than listed in it.
+exclude_docs: |
+  publishing-checklist.md
+  security-ci-contract.md
+  security-maintenance.md
+  security-release-checklist.md
+  security-audit-1.11.2.md

@@ -2,6 +2,10 @@
 
 Demonstrates Bayes primary + CLT validation + decision + information.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 0: Rigor Level
 
 **Rigor: standard.** Plain summary: *A positive result on 99% accurate test sounds scary, but when only 1 in 1000 has disease, about 9 in 10 positives are false alarms. Retest: second independent positive flips to ~91%.*

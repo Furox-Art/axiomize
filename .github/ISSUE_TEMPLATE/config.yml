@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Furox-Art/axiomize/blob/main/SECURITY.md
+    about: Private reporting instructions. Never open a public issue for a vulnerability.
+  - name: Question or feature
+    url: https://github.com/Furox-Art/axiomize/issues/new/choose
+    about: Pick a template so the report has the details needed to act on it.

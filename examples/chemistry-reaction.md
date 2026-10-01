@@ -2,6 +2,10 @@
 
 Demonstrates deterministic primary + spatial/transport + thermodynamic + control secondary on a scale-up diagnosis.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 0: Rigor Level
 
 **Rigor: standard.** Plain summary: *A desired reaction competes with higher-$E_a$ side reaction. Heating makes side reaction relatively faster and can hide true rate behind pellet diffusion. For $c_{A0}=1$M, $k_1\sim0.03$/s, $E_{a,1}=50$ vs $E_{a,2}=75$ kJ/mol, lab 92% selectivity at 320K should fall to ~77% at 340K and collapse to ~50% if Thiele $\phi>3$.*
