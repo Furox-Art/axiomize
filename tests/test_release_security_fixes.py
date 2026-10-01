@@ -136,12 +136,29 @@ const entry = process.argv[3];
 cp.spawn = function () {
   const proc = new EventEmitter();
   setImmediate(() => {
+    const enoent = () => {
+      const err = new Error('spawn python ENOENT');
+      err.code = 'ENOENT';
+      return err;
+    };
     if (caseName === 'signal') {
       proc.emit('close', null, 'SIGKILL');
     } else if (caseName === 'nullcode') {
       proc.emit('close', null, null);
     } else if (caseName === 'error') {
-      proc.emit('error', new Error('stubbed interpreter failure'));
+      proc.emit('error', enoent());
+    } else if (caseName === 'error-then-close-null') {
+      // What Node actually emits when the interpreter is absent: 'error'
+      // followed by 'close'. The close handler must not clobber the 127.
+      proc.emit('error', enoent());
+      proc.emit('close', null, null);
+    } else if (caseName === 'error-then-close-code') {
+      proc.emit('error', enoent());
+      proc.emit('close', -2, null);
+    } else if (caseName === 'error-then-close-bare') {
+      // Worst case: 'close' with no arguments at all.
+      proc.emit('error', enoent());
+      proc.emit('close');
     } else {
       proc.emit('close', Number(caseName), null);
     }
@@ -168,6 +185,12 @@ setTimeout(() => {
         ("signal", 1),
         ("nullcode", 1),
         ("error", 127),
+        # Node emits 'error' *then* 'close' when the interpreter is absent.
+        # The close handler must not overwrite the 127 with the absent code,
+        # and must certainly not leave exitCode undefined (which exits 0).
+        ("error-then-close-null", 127),
+        ("error-then-close-code", 127),
+        ("error-then-close-bare", 127),
     ],
 )
 def test_npm_entrypoint_propagates_the_cli_exit_code(
@@ -196,17 +219,29 @@ def test_npm_entrypoint_propagates_the_cli_exit_code(
 
 @pytest.mark.skipif(not _node_available(), reason="node is not installed")
 def test_npm_entrypoint_reports_a_missing_interpreter(tmp_path: Path) -> None:
-    """With no interpreter reachable the wrapper must fail loudly, not silently."""
-    stub_dir = tmp_path / "empty"
-    stub_dir.mkdir()
+    """With no interpreter reachable the wrapper must fail loudly, not silently.
+
+    ``PATH`` is narrowed to node's own directory so that ``node`` still starts
+    (it is the process under test) while no ``python``/``python3`` is reachable,
+    which is exactly the ENOENT case the launcher's ``error`` handler exists for.
+    """
+    node = shutil.which("node")
+    assert node is not None
+    node_dir = str(Path(node).resolve().parent)
     env = dict(os.environ)
-    env["PATH"] = str(stub_dir)
+    env["PATH"] = node_dir
+    if shutil.which("python", path=node_dir) or shutil.which("python3", path=node_dir):
+        pytest.skip("node's directory also provides a Python interpreter")
+
     result = subprocess.run(
         ["node", str(REPO_ROOT / "index.js"), "--help"],
         capture_output=True, text=True, timeout=60, shell=False, check=False, env=env,
     )
     assert result.returncode != 0, "a missing interpreter must not exit 0"
-    assert "axiomize" in (result.stderr + result.stdout).lower()
+    assert result.returncode == 127, f"expected exit 127, got {result.returncode}"
+    combined = (result.stderr + result.stdout).lower()
+    assert "axiomize" in combined
+    assert "python" in combined, "the failure must name the interpreter it could not start"
 
 
 # ---------------------------------------------------------------------------

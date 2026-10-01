@@ -31,9 +31,17 @@ function runAxiomize(args) {
     windowsHide: true,
   });
 
+  // When the interpreter cannot be spawned Node emits 'error' *and then*
+  // 'close'. Without this latch the close handler below overwrites the exit
+  // status with the child's absent code - and if 'close' arrives with no
+  // arguments at all, `process.exitCode` becomes undefined and the process
+  // exits 0, reporting success for a command that never ran.
+  let spawnFailed = false;
+
   // Surface a missing or broken interpreter instead of failing silently, so
   // `npx axiomize` reports the cause and exits non-zero.
   proc.on('error', (err) => {
+    spawnFailed = true;
     process.stderr.write(`axiomize: failed to start Python interpreter: ${err.message}\n`);
     process.stderr.write(
       'axiomize: install Python 3.10+ and the axiomize package (`pip install axiomize`).\n',
@@ -43,6 +51,9 @@ function runAxiomize(args) {
 
   // Propagate the CLI exit status so scripts and CI can detect failure.
   proc.on('close', (code, signal) => {
+    if (spawnFailed) {
+      return; // keep the 127 recorded above
+    }
     if (signal) {
       process.stderr.write(`axiomize: terminated by signal ${signal}\n`);
       process.exitCode = 1;
