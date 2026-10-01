@@ -2,6 +2,10 @@
 
 Demonstrates the **control lens as primary**, steering a system to a setpoint against disturbances.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "My greenhouse drops too cold at night; seedlings suffer below 12°C. How should the heater be run?"

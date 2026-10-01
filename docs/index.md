@@ -11,6 +11,7 @@ before they run.
 
 - New to the project: [Quickstart](quickstart.md) — install to validated result in five minutes.
 - Want to see it done well: [Example gallery](example-gallery.md).
+- Know which lenses matter in your field: [Domain packs](https://github.com/Furox-Art/axiomize/blob/main/packs/domain-packs.md).
 - Wiring it into an agent: [Integrations](integrations.md) (MCP, REST, CLI).
 - Deciding whether to trust it with a real model: [Security](security.md) and
   [SECURITY.md](https://github.com/Furox-Art/axiomize/blob/main/SECURITY.md) first.
@@ -51,9 +52,22 @@ reported as unavailable rather than silently replaced by something weaker.
 
 ![SIR demo](sir-demo.gif)
 
+## Where to look next
+
+| If you want to | Go to |
+|---|---|
+| Run a model in five minutes | [Quickstart](quickstart.md) |
+| See finished problems per domain | [Example gallery](example-gallery.md) |
+| Know which lenses matter in your field | [Domain packs](https://github.com/Furox-Art/axiomize/blob/main/packs/domain-packs.md) |
+| Wire it into an agent (MCP, REST, CLI) | [Integrations](integrations.md) |
+| Decide what the benchmarks prove | [Benchmark results](benchmark-results.md) |
+| Decide what to trust | [Security](security.md) and [SECURITY.md](https://github.com/Furox-Art/axiomize/blob/main/SECURITY.md) |
+| Contribute a lens or example | [CONTRIBUTING.md](https://github.com/Furox-Art/axiomize/blob/main/CONTRIBUTING.md) |
+
 ## Project links
 
 - Repository: [github.com/Furox-Art/axiomize](https://github.com/Furox-Art/axiomize)
 - Changelog: [CHANGELOG.md](https://github.com/Furox-Art/axiomize/blob/main/CHANGELOG.md)
 - Contributing: [CONTRIBUTING.md](https://github.com/Furox-Art/axiomize/blob/main/CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](https://github.com/Furox-Art/axiomize/blob/main/CODE_OF_CONDUCT.md)
 - License: [MIT](https://github.com/Furox-Art/axiomize/blob/main/LICENSE)

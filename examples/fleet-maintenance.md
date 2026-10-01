@@ -2,6 +2,10 @@
 
 Demonstrates the **reliability lens**, deciding policy over failure times.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "A company runs 40 delivery vans; breakdowns are unpredictable and costly. Should they service vans on a fixed schedule or wait for failures?"

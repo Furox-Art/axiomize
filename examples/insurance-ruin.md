@@ -2,6 +2,10 @@
 
 Demonstrates **stochastic lens on rare events**, where deterministic thinking fails hardest.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "A small insurance pool covers 200 households against flood damage. Is its reserve enough to survive a bad decade?"

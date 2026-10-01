@@ -2,6 +2,10 @@
 
 Second worked example, demonstrates stochastic + optimization + control lenses on a business problem.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea (user)**: "A retailer sells a product with unpredictable weekly demand. How much should they keep in stock and when should they reorder?"

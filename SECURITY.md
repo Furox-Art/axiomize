@@ -18,11 +18,13 @@ from the final merged commit on `main`. Unmerged branch artifacts are not releas
 
 Please do not publish an exploit or sensitive reproduction in a public issue.
 
-Private vulnerability reporting is enabled for this repository. Use
-**Security → Report a vulnerability** on
+Private vulnerability reporting is enabled for this repository; the setting is visible at
+`GET /repos/Furox-Art/axiomize/private-vulnerability-reporting` and currently returns
+`{"enabled": true}`. Use **Security → Report a vulnerability** on
 [github.com/Furox-Art/axiomize](https://github.com/Furox-Art/axiomize/security/advisories/new),
-which opens a private channel visible only to the maintainer. If that path is unavailable,
-contact the maintainer through the contact information on the project profile.
+which opens a private channel visible only to the maintainer. If that path is unavailable or the
+setting above ever reads `false`, contact the maintainer through the contact information on the
+[project profile](https://github.com/Furox-Art).
 
 Include the affected version, entry point, minimal reproduction, impact, and any proposed mitigation. Reports are evaluated against the actual trust boundary: Model IR, REST/MCP inputs, provider endpoints, generated-code execution, formal-tool adapters, file paths, and document conversion are all treated as untrusted-input surfaces unless explicitly documented otherwise.
 

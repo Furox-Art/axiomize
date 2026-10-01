@@ -2,6 +2,10 @@
 
 Demonstrates the **information theory lens**, deciding what to measure when you cannot measure everything.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "We can afford only 3 temperature sensors for a 6-floor data center. Where do we put them to best detect overheating?"

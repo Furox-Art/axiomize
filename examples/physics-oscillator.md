@@ -2,6 +2,10 @@
 
 Demonstrates deterministic primary + stochastic + thermodynamic + control secondary on a literal physics system.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 0: Rigor Level
 
 **Rigor: standard.** Plain summary: *A pendulum clock loses time because its swing slows when it swings wider, when its rod expands in heat, and when air drag steals energy. For a 1 m steel pendulum at ~2 s period, each costs 0.1-1 s/day.*

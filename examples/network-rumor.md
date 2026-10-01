@@ -2,6 +2,10 @@
 
 Demonstrates the **network lens as primary**, structure changes the answer.
 
+> **Parameter provenance:** the values below are illustrative. `lit.` / `data.` / `est.`
+> mark the intended weight of a range; this file cites no external source. Reading material
+> for the workflow, not a literature-backed model.
+
 ## Phase 1: Parse
 
 **Idea**: "A rumor is spreading through a high school; the principal wants to know how far it gets by Friday and whether announcing it publicly stops it."
