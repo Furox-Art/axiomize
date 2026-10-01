@@ -1,14 +1,19 @@
-repos:  
-  - repo: https://github.com/pre-commit/pre-commit-hooks  
-    rev: v4.5.0  
-    hooks:  
-      - id: trailing-whitespace  
-      - id: end-of-file-fixer  
-      - id: check-yaml  
-      - id: check-added-large-files  
-  - repo: https://github.com/astral-sh/ruff-pre-commit  
-    rev: v0.4.4  
-    hooks:  
-      - id: ruff  
-        args: [--fix, --exit-non-zero-on-fix]  
-      - id: ruff-format 
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      # The hook is `check-merge-conflict`; the older `check-merged-conflict`
+      # spelling was a typo that pre-commit silently tolerates until it runs.
+      - id: check-merge-conflict
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: a56c0b927e6465d37cae3e97d35d4d18ab2b96cd # v0.16.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format

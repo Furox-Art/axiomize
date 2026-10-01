@@ -59,6 +59,14 @@ def _cli_validate_output(params: dict) -> dict:
     return json.loads(buf.getvalue())
 
 
+# /sensitivity runs a local finite-difference sweep plus a Monte-Carlo screen.
+# That costs ~37s uninstrumented and well over a minute under `coverage`, so a
+# 60s client timeout made this test fail for coverage runs only. The timeout is
+# a harness bound, not an assertion about response time; the assertions below
+# still require HTTP 200 and the documented payload keys.
+_REST_TIMEOUT_S = 600
+
+
 def _rest_post(port: int, path: str, payload: dict) -> tuple[int, dict]:
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}{path}",
@@ -67,7 +75,7 @@ def _rest_post(port: int, path: str, payload: dict) -> tuple[int, dict]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=_REST_TIMEOUT_S) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")

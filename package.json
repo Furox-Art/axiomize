@@ -1,1 +1,43 @@
-{"name":"axiomize","version":"1.12.2","description":"Rigorous scientific modeling engine and agent skill pack","main":"index.js","bin":{"axiomize":"./bin/axiomize.js"},"scripts":{"test":"echo \"Error: no test specified\" && exit 1"},"keywords":["modeling","simulation","scientific-computing","agent-skills","bayesian","causal-inference"],"author":"Furox-Art","license":"MIT","repository":{"type":"git","url":"git+https://github.com/Furox-Art/axiomize.git"},"bugs":{"url":"https://github.com/Furox-Art/axiomize/issues"},"homepage":"https://github.com/Furox-Art/axiomize#readme"} 
+{
+  "name": "axiomize",
+  "version": "1.12.3",
+  "description": "Rigorous scientific modeling engine and agent skill pack",
+  "main": "index.js",
+  "bin": {
+    "axiomize": "./bin/axiomize.js"
+  },
+  "scripts": {
+    "test": "node tests/npm/contract.test.js",
+    "lint": "node --check index.js && node --check bin/axiomize.js"
+  },
+  "files": [
+    "index.js",
+    "bin/",
+    "tests/npm/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "axiomizeCompat": {
+    "npm": "~> 1.0.0",
+    "python": ">=1.12.3"
+  },
+  "keywords": [
+    "modeling",
+    "simulation",
+    "scientific-computing",
+    "agent-skills",
+    "bayesian",
+    "causal-inference"
+  ],
+  "author": "Furox-Art",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Furox-Art/axiomize.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Furox-Art/axiomize/issues"
+  },
+  "homepage": "https://github.com/Furox-Art/axiomize#readme"
+}
