@@ -5,14 +5,7 @@ requires. Nothing here is mocked: every case runs real solvers and
 asserts verifiable properties. Failing cases fail loudly.
 """
 
-import sys
-from pathlib import Path
-
 import numpy as np
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
-sys.path.insert(0, str(REPO / "skills" / "axiomize" / "tools"))
 
 from axiomize.application.services import compare_service
 from axiomize.bayesian.mh import normal_mean_posterior

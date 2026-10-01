@@ -35,6 +35,81 @@ jobs:
           python -m pip install pip-audit
           python -m pip_audit -r requirements-test.txt
 
+  npm-package:
+    name: npm-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+      - name: Parse every shipped JavaScript file
+        # The published npm shim shipped with a truncated arrow function in
+        # index.js (`proc.on('close', (code) =; }`). Nothing in CI ever parsed
+        # JavaScript, so `node --check` was never run and a SyntaxError reached
+        # the registry as axiomize@1.12.2.
+        run: |
+          node --check index.js
+          node --check bin/axiomize.js
+          node --check tests/npm/contract.test.js
+      - name: npm package contract tests
+        run: npm test
+      - name: npm/Python version lockstep and packaging contract
+        run: python .github/scripts/npm_release_contract.py
+      - name: Verify the npm tarball contents
+        # The manifest gained a `files` allowlist because npm previously fell
+        # back to .gitignore and packed the entire checkout: 266 entries
+        # including .github/, the Python sources, the docs and a 248 KB GIF.
+        run: |
+          set -euo pipefail
+          npm pack --dry-run --json | python -c "
+          import json, sys
+          entries = json.load(sys.stdin)[0]['files']
+          names = sorted(e['path'] for e in entries)
+          print('packed files:')
+          for name in names:
+              print('  ' + name)
+          required = {'index.js', 'bin/axiomize.js', 'package.json', 'LICENSE', 'README.md'}
+          missing = required - set(names)
+          if missing:
+              raise SystemExit(f'FAIL: npm tarball is missing {sorted(missing)}')
+          allowed_prefixes = ('tests/npm/',)
+          forbidden_prefixes = ('.github/', 'src/', 'docs/', 'benchmarks/', 'packs/', 'skills/')
+          leaked = [
+              n for n in names
+              if n.startswith(forbidden_prefixes)
+              and not n.startswith(allowed_prefixes)
+          ]
+          if leaked:
+              raise SystemExit(f'FAIL: npm tarball leaked non-package files: {leaked}')
+          print(f'PASS npm tarball contains exactly the {len(names)} intended files')
+          "
+
+  quality-gates:
+    name: quality-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned quality tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "ruff==0.16.9" "mypy==2.3.1" pytest pytest-cov
+      - name: Install the package under test
+        # The suite imports `axiomize` and the force-included skill tools. An
+        # editable install plus the repo-root conftest.py is what makes a single
+        # test file runnable on its own; see conftest.py for why both paths exist.
+        run: python -m pip install -e ".[dev]"
+      - name: Test suite with coverage
+        run: |
+          python -m pytest tests/ -q --cov=axiomize --cov-report=xml --cov-report=term
+      - name: Ruff and mypy ratchet
+        # Ratchet, not a zero-findings gate: fails when lint findings, type
+        # errors or coverage get worse than .github/quality-baseline.json.
+        run: python .github/scripts/quality_ratchet.py
+
   validate:
     runs-on: ubuntu-latest
     strategy:
@@ -48,6 +123,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
         run: pip install -r requirements-test.txt
+      - name: Install the package under test
+        # Previously the suite only worked because some test modules happened to
+        # mutate sys.path, and only when collection order cooperated.
+        run: python -m pip install -e ".[dev]"
       - name: Validate dependency graph
         run: python -m pip check
       - name: Source import graph contract
@@ -91,6 +170,8 @@ jobs:
           python-version: "3.11"
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
+      - name: Enforce npm package contract
+        run: python .github/scripts/npm_release_contract.py
       - name: Build and install the exact wheel artifact
         run: |
           python -m pip install --upgrade pip

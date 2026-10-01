@@ -2,14 +2,8 @@
 uncertainty, bayesian, logic, falsification, sensitivity, network,
 control, pde, optimization, statistics."""
 
-import sys
-from pathlib import Path
-
 import numpy as np
 import pytest
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.bayesian.mh import normal_mean_posterior
 from axiomize.falsification.engine import Falsifier

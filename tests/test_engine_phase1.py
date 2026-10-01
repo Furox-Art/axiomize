@@ -2,13 +2,8 @@
 
 import json
 import math
-import sys
-from pathlib import Path
 
 import pytest
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.execution.sandbox import UnsafeExecutionDenied, run_python
 from axiomize.routing.router import classify
