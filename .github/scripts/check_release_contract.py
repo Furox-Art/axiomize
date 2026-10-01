@@ -8,7 +8,6 @@ import re
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -80,6 +79,22 @@ def _release_ref_is_allowed() -> bool:
     return True
 
 
+def _npm_version() -> str:
+    """The npm shim version.
+
+    The npm package is published from the same release commit as the Python
+    distribution, so it is part of the lockstep set. It drifted independently
+    before this gate existed (package.json sat at 1.12.2 while Python was at
+    1.12.3), which published a shim advertising a version the Python package
+    did not have.
+    """
+    text = (ROOT / "package.json").read_text(encoding="utf-8")
+    match = re.search(r'^\s*"version"\s*:\s*"([^"]+)"\s*,?\s*$', text, re.MULTILINE)
+    if not match:
+        raise RuntimeError("package.json has no literal version")
+    return match.group(1)
+
+
 def main() -> int:
     versions = {
         "pyproject": _project_version(),
@@ -87,6 +102,7 @@ def main() -> int:
         "pypi_trigger": _trigger_version(),
         "readme": _readme_version(),
         "changelog": _changelog_version(),
+        "npm": _npm_version(),
     }
     for name, value in versions.items():
         print(f"{name:12s} {value}")

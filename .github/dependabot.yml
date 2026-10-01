@@ -1,8 +1,7 @@
 version: 2
 updates:
-  # Only github-actions. There is no pip manifest in this repo , the two
-  # runtime packages the validators need (numpy, scipy) are installed inline
-  # by the CI step, so there is nothing for the pip ecosystem to watch.
+  # GitHub Actions: every workflow pins actions to an immutable 40-hex commit
+  # SHA, so a moved tag cannot silently change what CI executes.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -12,3 +11,25 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
+
+  # Python: requirements-test.txt is the manifest CI installs verbatim, and
+  # pyproject.toml declares the runtime dependencies. The previous config
+  # claimed "there is no pip manifest in this repo" and watched only Actions,
+  # so a vulnerable numpy or scipy would never raise a PR.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Keep lockstep tool pins (ruff, mypy) in their own PR: they are the
+      # versions the quality ratchet baseline was measured with, so bumping
+      # them belongs with a deliberate baseline review.
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"

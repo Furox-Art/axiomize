@@ -1,33 +1,48 @@
-name: npm Publish  
-  
-on:  
-  workflow_dispatch:  
-  push:  
-    branches: [main]  
-    paths:  
-      - "package.json"  
-      - "index.js"  
-      - "bin/**"  
-  
-concurrency:  
-  group: npm-publish  
-  cancel-in-progress: false  
-  
-permissions:  
-  contents: read  
-  
-jobs:  
-  publish:  
-    runs-on: ubuntu-latest  
-    steps:  
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7  
-  
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4  
-        with:  
-          node-version: "20"  
-          registry-url: "https://registry.npmjs.org"  
-  
-      - name: Publish to npm  
-        run: npm publish --access public  
-        env:  
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
+name: npm Publish
+
+# The npm shim is now published by release.yml as part of the single release
+# contract, gated on the same .github/pypi-release-trigger commit as the Python
+# distributions. This workflow is retained only as a manual recovery path for
+# republishing an already-released version; it cannot fire on a code push,
+# which is how package.json drifted a release behind pyproject.toml.
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why this manual npm publish is needed"
+        required: true
+        type: string
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Report the manual publish reason
+        run: 'echo "manual npm publish requested: ${{ inputs.reason }}"'
+      - name: Enforce release version contract
+        run: python .github/scripts/check_release_contract.py
+      - name: Parse every shipped JavaScript file
+        run: |
+          node --check index.js
+          node --check bin/axiomize.js
+          node --check tests/npm/contract.test.js
+      - name: npm package contract tests
+        run: npm test
+      - name: npm/Python version lockstep and registry contract
+        run: python .github/scripts/npm_release_contract.py --check-registry
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

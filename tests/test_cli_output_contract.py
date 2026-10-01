@@ -2,12 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
-
 
 def test_optimization_backends_are_silent_on_stdout(capfd) -> None:
     from axiomize.tools.optimization.casadi_tool import solve_rosenbrock

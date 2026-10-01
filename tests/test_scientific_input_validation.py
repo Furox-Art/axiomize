@@ -1,13 +1,7 @@
 """Regression tests for scientific input validation and fit diagnostics."""
 
-import sys
-from pathlib import Path
-
 import numpy as np
 import pytest
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.fitting.estimator import fit_curve, fit_logistic_curve, fit_sir_curve
 from axiomize.tools.numerical.scipy_tool import final_size_numeric, solve_sir
