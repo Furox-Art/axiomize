@@ -2,15 +2,10 @@
 MCP, REST, providers, portable runs."""
 
 import json
-import sys
 import threading
 import urllib.request
-from pathlib import Path
 
 import pytest
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.capabilities import get_capabilities
 from axiomize.providers.base import ModelProvider

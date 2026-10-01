@@ -55,6 +55,14 @@ jobs:
         run: python -m build
       - name: Validate distributions
         run: python -m twine check dist/*
+      - name: Assert both wheel and sdist were produced
+        # `python -m build` can silently produce only one artifact; publishing a
+        # half-built release is not recoverable, so assert both exist here.
+        run: |
+          set -euo pipefail
+          test -n "$(ls dist/*.whl 2>/dev/null)" || { echo "::error::no wheel in dist/"; exit 1; }
+          test -n "$(ls dist/*.tar.gz 2>/dev/null)" || { echo "::error::no sdist in dist/"; exit 1; }
+          ls -l dist/
       - name: Install exact release wheel
         run: python -m pip install --force-reinstall dist/*.whl
       - name: Validate installed dependency graph
@@ -83,13 +91,52 @@ jobs:
           test -s "$tmp/report.tex"
           grep -F '\begin{document}' "$tmp/report.tex"
           grep -F 'Model relation' "$tmp/report.tex"
+      - name: Generate SBOM for the release artifacts
+        # A released artifact with no known dependency inventory cannot be
+        # triaged later. The SBOM is generated from the exact dist/ contents
+        # that are about to be published, and uploaded with them.
+        uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
+        with:
+          path: dist
+          format: spdx-json
+          output-file: dist/axiomize-${{ steps.meta.outputs.version }}.sbom.spdx.json
       - name: Preserve tested distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-package-distributions
           path: dist/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
+
+  npm-package:
+    # The npm shim is published from the same release trigger as the Python
+    # distributions, so it is part of the release contract rather than an
+    # independent workflow that can drift. It previously ran in a separate
+    # workflow keyed only on package.json changes, which is how package.json
+    # ended up a release behind pyproject.toml.
+    name: release npm-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Parse every shipped JavaScript file
+        run: |
+          node --check index.js
+          node --check bin/axiomize.js
+          node --check tests/npm/contract.test.js
+      - name: npm package contract tests
+        run: npm test
+      - name: npm/Python version lockstep and registry contract
+        # --check-registry asserts this version is not already published, so a
+        # retry cannot fail halfway through the PyPI publish.
+        run: python .github/scripts/npm_release_contract.py --check-registry
+      - name: Publish the npm shim
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   platform-smoke:
     name: release wheel-cli (${{ matrix.os }})
@@ -105,6 +152,8 @@ jobs:
           python-version: "3.11"
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
+      - name: Enforce npm package contract
+        run: python .github/scripts/npm_release_contract.py
       - name: Build exact wheel
         run: |
           python -m pip install --upgrade pip
@@ -114,7 +163,7 @@ jobs:
         run: python .github/scripts/platform_wheel_cli_smoke.py --wheel-dir dist
 
   publish:
-    needs: [preflight, platform-smoke]
+    needs: [preflight, platform-smoke, npm-package]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -228,3 +277,7 @@ jobs:
           tag_name: v${{ needs.preflight.outputs.package_version }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/*.sbom.spdx.json

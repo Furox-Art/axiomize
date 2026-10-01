@@ -1,15 +1,11 @@
 """Adaptive workflow contract regression tests."""
 
-import sys
 from pathlib import Path
 
 import matplotlib
 import numpy as np
 
 matplotlib.use("Agg")
-
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
 
 from axiomize.application.services import intake_service, workflow_policy_service
 from axiomize.data.quality import clean_numeric_xy

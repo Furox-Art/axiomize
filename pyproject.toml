@@ -65,7 +65,7 @@ dependencies = [
 [project.optional-dependencies]
 full = ["pymc>=5.0", "jax>=0.4"]
 playground = ["gradio>=4.0", "pandas>=1.5"]
-dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.10"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff==0.16.9", "mypy==2.3.1"]
 
 [project.urls]
 Homepage = "https://github.com/Furox-Art/axiomize"
@@ -102,7 +102,65 @@ packages = ["src/axiomize"]
 "benchmarks/ideas.json" = "axiomize/data/benchmark_ideas.json"
 
 [tool.hatch.build.targets.sdist]
+# Ship only what is needed to rebuild and verify the distribution. The previous
+# defaults produced a 268-file sdist that carried the whole CI configuration,
+# the test suite and the documentation images (including a 248 KB GIF), none of
+# which a downstream packager needs.
+include = [
+    "src/axiomize",
+    "skills/axiomize",
+    "benchmarks/ideas.json",
+    "tests",
+    "conftest.py",
+    "pyproject.toml",
+    "requirements-test.txt",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "CITATION.cff",
+]
 exclude = [".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "site"]
+
+[tool.pytest.ini_options]
+# Fail on a collection error instead of skipping the broken module: a test file
+# that cannot import the package is a failure, not a silent deselection.
+addopts = "--strict-markers --strict-config -ra"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = false
+source = ["axiomize"]
+# The editable-install layout force-includes skills/axiomize/tools into the
+# wheel; measure the package the tests import.
+omit = [
+    "*/tests/*",
+    "*/.github/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Enforced by .github/scripts/quality_ratchet.py against the recorded baseline,
+# so a drop in coverage fails CI instead of going unnoticed.
+fail_under = 69
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = [".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "site"]
+
+[tool.ruff.lint]
+# Curated set, enforced as a ratchet rather than a zero-findings gate: see
+# .github/scripts/quality_ratchet.py and .github/quality-baseline.json.
+select = ["E4", "E7", "E9", "F", "B", "SIM", "I", "UP"]
+# E701/E702 are the codebase's deliberate compact-statement style and E741 is
+# the conventional `I` for the infected compartment in the epidemiological
+# solvers. None of them indicate a defect.
+ignore = ["E701", "E702", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest.py must register import roots before test modules import the package.
+"conftest.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.13"

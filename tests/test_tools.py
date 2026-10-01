@@ -5,20 +5,17 @@ Run with: pytest tests/ -v
 
 import json
 import math
-import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-# Make the skill tools importable without installing the package
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "skills" / "axiomize" / "tools"))
+from csv_check import load
+from fit import fit_logistic, fit_sir
+from report_to_latex import convert, neutralize_dangerous_macros
+from validate import final_size_theory, run_sir
 
-from csv_check import load  # noqa: E402
-from fit import fit_logistic, fit_sir  # noqa: E402
-from report_to_latex import convert, neutralize_dangerous_macros  # noqa: E402
-from validate import final_size_theory, run_sir  # noqa: E402
+REPO = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------

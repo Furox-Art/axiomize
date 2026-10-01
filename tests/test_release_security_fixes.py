@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 import sympy as sp
+
 from axiomize.limits import (
     MAX_ABS_CONSTANT_EXPONENT,
     MAX_BINOMIAL_ARGUMENT,
@@ -90,6 +91,13 @@ def test_npm_entrypoint_forwards_the_cli_module() -> None:
         "index.js must invoke the module that owns main() (axiomize.cli)"
 
 
+def test_npm_entrypoint_spawns_without_a_shell() -> None:
+    """argv is attacker-influenced in a published package: never use a shell."""
+    source = (REPO_ROOT / "index.js").read_text(encoding="utf-8")
+    assert "shell: false" in source, "index.js must pin shell:false on spawn"
+    assert "shell: true" not in source
+
+
 @pytest.mark.skipif(not _node_available(), reason="node is not installed")
 def test_npm_entrypoint_passes_node_syntax_check(tmp_path: Path) -> None:
     for name in ("index.js", "bin/axiomize.js"):
@@ -100,6 +108,105 @@ def test_npm_entrypoint_passes_node_syntax_check(tmp_path: Path) -> None:
         assert result.returncode == 0, (
             f"node --check {name} failed:\n{result.stdout}\n{result.stderr}"
         )
+
+
+def _stub_interpreter(directory: Path, exit_code: int) -> Path:
+    """Write a fake ``python``/``python3`` that exits with ``exit_code``."""
+    name = "python" if os.name == "nt" else "python3"
+    if os.name == "nt":
+        stub = directory / f"{name}.cmd"
+        stub.write_text(f"@exit /b {exit_code}\r\n", encoding="utf-8")
+    else:
+        stub = directory / name
+        stub.write_text(f"#!/bin/sh\nexit {exit_code}\n", encoding="utf-8")
+        stub.chmod(0o755)
+    return stub
+
+
+_EXIT_PROPAGATION_HARNESS = """
+'use strict';
+// Inject a fake child process so the launcher's close/error handling can be
+// exercised without a Python interpreter or an installed axiomize package.
+const cp = require('child_process');
+const { EventEmitter } = require('events');
+
+const caseName = process.argv[2];
+const entry = process.argv[3];
+
+cp.spawn = function () {
+  const proc = new EventEmitter();
+  setImmediate(() => {
+    if (caseName === 'signal') {
+      proc.emit('close', null, 'SIGKILL');
+    } else if (caseName === 'nullcode') {
+      proc.emit('close', null, null);
+    } else if (caseName === 'error') {
+      proc.emit('error', new Error('stubbed interpreter failure'));
+    } else {
+      proc.emit('close', Number(caseName), null);
+    }
+  });
+  return proc;
+};
+
+process.exitCode = 0;
+require(entry).runAxiomize(['--help']);
+setTimeout(() => {
+  process.stdout.write('EXITCODE=' + process.exitCode + '\\n');
+  process.exit(0);
+}, 100);
+"""
+
+
+@pytest.mark.skipif(not _node_available(), reason="node is not installed")
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("0", 0),
+        ("1", 1),
+        ("3", 3),
+        ("signal", 1),
+        ("nullcode", 1),
+        ("error", 127),
+    ],
+)
+def test_npm_entrypoint_propagates_the_cli_exit_code(
+    tmp_path: Path, case: str, expected: int
+) -> None:
+    """The child's exit status must reach the caller.
+
+    Hermetic: a fake child process replaces ``spawn``, so this needs neither a
+    Python interpreter nor an installed ``axiomize`` package, and it asserts the
+    behaviour that was silently broken before (``npx axiomize`` exited 0 on
+    failure). A signal or a missing exit code must fail closed, never 0.
+    """
+    harness = tmp_path / "harness.js"
+    harness.write_text(_EXIT_PROPAGATION_HARNESS, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(harness), case, str(REPO_ROOT / "index.js")],
+        capture_output=True, text=True, timeout=60, shell=False, check=False,
+    )
+    assert result.returncode == 0, f"harness failed:\n{result.stderr}"
+    reported = [line for line in result.stdout.splitlines() if line.startswith("EXITCODE=")]
+    assert reported, f"harness produced no verdict:\n{result.stdout!r}"
+    assert int(reported[-1].split("=", 1)[1]) == expected, (
+        f"expected exitCode {expected} for case {case!r}, got {reported[-1]}"
+    )
+
+
+@pytest.mark.skipif(not _node_available(), reason="node is not installed")
+def test_npm_entrypoint_reports_a_missing_interpreter(tmp_path: Path) -> None:
+    """With no interpreter reachable the wrapper must fail loudly, not silently."""
+    stub_dir = tmp_path / "empty"
+    stub_dir.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = str(stub_dir)
+    result = subprocess.run(
+        ["node", str(REPO_ROOT / "index.js"), "--help"],
+        capture_output=True, text=True, timeout=60, shell=False, check=False, env=env,
+    )
+    assert result.returncode != 0, "a missing interpreter must not exit 0"
+    assert "axiomize" in (result.stderr + result.stdout).lower()
 
 
 # ---------------------------------------------------------------------------
