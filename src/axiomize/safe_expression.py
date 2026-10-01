@@ -16,10 +16,13 @@ from typing import Any
 
 from axiomize.limits import (
     MAX_ABS_CONSTANT_EXPONENT,
+    MAX_BINOMIAL_ARGUMENT,
     MAX_EXPRESSION_CHARS,
     MAX_EXPRESSION_DEPTH,
     MAX_EXPRESSION_NODES,
+    MAX_FACTORIAL_ARGUMENT,
     MAX_INTEGER_DIGITS,
+    MAX_INTEGER_FOLD_BITS,
 )
 
 ALLOWED_FUNCTIONS = frozenset({
@@ -104,6 +107,174 @@ def _constant_number(node: ast.AST) -> float | None:
     return value if math.isfinite(value) else None
 
 
+# Functions whose SymPy evaluation expands into a large integer. They are only
+# ever folded for *constant* arguments that are inside the allow-listed ranges
+# above; a symbolic or oversized argument is rejected rather than evaluated.
+#
+# NOTE: these names are deliberately absent from ALLOWED_FUNCTIONS. `product`
+# in particular has no two-argument form in SymPy (``sp.product(2, 3)`` raises
+# ``ValueError: Invalid limits given``), so exposing it as a plain function would
+# turn a bounded integer expression into a guaranteed runtime error. The folder
+# understands the call shapes anyway so the guard stays correct if the allow-list
+# ever grows.
+_INTEGER_EXPANSIVE_FUNCTIONS = frozenset({"factorial", "product", "binomial"})
+
+
+def _fold_bounded(value: int, *, what: str) -> int:
+    """Return ``value`` only if it fits inside the folded-integer ceiling."""
+    if value.bit_length() > MAX_INTEGER_FOLD_BITS:
+        raise ValueError(
+            f"{what} exceeds the hard folded-constant limit of {MAX_INTEGER_FOLD_BITS} bits"
+        )
+    return value
+
+
+def _fold_integer_constant(node: ast.AST) -> int | None:
+    """Fold a pure-integer constant subtree to a Python ``int``.
+
+    Returns ``None`` when the subtree is not an integer constant (it contains a
+    symbol, a call, a comparison, ...), which means "leave it symbolic".
+
+    This is what makes the exponent ceiling enforceable. ``_constant_number``
+    only recognises a literal, so ``9**(10**9)`` used to reach SymPy with a
+    billion-digit exponent and never return. Folding rejects that payload before
+    any bigint is allocated: every intermediate result is bounded by
+    ``MAX_INTEGER_FOLD_BITS`` and the exponent is range-checked before the power
+    is computed.
+    """
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, int):
+            return None
+        _check_constant(node.value)
+        return _fold_bounded(node.value, what="integer literal")
+
+    if isinstance(node, ast.UnaryOp):
+        inner = _fold_integer_constant(node.operand)
+        if inner is None:
+            return None
+        if isinstance(node.op, ast.USub):
+            return _fold_bounded(-inner, what="negated integer constant")
+        if isinstance(node.op, ast.UAdd):
+            return inner
+        return None
+
+    if isinstance(node, ast.BinOp):
+        left = _fold_integer_constant(node.left)
+        right = _fold_integer_constant(node.right)
+        if left is None or right is None:
+            return None
+        if isinstance(node.op, ast.Add):
+            return _fold_bounded(left + right, what="integer sum")
+        if isinstance(node.op, ast.Sub):
+            return _fold_bounded(left - right, what="integer difference")
+        if isinstance(node.op, ast.Mult):
+            return _fold_bounded(left * right, what="integer product")
+        if isinstance(node.op, ast.FloorDiv):
+            if right == 0:
+                raise ValueError("integer division by zero")
+            return _fold_bounded(left // right, what="integer quotient")
+        if isinstance(node.op, ast.Mod):
+            if right == 0:
+                raise ValueError("integer modulo by zero")
+            return _fold_bounded(left % right, what="integer remainder")
+        if isinstance(node.op, ast.Pow):
+            # Range-check the exponent *before* powering: this ordering is the
+            # whole point of the guard.
+            if abs(right) > MAX_ABS_CONSTANT_EXPONENT:
+                raise ValueError(
+                    "constant exponent magnitude exceeds hard limit "
+                    f"{MAX_ABS_CONSTANT_EXPONENT:g}"
+                )
+            if right < 0:
+                # Negative constant exponents produce reciprocals; keep them
+                # symbolic rather than folding into a Fraction.
+                return None
+            base = abs(left)
+            if base > 1 and base.bit_length() * right > MAX_INTEGER_FOLD_BITS:
+                raise ValueError(
+                    f"constant power exceeds the hard folded-constant limit of "
+                    f"{MAX_INTEGER_FOLD_BITS} bits"
+                )
+            return _fold_bounded(left ** right, what="integer power")
+        return None
+
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        name = node.func.id
+        if name not in _INTEGER_EXPANSIVE_FUNCTIONS or node.keywords:
+            return None
+        args = [_fold_integer_constant(arg) for arg in node.args]
+        if any(value is None for value in args):
+            return None
+        integers = [int(value) for value in args]
+        if name == "factorial":
+            if len(integers) != 1:
+                raise ValueError("factorial takes exactly one integer argument")
+            if not 0 <= integers[0] <= MAX_FACTORIAL_ARGUMENT:
+                raise ValueError(
+                    f"factorial argument must be an integer in [0, {MAX_FACTORIAL_ARGUMENT}]"
+                )
+            return _fold_bounded(math.factorial(integers[0]), what="factorial")
+        if name == "binomial":
+            if len(integers) != 2:
+                raise ValueError("binomial takes exactly two integer arguments")
+            if any(value < 0 or value > MAX_BINOMIAL_ARGUMENT for value in integers):
+                raise ValueError(
+                    "binomial arguments must be integers in "
+                    f"[0, {MAX_BINOMIAL_ARGUMENT}]"
+                )
+            return _fold_bounded(math.comb(*integers), what="binomial")
+        if name == "product":
+            if len(integers) != 2:
+                raise ValueError("product takes exactly two integer arguments")
+            low, high = min(integers), max(integers)
+            if low < 0 or high - low > MAX_FACTORIAL_ARGUMENT:
+                raise ValueError(
+                    "product range must satisfy 0 <= start <= end <= start + "
+                    f"{MAX_FACTORIAL_ARGUMENT}"
+                )
+            result = 1
+            for value in range(low, high + 1):
+                result *= value
+            return _fold_bounded(result, what="product")
+        return None
+
+    return None
+
+
+def _needs_expansion_check(node: ast.AST) -> bool:
+    """True for nodes that can expand into a large constant integer."""
+    if isinstance(node, ast.BinOp):
+        return True
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _INTEGER_EXPANSIVE_FUNCTIONS
+    )
+
+
+def _enforce_constant_expansion_bounds(tree: ast.Expression) -> None:
+    """Reject constant-only subtrees whose expansion exceeds hard ceilings.
+
+    Applies the folded-integer ceiling to every binary operator and to every
+    integer-expansive call, so neither nested powers nor oversized combinatorial
+    arguments can build an unbounded intermediate before SymPy sees them.
+    """
+    for node in ast.walk(tree):
+        if _needs_expansion_check(node):
+            _fold_integer_constant(node)
+
+
+def _exponent_magnitude(node: ast.AST) -> float | None:
+    """Best-effort magnitude of a power exponent, folding integer subtrees."""
+    exponent = _constant_number(node)
+    if exponent is not None:
+        return exponent
+    folded = _fold_integer_constant(node)
+    if folded is None:
+        return None
+    return float(folded)
+
+
 def validate_expression(
     expression: str,
     *,
@@ -158,7 +329,9 @@ def validate_expression(
                 if any(not isinstance(arg, ast.Tuple) or len(arg.elts) != 2 for arg in node.args):
                     raise ValueError("Piecewise arguments must be (expression, condition) pairs")
         elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
-            exponent = _constant_number(node.right)
+            # Fold nested exponent subtrees (``10**9``) as well as plain literals
+            # so a nested power cannot smuggle a huge exponent past the ceiling.
+            exponent = _exponent_magnitude(node.right)
             if exponent is not None and abs(exponent) > MAX_ABS_CONSTANT_EXPONENT:
                 raise ValueError(
                     f"constant exponent magnitude exceeds hard limit {MAX_ABS_CONSTANT_EXPONENT:g}"
@@ -166,6 +339,10 @@ def validate_expression(
         elif isinstance(node, ast.Compare):
             if len(node.ops) != 1 or len(node.comparators) != 1:
                 raise ValueError("chained comparisons are not allowed")
+
+    # Bound constant-only expansion across the whole tree (nested powers,
+    # factorial/binomial/product arguments, oversized intermediate products).
+    _enforce_constant_expansion_bounds(tree)
 
     return tree
 

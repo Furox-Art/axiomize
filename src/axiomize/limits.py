@@ -47,6 +47,17 @@ MAX_EXPRESSION_NODES = 512
 MAX_EXPRESSION_DEPTH = 40
 MAX_INTEGER_DIGITS = 64
 MAX_ABS_CONSTANT_EXPONENT = 1_000.0
+# Ceiling on the magnitude of any integer produced by folding a constant-only
+# expression subtree. Enforced on every intermediate result, so folding itself
+# can never become the denial of service it exists to prevent. 4096 bits is
+# ~1233 decimal digits: far above any hand-written scientific literal, and
+# cheap for Python/SymPy bigints to hold.
+MAX_INTEGER_FOLD_BITS = 4_096
+# Argument ceilings for the integer-expansive combinatorial functions. Bounds
+# are chosen so the expanded result stays under MAX_INTEGER_FOLD_BITS:
+# 500! is 3768 bits, 1000! is 8530 bits.
+MAX_FACTORIAL_ARGUMENT = 500
+MAX_BINOMIAL_ARGUMENT = 500
 
 _INTEGER_TEXT = re.compile(r"^[+-]?[0-9]+$")
 
