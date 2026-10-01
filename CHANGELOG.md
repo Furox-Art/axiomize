@@ -68,11 +68,12 @@ Note for the next release: `.github/scripts/check_release_contract.py` reads the
 
 ### Not changed here
 
-- `pyproject.toml`, `package.json` and `index.js` were fixed on `main` by #32/#33, which merged
-  as `be8d347` after this documentation branch was cut. This branch merges `main` rather than
-  reimplementing it, so those fixes are present. What is still outstanding is publication: the
-  npm shim and the Python distributions ship together from the next release commit, and until
-  that release the registry keeps serving the broken 1.12.2 tarball.
+- `pyproject.toml`, `package.json` and `index.js` were fixed on `main` by #33 (`be8d347`) and #32
+  (`0854fe5`), both merged after this documentation branch was cut. This branch merges `main`
+  rather than reimplementing them, so those fixes are present and were not re-derived here. What
+  is still outstanding is publication: the npm shim and the Python distributions ship together
+  from the next release commit, and until that release the registry keeps serving the broken
+  1.12.2 tarball.
 - the published PyPI long description still reflects the README at the 1.12.3 release. Only a new
   release can change it. See `docs/documentation.md`.
 
