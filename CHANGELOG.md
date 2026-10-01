@@ -31,9 +31,12 @@ Note for the next release: `.github/scripts/check_release_contract.py` reads the
   identified as stored samples that CI neither grades nor checks
 - worked examples carried `lit.` / `data.` / `est.` source classes with no citation behind them.
   Every example now opens with a provenance note saying the values are illustrative and uncited
-- the README advertised an npm version badge for a package whose entry point is broken, and its
-  npm section did not say what the failure was. The badge is removed and the section states that
-  `index.js` has a syntax error so `npx axiomize` fails before running
+- the README advertised an npm version badge for a package whose entry point was broken, and its
+  npm section did not say what the failure was. The badge is still absent, and the section now
+  separates the two states accurately: the `index.js` fix landed on `main` via #32/#33, but the
+  registry still serves the old 1.12.2 tarball, so the published package is still broken. The
+  section tells readers how to check the registry version themselves. The npm badge returns when
+  the registry version matches PyPI
 - `docs/index.md` had no route to the domain packs, which were not linked from anywhere
 
 ### Added
@@ -65,8 +68,11 @@ Note for the next release: `.github/scripts/check_release_contract.py` reads the
 
 ### Not changed here
 
-- `pyproject.toml`, `package.json` and `index.js` are owned by another change; the npm entry
-  point remains broken on `main` and this PR does not fix it
+- `pyproject.toml`, `package.json` and `index.js` were fixed on `main` by #32/#33, which merged
+  as `be8d347` after this documentation branch was cut. This branch merges `main` rather than
+  reimplementing it, so those fixes are present. What is still outstanding is publication: the
+  npm shim and the Python distributions ship together from the next release commit, and until
+  that release the registry keeps serving the broken 1.12.2 tarball.
 - the published PyPI long description still reflects the README at the 1.12.3 release. Only a new
   release can change it. See `docs/documentation.md`.
 

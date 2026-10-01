@@ -74,6 +74,24 @@ carry no citation:
 
 Then add the file to `docs/example-gallery.md`, otherwise nothing links to it.
 
+## Registry version claims in the README
+
+`pyproject.toml`, `src/axiomize/__init__.py`, `package.json`, `.github/pypi-release-trigger` and
+the first `## [version]` heading in `CHANGELOG.md` are kept in lockstep by
+`.github/scripts/check_release_contract.py`. That gate checks the **repository**. It says nothing
+about what a registry is currently serving, so the two can legitimately differ for a while.
+
+The npm shim publishes from the same release commit as the Python distributions. Between that
+commit landing on `main` and the release actually running, the registry serves the previous
+tarball. Check the registry directly before making any claim about a published version:
+
+```bash
+curl -s https://registry.npmjs.org/axiomize | python -c "import json,sys; d=json.load(sys.stdin); print(d['dist-tags']['latest'], sorted(d['versions']))"
+```
+
+Only re-add the npm version badge once that version matches the PyPI version. Until then the
+README should say which of the two states it is in, and a repository fix is not a published fix.
+
 ## PyPI description sync (manual step)
 
 `README.md` is the `readme` in `pyproject.toml`, so the PyPI long description is whatever

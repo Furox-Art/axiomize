@@ -19,8 +19,9 @@ Security: **[SECURITY.md](SECURITY.md)** · Contributing: **[CONTRIBUTING.md](CO
 Code of conduct: **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** ·
 Cite: **[CITATION.cff](CITATION.cff)**
 
-There is deliberately no npm version badge: the published npm entry point is broken
-(see [npm](#npm)).
+There is deliberately still no npm version badge: the fix for the npm entry point has landed in
+this repository but has not been published yet, so the registry and this README disagree on the
+version (see [npm](#npm)).
 
 ## Why
 
@@ -198,11 +199,17 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## npm
 
-`pip install axiomize` is the supported install path. An `axiomize` package exists on npm but
-its entry point (`index.js`) has a syntax error, so `npx axiomize` fails before it runs
-anything. Treat npm as non-functional until it is fixed and republished. Tracked in
-[issue tracking](https://github.com/Furox-Art/axiomize/issues) and
-[CHANGELOG.md](CHANGELOG.md).
+`pip install axiomize` is the supported install path. Use npm only if you already depend on it.
+
+The npm `index.js` syntax error is fixed on `main`, and `package.json` is at 1.12.3 in lockstep
+with the Python package. **That fix is not published yet.** The npm registry still serves 1.12.2,
+whose tarball carries the broken entry point, so `npx axiomize` still fails to load today.
+
+The fix ships with the next release, which publishes the npm shim from the same commit as the
+Python distributions. Until that release lands, check
+[registry.npmjs.org/axiomize](https://registry.npmjs.org/axiomize) before using npm: if the
+reported version is lower than the PyPI version, the registry copy is still the old one. Tracked
+in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
