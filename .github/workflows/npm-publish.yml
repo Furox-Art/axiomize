@@ -1,12 +1,22 @@
 name: npm Publish
 
-# The npm shim is now published by release.yml as part of the single release
-# contract, gated on the same .github/pypi-release-trigger commit as the Python
-# distributions. This workflow is retained only as a manual recovery path for
-# republishing an already-released version; it cannot fire on a code push,
-# which is how package.json drifted a release behind pyproject.toml.
+# Normal npm releases happen in release.yml, from the same
+# .github/pypi-release-trigger commit as the Python distributions. Keeping a
+# second automatic trigger was how package.json drifted a release behind
+# pyproject.toml, so this workflow cannot fire on a code push.
+#
+# This is the manual recovery path only: use it to publish an npm version after
+# a release.yml run failed between the preflight gates and the npm publish, or
+# to recover from an npm-side incident. Every gate that release.yml runs also
+# runs here, so a manual publish is held to the same standard as an automatic
+# one.
 on:
   workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why this manual npm publish is needed"
+        required: true
+        type: string
 
 concurrency:
   group: npm-publish
@@ -18,12 +28,25 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/axiomize
+    # OIDC trusted publishing only. npm's CLI exchanges this job's GitHub OIDC
+    # identity for a short-lived publish token, so no long-lived NPM_TOKEN is
+    # read and none should exist in the npm environment. contents:read is for
+    # the checkout; contents:write is not needed to publish.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "20"
+          # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1.
+          # Node 20 ships npm 10.x, which cannot do OIDC at all.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
       - name: Report the manual publish reason
         run: 'echo "manual npm publish requested: ${{ inputs.reason }}"'
       - name: Enforce release version contract
@@ -36,8 +59,33 @@ jobs:
       - name: npm package contract tests
         run: npm test
       - name: npm/Python version lockstep and registry contract
+        # Fails closed on any version disagreement, and --check-registry fails
+        # closed if this exact version already exists on npm. npm versions are
+        # immutable, so this must never be skipped to "try a publish".
         run: python .github/scripts/npm_release_contract.py --check-registry
-      - name: Publish to npm
-        run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Assert the tarball contains only the allowlisted files
+        run: |
+          set -euo pipefail
+          npm pack --dry-run --json | python -c "
+          import json, sys
+          names = sorted(e['path'] for e in json.load(sys.stdin)[0]['files'])
+          print('packed files:')
+          for name in names:
+              print('  ' + name)
+          expected = {
+              'index.js', 'bin/axiomize.js', 'package.json',
+              'LICENSE', 'README.md', 'tests/npm/contract.test.js',
+          }
+          actual = set(names)
+          missing = expected - actual
+          if missing:
+              raise SystemExit(f'FAIL: npm tarball is missing {sorted(missing)}')
+          extra = actual - expected
+          if extra:
+              raise SystemExit(f'FAIL: npm tarball has unexpected files {sorted(extra)}')
+          print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
+          "
+      - name: Publish to npm with OIDC trusted publishing
+        # No NODE_AUTH_TOKEN and no continue-on-error: a failed publish must
+        # fail loudly rather than let the two registries drift apart.
+        run: npm publish --provenance --access public
