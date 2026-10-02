@@ -177,6 +177,8 @@ jobs:
         with:
           name: python-package-distributions
           path: dist
+      - name: Leave only wheel and sdist for PyPI
+        run: find dist -type f ! -name '*.whl' ! -name '*.tar.gz' -delete
       - name: Check whether version already exists on PyPI
         id: gate
         shell: bash
