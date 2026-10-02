@@ -7,11 +7,6 @@ name: npm Publish
 # which is how package.json drifted a release behind pyproject.toml.
 on:
   workflow_dispatch:
-    inputs:
-      reason:
-        description: "Why this manual npm publish is needed"
-        required: true
-        type: string
 
 concurrency:
   group: npm-publish
@@ -43,6 +38,6 @@ jobs:
       - name: npm/Python version lockstep and registry contract
         run: python .github/scripts/npm_release_contract.py --check-registry
       - name: Publish to npm
-        run: npm publish --access public
+        run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

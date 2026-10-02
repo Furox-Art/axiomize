@@ -134,7 +134,7 @@ jobs:
         # retry cannot fail halfway through the PyPI publish.
         run: python .github/scripts/npm_release_contract.py --check-registry
       - name: Publish the npm shim
-        run: npm publish --access public
+        run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
