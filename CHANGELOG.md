@@ -2,6 +2,10 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## Unreleased
+
+- `server.json` description fits the MCP registry's 100-character limit. `.github/workflows/mcp-registry.yml` publishes that file on `workflow_dispatch` with GitHub OIDC. npm is still not published.
+
 ## [1.12.4] - 2026-10-02
 
 Documentation and repository visibility. No library code, CLI surface, or public API changed.
