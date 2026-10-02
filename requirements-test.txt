@@ -7,23 +7,23 @@
 # Required by skills/axiomize/tools (fit.py, validate.py, parallel_sweep.py
 # import scipy; csv_check.py imports numpy). Everything else in the skill's
 # tools is stdlib-only.
-numpy>=1.24
-scipy>=1.10
+numpy>=2.2.6
+scipy>=1.15.3
 
 # Required by the scientific engine.
-sympy>=1.12
-networkx>=3.0
-statsmodels>=0.14
-matplotlib>=3.7
+sympy>=1.14.0
+networkx>=3.4.2
+statsmodels>=0.15.0
+matplotlib>=3.10.9
 z3-solver>=4.12
-control>=0.10
-cvxpy>=1.5
-casadi>=3.6
+control>=0.10.2
+cvxpy>=1.7.5
+casadi>=3.8.1
 
 # Test runner , CI runs `pytest` to execute the test suite. Without this the
 # test job fails immediately with "pytest: command not found" before any test
 # is collected.
-pytest>=8.0
+pytest>=9.1.1
 
 # Playground only (playground/app.py):
 #   pip install pandas gradio

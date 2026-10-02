@@ -49,23 +49,23 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "numpy>=1.24",
-    "scipy>=1.10",
-    "sympy>=1.12",
-    "networkx>=3.0",
-    "statsmodels>=0.14",
-    "matplotlib>=3.7",
+    "numpy>=2.2.6",
+    "scipy>=1.15.3",
+    "sympy>=1.14.0",
+    "networkx>=3.4.2",
+    "statsmodels>=0.15.0",
+    "matplotlib>=3.10.9",
     "z3-solver>=4.13,<5; sys_platform == 'darwin'",
     "z3-solver>=4.12; sys_platform != 'darwin'",
-    "control>=0.10",
-    "cvxpy>=1.5",
-    "casadi>=3.6",
+    "control>=0.10.2",
+    "cvxpy>=1.7.5",
+    "casadi>=3.8.1",
 ]
 
 [project.optional-dependencies]
 full = ["pymc>=5.0", "jax>=0.4"]
 playground = ["gradio>=4.0", "pandas>=1.5"]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff==0.16.9", "mypy==2.3.1"]
+dev = ["pytest>=9.1.1", "pytest-cov>=5.0", "ruff==0.16.9", "mypy==2.3.1"]
 
 [project.urls]
 Homepage = "https://github.com/Furox-Art/axiomize"
