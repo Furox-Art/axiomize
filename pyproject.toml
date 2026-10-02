@@ -63,9 +63,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-full = ["pymc>=5.0", "jax>=0.4"]
-playground = ["gradio>=4.0", "pandas>=1.5"]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff==0.16.9", "mypy==2.3.1"]
+full = ["pymc>=5.26.0", "jax>=0.6.2"]
+playground = ["gradio>=6.28.0", "pandas>=2.3.3"]
+dev = ["pytest>=8.0", "pytest-cov>=7.1.0", "ruff==0.16.9", "mypy==2.3.1"]
 
 [project.urls]
 Homepage = "https://github.com/Furox-Art/axiomize"
