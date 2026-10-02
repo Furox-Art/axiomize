@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Furox-Art/axiomize",
+  "title": "Axiomize",
+  "description": "MCP server for versioned scientific models with mandatory units, dimensional checks, and SBML, CellML, and Modelica export.",
+  "repository": {
+    "url": "https://github.com/Furox-Art/axiomize",
+    "source": "github"
+  },
+  "version": "1.12.3",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "axiomize",
+      "version": "1.12.3",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "valueHint": "mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

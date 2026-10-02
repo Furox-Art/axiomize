@@ -4,6 +4,10 @@
 vague idea into an explicit, versioned mathematical model, validates it dimensionally and
 numerically, and exports an artifact someone else can re-run years from now.
 
+This is not the numerical-methods library. That door is [scientific-computing-system](https://github.com/Furox-Art/scientific-computing-system). Axiomize is the modeling layer: mandatory units, a versioned Model IR, and export to SBML, CellML, and Modelica. The MCP server is `axiomize mcp`.
+
+mcp-name: io.github.Furox-Art/axiomize
+
 [![CI](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml/badge.svg)](https://github.com/Furox-Art/axiomize/actions/workflows/ci.yml)
 [![Pages](https://github.com/Furox-Art/axiomize/actions/workflows/pages.yml/badge.svg)](https://furox-art.github.io/axiomize/)
 [![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)

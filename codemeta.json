@@ -1,0 +1,28 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "axiomize",
+  "version": "1.12.3",
+  "description": "Versioned scientific models with mandatory units, dimensional and numerical checks, and export to SBML, CellML, and Modelica. Python library, CLI, and MCP server.",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/Furox-Art/axiomize",
+  "url": "https://furox-art.github.io/axiomize/",
+  "programmingLanguage": {
+    "@type": "ComputerLanguage",
+    "name": "Python"
+  },
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Furox-Art"
+    }
+  ],
+  "datePublished": "2026-09-29",
+  "keywords": [
+    "scientific modeling",
+    "dimensional analysis",
+    "model IR",
+    "mcp"
+  ],
+  "applicationCategory": "scientific computing"
+}
