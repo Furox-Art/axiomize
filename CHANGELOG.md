@@ -2,13 +2,13 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
-## Unreleased
+## [1.12.4] - 2026-10-02
 
-Documentation and repository visibility. No library code, CLI surface, or public API changed, so
-the next release may still be cut as a patch.
+Documentation and repository visibility. No library code, CLI surface, or public API changed.
 
-Note for the next release: `.github/scripts/check_release_contract.py` reads the first
-`## [version]` heading as the released version, so this section stays unbracketed on purpose.
+- The README now carries `mcp-name: io.github.Furox-Art/axiomize` and `server.json` describes the existing `axiomize mcp` server.
+- The npm shim is no longer published. PyPI is the install path.
+- This release exists so the PyPI long description includes the MCP name line.
 
 ### Fixed
 
