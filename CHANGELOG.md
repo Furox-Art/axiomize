@@ -4,14 +4,51 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 ## Unreleased
 
-- `server.json` description fits the MCP registry's 100-character limit. `.github/workflows/mcp-registry.yml` publishes that file on `workflow_dispatch` with GitHub OIDC. npm is still not published.
+Documentation only. Corrects the npm status now that `1.12.4` is published on both registries. No
+library code, CLI surface, or public API change.
+
+### Fixed
+
+- the README and `docs/documentation.md` still described npm as unpublished and absent as the
+  badge's reason. npm `1.12.4` is published and is `dist-tags.latest`, matching PyPI, so the npm
+  version badge is restored and the "not published" and "registry serves the broken 1.12.2"
+  claims are removed
+- the README npm section now records which release is which: `1.12.2` was published broken, because
+  its `index.js` had a syntax error, and `1.12.4` is the first working npm release
+- supply-chain provenance was implied rather than stated. PyPI `1.12.4` publishes PEP 740
+  attestations for both the wheel and the sdist naming `Furox-Art/axiomize` via `release.yml`,
+  recorded in the Sigstore transparency log. The npm `1.12.4` tarball was published in token mode
+  and carries **no** attestation: `registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4`
+  returns 404, while the same endpoint returns 200 for packages published with trusted publishing.
+  The README and `docs/documentation.md` now say this explicitly, and point readers at
+  `dist.integrity` for npm verification instead of implying provenance exists
+- `docs/documentation.md` warns that npm `dist.signatures` are registry metadata signatures, not
+  provenance, and that a 404 must be distinguished from a wrong URL by testing the endpoint against
+  a package known to publish attestations
+- `docs/documentation.md` gained a post-release verification step: confirm `dist-tags.latest`
+  actually advanced, and `node --check` the published files rather than only the repository copy
+
+The earlier truthfulness work is unchanged: benchmark results still carry commit and
+runner/case-set/rubric hashes with non-reproducible waves labelled as history, the example gallery
+still links the lens directory rather than a dead README anchor, and every worked example still
+states its parameters are illustrative and uncited.
+
+### Not changed here
+
+- npm provenance cannot be added to the existing `1.12.4`: attestations are bound to a publish
+  event. A future release using trusted publishing can carry them, and that is the only fix.
+- the published PyPI long description still reflects the README at the `1.12.4` release, so the
+  npm badge and these provenance notes are not yet on the PyPI page. Only a new release changes it.
+  See `docs/documentation.md`.
 
 ## [1.12.4] - 2026-10-02
 
 Documentation and repository visibility. No library code, CLI surface, or public API changed.
 
 - The README now carries `mcp-name: io.github.Furox-Art/axiomize` and `server.json` describes the existing `axiomize mcp` server.
-- The npm shim is no longer published. PyPI is the install path.
+- The npm shim is no longer published. PyPI is the install path. **Superseded:** npm publishing was
+  re-enabled in #41/#42 and `1.12.4` reached the registry on 2026-10-03. See the `Unreleased`
+  section above for the current npm state.
 - This release exists so the PyPI long description includes the MCP name line.
 
 ### Fixed
@@ -36,11 +73,10 @@ Documentation and repository visibility. No library code, CLI surface, or public
 - worked examples carried `lit.` / `data.` / `est.` source classes with no citation behind them.
   Every example now opens with a provenance note saying the values are illustrative and uncited
 - the README advertised an npm version badge for a package whose entry point was broken, and its
-  npm section did not say what the failure was. The badge is still absent, and the section now
-  separates the two states accurately: the `index.js` fix landed on `main` via #32/#33, but the
-  registry still serves the old 1.12.2 tarball, so the published package is still broken. The
-  section tells readers how to check the registry version themselves. The npm badge returns when
-  the registry version matches PyPI
+  npm section did not say what the failure was. The badge was removed and the section was rewritten
+  to separate the repository fix from the published package, which was still broken at the time.
+  **Superseded:** the badge is back in the `Unreleased` section above, because npm `1.12.4` is now
+  published and matches PyPI.
 - `docs/index.md` had no route to the domain packs, which were not linked from anywhere
 
 ### Added
@@ -74,10 +110,8 @@ Documentation and repository visibility. No library code, CLI surface, or public
 
 - `pyproject.toml`, `package.json` and `index.js` were fixed on `main` by #33 (`be8d347`) and #32
   (`0854fe5`), both merged after this documentation branch was cut. This branch merges `main`
-  rather than reimplementing them, so those fixes are present and were not re-derived here. What
-  is still outstanding is publication: the npm shim and the Python distributions ship together
-  from the next release commit, and until that release the registry keeps serving the broken
-  1.12.2 tarball.
+  rather than reimplementing them, so those fixes are present and were not re-derived here.
+  **Superseded:** npm `1.12.4` has since been published from that fixed tree.
 - the published PyPI long description still reflects the README at the 1.12.3 release. Only a new
   release can change it. See `docs/documentation.md`.
 

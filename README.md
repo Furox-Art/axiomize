@@ -12,20 +12,18 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Pages](https://github.com/Furox-Art/axiomize/actions/workflows/pages.yml/badge.svg)](https://furox-art.github.io/axiomize/)
 [![PyPI](https://img.shields.io/pypi/v/axiomize)](https://pypi.org/project/axiomize/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/axiomize)](https://pypi.org/project/axiomize/)
+[![npm](https://img.shields.io/npm/v/axiomize)](https://www.npmjs.com/package/axiomize)
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.12.4** (PyPI is the supported install path; see [npm](#npm))
+Current package line: **1.12.4** on PyPI and npm. Install with `pip install axiomize`, or
+`npx axiomize` for the Node shim (see [npm](#npm)).
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
 Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
 Security: **[SECURITY.md](SECURITY.md)** · Contributing: **[CONTRIBUTING.md](CONTRIBUTING.md)** ·
 Code of conduct: **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** ·
 Cite: **[CITATION.cff](CITATION.cff)**
-
-There is deliberately still no npm version badge: the fix for the npm entry point has landed in
-this repository but has not been published yet, so the registry and this README disagree on the
-version (see [npm](#npm)).
 
 ## Why
 
@@ -203,17 +201,36 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## npm
 
-`pip install axiomize` is the supported install path. Use npm only if you already depend on it.
+The npm package is a distribution shim, not a second implementation. It locates a Python
+interpreter, imports the installed `axiomize` package and forwards argv, so the Python package is
+what actually runs. Install it if your build is already Node-based:
 
-The npm `index.js` syntax error is fixed on `main`, and `package.json` is at 1.12.3 in lockstep
-with the Python package. **That fix is not published yet.** The npm registry still serves 1.12.2,
-whose tarball carries the broken entry point, so `npx axiomize` still fails to load today.
+```bash
+npx axiomize capabilities      # forwards to: python -m axiomize.cli capabilities
+```
 
-The fix ships with the next release, which publishes the npm shim from the same commit as the
-Python distributions. Until that release lands, check
-[registry.npmjs.org/axiomize](https://registry.npmjs.org/axiomize) before using npm: if the
-reported version is lower than the PyPI version, the registry copy is still the old one. Tracked
-in [CHANGELOG.md](CHANGELOG.md).
+`pip install axiomize` is the path if you want the Python package directly. Both are at
+**1.12.4**; `check_release_contract.py` enforces that they never drift.
+
+### What is published, and what each one proves
+
+| Release | State |
+|---|---|
+| npm `1.12.2` | Published broken. Its `index.js` had a syntax error, so `npx axiomize` failed to load. Do not use it. |
+| npm `1.12.4` | First working npm release. `node --check` passes on the published `index.js` and `bin/axiomize.js`. |
+
+Two provenance facts that are easy to assume wrongly:
+
+- **PyPI `1.12.4` carries PEP 740 attestations.** Both files publish an in-toto statement at
+  `https://pypi.org/integrity/axiomize/1.12.4/<filename>/provenance`, naming
+  `Furox-Art/axiomize` via `release.yml`, and both statements are recorded in the Sigstore
+  transparency log. The attestations are tied to specific file digests, so a different file will
+  not verify against them.
+- **npm `1.12.4` carries no provenance attestation.** It was published in token mode, not with
+  trusted publishing, so `https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4`
+  returns 404. Verify the npm tarball by digest instead:
+  `npm view axiomize@1.12.4 dist.integrity`. Provenance exists for the Python distributions only;
+  it does not exist for the npm shim.
 
 ## License
 

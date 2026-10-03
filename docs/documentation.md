@@ -79,18 +79,62 @@ Then add the file to `docs/example-gallery.md`, otherwise nothing links to it.
 `pyproject.toml`, `src/axiomize/__init__.py`, `package.json`, `.github/pypi-release-trigger` and
 the first `## [version]` heading in `CHANGELOG.md` are kept in lockstep by
 `.github/scripts/check_release_contract.py`. That gate checks the **repository**. It says nothing
-about what a registry is currently serving, so the two can legitimately differ for a while.
+about what a registry is currently serving, so the two can legitimately differ for a while:
+between a release commit landing on `main` and the release actually running, the registry still
+serves the previous tarball.
 
-The npm shim publishes from the same release commit as the Python distributions. Between that
-commit landing on `main` and the release actually running, the registry serves the previous
-tarball. Check the registry directly before making any claim about a published version:
+Check the registry directly before making any claim about a published version:
 
 ```bash
-curl -s https://registry.npmjs.org/axiomize | python -c "import json,sys; d=json.load(sys.stdin); print(d['dist-tags']['latest'], sorted(d['versions']))"
+# npm: latest tag and the full version list
+curl -s https://registry.npmjs.org/axiomize \
+  | python -c "import json,sys; d=json.load(sys.stdin); print(d['dist-tags']['latest'], sorted(d['versions']))"
+
+# npm: published digests for integrity checks
+curl -s https://registry.npmjs.org/axiomize/1.12.4 \
+  | python -c "import json,sys; d=json.load(sys.stdin); print(d['dist']['integrity'], d['dist']['shasum'])"
+
+# PyPI: latest version and per-file digests
+curl -s https://pypi.org/pypi/axiomize/json \
+  | python -c "import json,sys; d=json.load(sys.stdin); print(d['info']['version']); [print(' ', u['filename'], u['digests']['sha256']) for u in d['urls']]"
 ```
 
-Only re-add the npm version badge once that version matches the PyPI version. Until then the
-README should say which of the two states it is in, and a repository fix is not a published fix.
+The npm version badge follows the PyPI version. It is present only when the registry version
+matches; otherwise the README must say which of the two states it is in, because a repository fix
+is not a published fix. As of `1.12.4` both registries report `1.12.4` as latest, so the badge is
+in place.
+
+## Supply-chain attestations: what exists and what does not
+
+Do not write "published with provenance" without checking which registry you mean. The two
+ecosystems differ here, and the npm package is the weaker of the pair.
+
+| Registry | Mechanism | Endpoint | State at 1.12.4 |
+|---|---|---|---|
+| PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | present for both the wheel and the sdist |
+| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.12.4` was published in token mode |
+
+A 404 from either endpoint means no attestation exists for that artifact. Confirm the endpoint
+itself works before reading a 404 as "absent", by querying a package known to publish
+attestations; otherwise you cannot tell a missing attestation from a wrong URL:
+
+```bash
+# should be 200 with an attestation bundle
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/vite@6.0.5
+# the same shape for this project
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4
+```
+
+Two further details worth stating precisely rather than implying:
+
+- A PyPI attestation is bound to one file digest. Re-uploading a different file under the same
+  version does not verify against the published statement.
+- npm registry `dist.signatures` is **not** provenance. Every npm version has those: they sign the
+  registry metadata so the registry cannot tamper with it. They prove the registry is honest about
+  the artifact, not that a build workflow produced it. Only an attestations bundle is provenance.
+
+If the npm shim is ever republished with trusted publishing, add the attestations URL to the README
+table above and record the run date. Do not backfill an attestation onto the existing 1.12.4.
 
 ## PyPI description sync (manual step)
 
@@ -121,6 +165,17 @@ Checklist before tagging:
 - [ ] `CHANGELOG.md` has an entry for the new version.
 - [ ] `CITATION.cff` `version` and `date-released` match the release.
 - [ ] PyPI metadata refreshed and re-checked with the commands above.
+
+After tagging, confirm the registries actually moved. This is the step that catches a release that
+published Python but not npm, or the reverse:
+
+- [ ] `curl -s https://pypi.org/pypi/axiomize/json` reports the new version, and each file's
+      `provenance` link returns 200.
+- [ ] `curl -s https://registry.npmjs.org/axiomize` lists the new version in `versions` **and** the
+      new version under `dist-tags.latest`.
+- [ ] `node --check` passes on `index.js` and `bin/axiomize.js` as published, not just in the repo.
+- [ ] If npm was published with trusted publishing, its attestations URL returns 200. If it was
+      published with a token, the README table says so rather than implying provenance.
 
 ## Local commands
 
