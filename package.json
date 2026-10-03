@@ -1,6 +1,6 @@
 {
   "name": "axiomize",
-  "version": "1.12.4",
+  "version": "1.12.5",
   "description": "Rigorous scientific modeling engine and agent skill pack",
   "main": "index.js",
   "bin": {
@@ -20,7 +20,7 @@
   },
   "axiomizeCompat": {
     "npm": "~> 1.0.0",
-    "python": ">=1.12.4"
+    "python": ">=1.12.5"
   },
   "keywords": [
     "modeling",
