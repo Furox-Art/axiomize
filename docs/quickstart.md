@@ -44,6 +44,7 @@ from axiomize.model_ir import ModelIR
 model = ModelIR.from_dict({
     "schema_version": "1.0",
     "name": "sir-outbreak",
+    "domain": "epidemiology",
     "family": "ode",
     "independent_variable": "t",
     "independent_unit": "day",
@@ -52,8 +53,8 @@ model = ModelIR.from_dict({
         {"name": "I", "unit": "person", "initial": 10.0, "bounds": [0.0, None]},
     ],
     "parameters": [
-        {"name": "beta", "unit": "1/day", "value": 0.3},
-        {"name": "gamma", "unit": "1/day", "value": 0.1},
+        {"name": "beta", "unit": "1/day", "value": 0.3, "bounds": [0.0, None]},
+        {"name": "gamma", "unit": "1/day", "value": 0.1, "bounds": [0.0, None]},
         {"name": "N", "unit": "persons", "value": 1000.0},
     ],
     "equations": [
@@ -71,6 +72,9 @@ result = simulate_model(model, t_span=(0.0, 30.0), points=4)
 print(result["status"])
 print([round(v, 3) for v in result["states"]["I"]])
 ```
+
+The model above is `examples/quickstart_sir.py` field for field, including `domain` and the
+parameter `bounds`. Run that file directly to get the full solver and validation lines.
 
 ```text
 status: PASS
@@ -114,10 +118,26 @@ one that agrees has at least earned the right to be debated on its assumptions.
 
 ## 5. Gate the expensive steps
 
-Discretized families return `APPROVAL_REQUIRED` until you opt in:
+`--input-json` takes a JSON file holding the Model IR plus any per-action settings.
+`--approve-heavy` authorizes repeated refinement runs. Without it the study is refused
+rather than executed quietly:
+
+```bash
+axiomize model --action numerical-verify --input-json request.json
+```
+
+```text
+status: APPROVAL_REQUIRED
+study:  solver_tolerance_refinement
+```
 
 ```bash
 axiomize model --action numerical-verify --input-json request.json --approve-heavy
+```
+
+```text
+status: PASS
+uncertainty_separation.numerical: 6.6100987239990846e-11
 ```
 
 Approval authorizes compute. It never disables a resource ceiling. The engine
@@ -130,15 +150,19 @@ convergence, because those two are routinely conflated.
 axiomize model --action export --input-json request.json
 ```
 
-Canonical Model IR JSON, plus SBML Level 3, CellML 2.0, Modelica, GraphML, a
-rerunnable Python script, or a notebook. Supported formats and their limits are
-listed in [portable-export.md](portable-export.md).
+The `"format"` field in the request selects the target: canonical Model IR JSON, a
+rerunnable Python script, YAML, a notebook, SBML Level 3, CellML 2.0, Modelica,
+GraphML, Graphviz DOT for a causal DAG, or the SHA-256 portable bundle. Which of
+those are unconditional and which need a particular model family is listed in
+[portable-export.md](portable-export.md). LaTeX is not one of them: it comes from
+`axiomize-to-latex` on a written report, not from this dispatch chain.
 
 ## Where to go next
 
 | Goal | Page |
 |---|---|
 | See a full worked example per domain | [Example gallery](example-gallery.md) |
+| Find the console scripts and both server surfaces | [Integrations](integrations.md) |
 | Understand the agent workflow and rigor ladder | [Rigor ladder](rigor.md), [Archetypes](archetypes.md) |
 | Wire it into an agent | [Integrations](integrations.md) |
 | Know what is and is not a security boundary | [Security](security.md), [SECURITY.md](https://github.com/Furox-Art/axiomize/blob/main/SECURITY.md) |

@@ -16,8 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.12.4** on PyPI and npm. Install with `pip install axiomize`, or
-`npx axiomize` for the Node shim (see [npm](#npm)).
+Current package line: **1.12.4** on PyPI and npm.
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
 Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
@@ -55,13 +54,23 @@ need the engine to make scientific claims for you without a human in the loop.
 pip install axiomize
 ```
 
-Optional extras: `pip install "axiomize[full]"` (PyMC/JAX Bayesian sampling),
-`pip install "axiomize[playground]"` (the Gradio playground).
+Optional extras: `pip install "axiomize[full]"` for PyMC/JAX Bayesian sampling.
+
+The `playground` extra installs `gradio` and `pandas` but ships no UI: `playground/app.py` is
+not in the wheel or the sdist, so `pip install "axiomize[playground]"` alone leaves you with
+dependencies and nothing to run. To use it, get the file from the repository:
+
+```bash
+git clone https://github.com/Furox-Art/axiomize
+pip install "axiomize[playground]"
+python axiomize/playground/app.py
+```
 
 ## Python in five minutes
 
 Declare the model, then let Axiomize check it. Units are mandatory, so dimensional
-mistakes fail loudly instead of producing a meaningless number.
+mistakes fail loudly instead of producing a meaningless number. This block is the model in
+[`examples/quickstart_sir.py`](examples/quickstart_sir.py), field for field.
 
 ```python
 from axiomize.general_engine import simulate_model
@@ -70,6 +79,7 @@ from axiomize.model_ir import ModelIR
 model = ModelIR.from_dict({
     "schema_version": "1.0",
     "name": "sir-outbreak",
+    "domain": "epidemiology",
     "family": "ode",
     "independent_variable": "t",
     "independent_unit": "day",
@@ -78,8 +88,8 @@ model = ModelIR.from_dict({
         {"name": "I", "unit": "person", "initial": 10.0, "bounds": [0.0, None]},
     ],
     "parameters": [
-        {"name": "beta", "unit": "1/day", "value": 0.3},
-        {"name": "gamma", "unit": "1/day", "value": 0.1},
+        {"name": "beta", "unit": "1/day", "value": 0.3, "bounds": [0.0, None]},
+        {"name": "gamma", "unit": "1/day", "value": 0.1, "bounds": [0.0, None]},
         {"name": "N", "unit": "persons", "value": 1000.0},
     ],
     "equations": [
@@ -94,11 +104,14 @@ model = ModelIR.from_dict({
 })
 
 result = simulate_model(model, t_span=(0.0, 30.0), points=4)
-print(result["status"])
-print([round(v, 3) for v in result["states"]["I"]])
+print(f"status: {result['status']}")
+print(f"solver: {result['solver']['backend']} / {result['solver']['method']}")
+print(f"days:   {result['time']}")
+print(f"infected: {[round(v, 3) for v in result['states']['I']]}")
+print(f"checks: {result['validation']['status']} ({len(result['validation']['checks'])} of them)")
 ```
 
-Real output, reproducible by running `python examples/quickstart_sir.py`:
+Real output, and byte-identical to `python examples/quickstart_sir.py`:
 
 ```text
 status: PASS
@@ -110,11 +123,9 @@ checks: PASS (25 of them)
 
 ## CLI in five minutes
 
-No Python required. Every command prints JSON you can pipe.
+Every command prints JSON you can pipe.
 
 ```bash
-pip install axiomize
-
 # What is actually installed, and is it usable? Backends report honestly.
 axiomize capabilities
 
@@ -142,24 +153,127 @@ compartments_nonnegative            PASS
 R_monotonic_increase                PASS
 ```
 
-Other surfaces: `axiomize solve` (reference SIR), `axiomize fit` (calibrate from CSV),
-`axiomize model --action {plan,validate,simulate,fit,export,numerical-verify}`,
-`axiomize serve` (REST, loopback by default), `axiomize mcp` (MCP over stdio).
-See [docs/integrations.md](docs/integrations.md).
+The two flags that matter once you leave the reference model are `--input-json` (the Model IR
+request as a file) and `--approve-heavy` (authorizes repeated refinement runs):
+
+```bash
+# Without --approve-heavy the study is refused rather than run silently.
+axiomize model --action numerical-verify --input-json request.json
+# status: APPROVAL_REQUIRED, study: solver_tolerance_refinement
+
+axiomize model --action numerical-verify --input-json request.json --approve-heavy
+# status: PASS, uncertainty_separation.numerical: 6.6100987239990846e-11
+```
+
+Step-by-step versions of all of this, with the request files, are in
+[docs/quickstart.md](docs/quickstart.md).
+
+## Surface map
+
+The engine is 68 public modules behind four interfaces. This README names the whole CLI and
+the shape of the two servers; the per-module detail belongs in
+[docs/integrations.md](docs/integrations.md).
+
+### Console scripts (8)
+
+| Command | Does |
+|---|---|
+| `axiomize` | The main CLI. 14 subcommands, below. |
+| `axiomize-validate` | Closed-form theory checks for the three reference models: `sir`, `gillespie`, `queue` |
+| `axiomize-fit` | Calibrate `sir` or `logistic` against a `time,value` CSV; `--selftest` runs the built-in checks |
+| `axiomize-csv-check` | Data quality on an observation file: gaps, duplicates, outliers via modified z-score |
+| `axiomize-benchmark` | Grades a produced report against a case in `benchmarks/ideas.json` |
+| `axiomize-to-latex` | Converts a standardized report to LaTeX, optionally `--pdf`. **This is the only LaTeX path in the project**; it is not a model export format. |
+| `axiomize-index-reports` | Rebuilds `reports/INDEX.md` from the reports in a directory |
+| `axiomize-sweep` | Parallel parameter sweeps (`--job sweep`, `--job mc`) |
+
+### `axiomize` subcommands (14)
+
+`intake` · `policy` · `model` · `clean-data` · `compare-runs` · `solve` · `fit` ·
+`validate` · `tools` · `capabilities` · `reproduce` · `benchmark` · `serve` · `mcp`
+
+`tools` and `capabilities` report backend availability; `policy` reports what the agent is
+allowed to spend; `reproduce` and `compare-runs` work on stored run directories.
+
+### `axiomize model --action` (16)
+
+| Family | Values |
+|---|---|
+| Model lifecycle | `plan` · `validate` · `simulate` · `fit` · `compare` · `repair` · `export` |
+| Analysis | `stability` · `validity` · `discover` · `experiment-design` · `uncertainty` · `bifurcation` |
+| Verification | `numerical-verify` · `stop-check` · `surrogate` |
+
+### MCP and REST
+
+The MCP server exposes **34 tools** named `axiomize.<verb>`. `axiomize.model_*` mirrors the
+`model --action` values above; the unprefixed names (`solve`, `fit_model`, `cross_validate`,
+`sensitivity_analysis`, `uncertainty_analysis`, `falsify`, `compare_models`, `intake`,
+`workflow_policy`, `clean_data`, `compare_runs`, `experiment_design`, `inspect_run`,
+`reproduce`, `get_capabilities`, `list_tools`, `select_tools`) cover the surrounding
+workflow. Enumerate them rather than trusting a list:
+
+```bash
+axiomize mcp        # stdio transport; send tools/list over stdin
+```
+
+The REST server serves **30 route handlers** (26 POST, plus GET `/tools`, `/capabilities`,
+`/workflow-policy` and `/runs/{id}`) under a `/v1` prefix, on loopback by default:
+
+```bash
+axiomize serve --port 8765
+curl -s http://127.0.0.1:8765/v1/capabilities
+```
+
+Both surfaces are larger than any README can enumerate honestly, which is why the naming
+convention matters more than the list. Both counts come from the installed handlers.
+
+### Model export formats
+
+`axiomize model --action export --input-json request.json` dispatches on the `"format"`
+field. What actually returns `PASS` for a given model:
+
+| Format | Status | Notes |
+|---|---|---|
+| `json` | yes | Canonical Model IR, sorted keys |
+| `python` | yes | Rerunnable script that re-imports the IR |
+| `yaml` | yes | Needs PyYAML; otherwise `TOOL_UNAVAILABLE` |
+| `ipynb` | yes | nbformat 4 notebook |
+| `sbml-l3v2` | yes | SBML Level 3 Version 2 Core |
+| `modelica` | yes | Modelica 3.6 text |
+| `portable-bundle` | yes | `axiomize.portable-bundle.v1` with a SHA-256 over canonical IR |
+| `graphml` | conditional | Needs `family: network` IR with `metadata.network` |
+| `causal-dot` | conditional | Needs `family: causal` IR with identification metadata |
+| `cellml-2.0` | conditional | Passes for supported units; `ADAPTER_REQUIRED` naming the ones it will not reinterpret |
+| `sbml`, `cellml` | no | Unversioned aliases deliberately return `ADAPTER_REQUIRED` |
+
+LaTeX is **not** in this dispatch chain. `latex`, `tex` and `pdf` raise
+`ValueError: format must be json, python, yaml, sbml, or cellml`. Use
+`axiomize-to-latex` on a written report instead.
+
+### Content in the repository
+
+| What | Where | Count |
+|---|---|---|
+| Domain packs | [packs/](packs/domain-packs.md) | 12 |
+| Perspective lenses | [skills/axiomize/perspectives/](skills/axiomize/perspectives/) | 15 |
+| Report templates | [skills/axiomize/templates/](skills/axiomize/templates/) | 5 |
+| Worked examples | [examples/](examples/) | 18 `.md` + `quickstart_sir.py` |
+| MCP registry manifest | [server.json](server.json) | 1 |
+
+`server.json` is what the MCP registry reads to publish `axiomize mcp`; its `mcp-name` line
+is repeated at the top of this README for clients that scrape it.
 
 ## Adoption path
 
 1. **Try it on something you already believe.** Recreate a model you trust with
-   `axiomize-validate` or one `axiomize model` run. If the engine disagrees with a result
-   you can defend, stop here and open an issue.
+   `axiomize-validate`. If the engine disagrees with a result you can defend, stop here and
+   open an issue.
 2. **Move one real question onto Model IR.** Declare units and constraints explicitly. The
    dimensional checks are where the value shows up first.
-3. **Gate the expensive steps.** Numerical refinement, mesh refinement, and heavy fitting
-   return `APPROVAL_REQUIRED` until you pass `--approve-heavy`. Approval authorizes compute;
-   it never disables a resource ceiling.
-4. **Export something portable.** `axiomize model --action export` emits canonical Model IR
-   JSON plus SBML, CellML, and Modelica for supported models, so the artifact outlives this
-   library.
+3. **Gate the expensive steps.** Discretized families return `APPROVAL_REQUIRED` until you
+   pass `--approve-heavy`. Approval authorizes compute; it never disables a resource ceiling.
+4. **Export something portable.** `axiomize model --action export` emits canonical IR JSON,
+   and SBML, CellML or Modelica for supported models, so the artifact outlives this library.
 5. **Wire it into review.** Ship the exported IR and the validation record alongside the
    result, not just a figure.
 
@@ -169,7 +283,10 @@ See [docs/integrations.md](docs/integrations.md).
 - Enforces scientific constraints as named, justified checks rather than prose
 - Separates numerical error from stochastic variability before claiming convergence
 - Compares candidate model families and records why one was chosen
-- Exports to JSON, Python, YAML, notebooks, SBML, CellML, Modelica, GraphML, and LaTeX
+- Exports to JSON, Python, YAML, notebooks, SBML Level 3, CellML 2.0, Modelica, GraphML,
+  Graphviz DOT and a SHA-256 portable bundle; see the [format table](#model-export-formats)
+  for which of those are conditional
+- Converts written reports to LaTeX via `axiomize-to-latex`, which is a separate path
 - Keeps an integrity-checked run ledger, so a stored result can be verified before use
 
 ## Honest limits
@@ -190,7 +307,7 @@ See [docs/integrations.md](docs/integrations.md).
 
 - Quickstart and workflow: [furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)
 - Worked examples: [example gallery](https://furox-art.github.io/axiomize/example-gallery/),
-  or the [18 example files](examples/)
+  or the [19 files in `examples/`](examples/)
 - Domain packs (which lenses matter per field):
   [packs/domain-packs.md](packs/domain-packs.md)
 - Agent integration (MCP, REST, CLI): [docs/integrations.md](docs/integrations.md)
@@ -201,36 +318,12 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## npm
 
-The npm package is a distribution shim, not a second implementation. It locates a Python
-interpreter, imports the installed `axiomize` package and forwards argv, so the Python package is
-what actually runs. Install it if your build is already Node-based:
-
-```bash
-npx axiomize capabilities      # forwards to: python -m axiomize.cli capabilities
-```
-
-`pip install axiomize` is the path if you want the Python package directly. Both are at
-**1.12.4**; `check_release_contract.py` enforces that they never drift.
-
-### What is published, and what each one proves
-
-| Release | State |
-|---|---|
-| npm `1.12.2` | Published broken. Its `index.js` had a syntax error, so `npx axiomize` failed to load. Do not use it. |
-| npm `1.12.4` | First working npm release. `node --check` passes on the published `index.js` and `bin/axiomize.js`. |
-
-Two provenance facts that are easy to assume wrongly:
-
-- **PyPI `1.12.4` carries PEP 740 attestations.** Both files publish an in-toto statement at
-  `https://pypi.org/integrity/axiomize/1.12.4/<filename>/provenance`, naming
-  `Furox-Art/axiomize` via `release.yml`, and both statements are recorded in the Sigstore
-  transparency log. The attestations are tied to specific file digests, so a different file will
-  not verify against them.
-- **npm `1.12.4` carries no provenance attestation.** It was published in token mode, not with
-  trusted publishing, so `https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4`
-  returns 404. Verify the npm tarball by digest instead:
-  `npm view axiomize@1.12.4 dist.integrity`. Provenance exists for the Python distributions only;
-  it does not exist for the npm shim.
+`npx axiomize` works and forwards to `python -m axiomize.cli`, so it needs Python and
+`pip install axiomize` underneath; it is not a standalone binary. npm `1.12.2` is published
+and broken (`index.js` had a syntax error); `1.12.4` is the first working release. PyPI
+`1.12.4` carries PEP 740 attestations, the npm tarball does not. Full detail, including
+verification commands and how to tell registry metadata signatures from provenance:
+[docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not).
 
 ## License
 
