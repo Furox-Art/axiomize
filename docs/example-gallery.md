@@ -49,6 +49,7 @@ structure, not a validated model; read them after a full-length example.
 
 ---
 
-All 18 files live in [/examples](https://github.com/Furox-Art/axiomize/tree/main/examples/).
+The 18 `.md` reports listed here, plus the runnable `quickstart_sir.py`, are the 19 files in
+[/examples](https://github.com/Furox-Art/axiomize/tree/main/examples/).
 Domain bundles that say which lenses matter per field are in
 [packs/domain-packs.md](https://github.com/Furox-Art/axiomize/blob/main/packs/domain-packs.md).
