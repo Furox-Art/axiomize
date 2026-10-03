@@ -4,42 +4,80 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 ## Unreleased
 
-Documentation only. Corrects the npm status now that `1.12.4` is published on both registries. No
-library code, CLI surface, or public API change.
+## [1.12.5] - 2026-10-04
+
+Documentation only. No library code, CLI surface, or public API change; the importable surface,
+console scripts and entry points are identical to `1.12.4`. This release exists so PyPI's project
+page picks up the corrected README: `pyproject.toml` uses `README.md` as the `long_description`,
+and the PyPI `1.12.4` page still shows the README as it stood at that release.
 
 ### Fixed
 
-- the README and `docs/documentation.md` still described npm as unpublished and absent as the
-  badge's reason. npm `1.12.4` is published and is `dist-tags.latest`, matching PyPI, so the npm
-  version badge is restored and the "not published" and "registry serves the broken 1.12.2"
-  claims are removed
+Four README claims the installed package did not support, each verified by running the installed
+wheel rather than reading source:
+
+- "Exports to JSON, Python, YAML, notebooks, SBML, CellML, Modelica, GraphML, and LaTeX" listed
+  LaTeX as an export format. It is not in the dispatch chain: `latex`, `tex` and `pdf` all raise
+  `ValueError`. LaTeX is a separate report-conversion path via `axiomize-to-latex`. The export list
+  now names `SBML Level 3` and `CellML 2.0` precisely, and adds the two formats the claim had
+  omitted: `causal-dot` and `portable-bundle`
+- `pip install axiomize[playground]` left the reader with dependencies and nothing to run.
+  `playground/app.py` is in neither the wheel nor the sdist. The instruction now says to fetch the
+  file from the repository
+- "the 18 example files" was wrong; `examples/` holds 19 (18 `.md` plus `quickstart_sir.py`)
+- the Python quickstart block had drifted from `examples/quickstart_sir.py`, missing
+  `"domain": "epidemiology"` and the `bounds` field on beta and gamma. The two are now identical
+  field for field and print the same output
+- the console-script table listed `ebm` and `portfolio` as `axiomize-validate` models. The tool
+  accepts exactly `sir`, `gillespie`, `queue`
+
+npm status, which `1.12.4` could not yet state correctly:
+
+- the README and `docs/documentation.md` described npm as unpublished. npm `1.12.4` is published and
+  is `dist-tags.latest`, matching PyPI, so the npm version badge is restored and the "not published"
+  and "registry serves the broken 1.12.2" claims are removed
 - the README npm section now records which release is which: `1.12.2` was published broken, because
   its `index.js` had a syntax error, and `1.12.4` is the first working npm release
 - supply-chain provenance was implied rather than stated. PyPI `1.12.4` publishes PEP 740
   attestations for both the wheel and the sdist naming `Furox-Art/axiomize` via `release.yml`,
   recorded in the Sigstore transparency log. The npm `1.12.4` tarball was published in token mode
-  and carries **no** attestation: `registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4`
-  returns 404, while the same endpoint returns 200 for packages published with trusted publishing.
-  The README and `docs/documentation.md` now say this explicitly, and point readers at
-  `dist.integrity` for npm verification instead of implying provenance exists
+  and carries **no** attestation: the npm attestations endpoint returns 404 for `axiomize@1.12.4`
+  while returning 200 for packages published with trusted publishing. The README and
+  `docs/documentation.md` now say so explicitly and point readers at `dist.integrity` for npm
+  verification instead of implying provenance exists
 - `docs/documentation.md` warns that npm `dist.signatures` are registry metadata signatures, not
   provenance, and that a 404 must be distinguished from a wrong URL by testing the endpoint against
   a package known to publish attestations
 - `docs/documentation.md` gained a post-release verification step: confirm `dist-tags.latest`
   actually advanced, and `node --check` the published files rather than only the repository copy
 
-The earlier truthfulness work is unchanged: benchmark results still carry commit and
-runner/case-set/rubric hashes with non-reproducible waves labelled as history, the example gallery
-still links the lens directory rather than a dead README anchor, and every worked example still
-states its parameters are illustrative and uncited.
+### Added
+
+Public-surface coverage in the README, so a reader can tell what the package actually offers
+without reading the source. Counts come from the installed handlers rather than source comments:
+34 MCP tools from a real `tools/list` over stdio, 30 REST handlers under `/v1`, 8 console scripts
+from the wheel's entry points, and repo counts from the tree.
+
+- all 8 console scripts, described
+- all 14 `axiomize` subcommands
+- all 16 `model --action` values, grouped
+- the MCP tool inventory by naming convention, with the live enumeration method, plus the honest
+  note that both server surfaces are larger than any README can list
+- the 30 REST route handlers, with a curl probe
+- 12 domain packs, 15 perspective lenses, 5 report templates, and `server.json`
+- a measured export-format table separating unconditional formats from those needing a specific
+  model family
+
+`docs/integrations.md` and `docs/portable-export.md` were rewritten to carry the per-module detail
+the README no longer duplicates.
 
 ### Not changed here
 
 - npm provenance cannot be added to the existing `1.12.4`: attestations are bound to a publish
   event. A future release using trusted publishing can carry them, and that is the only fix.
-- the published PyPI long description still reflects the README at the `1.12.4` release, so the
-  npm badge and these provenance notes are not yet on the PyPI page. Only a new release changes it.
-  See `docs/documentation.md`.
+- no gate yet asserts the README's export-format list or its tool counts, so this class of drift
+  can recur. Such a gate needs the installed wheel to be meaningful and belongs in a change that
+  owns `.github/scripts/`.
 
 ## [1.12.4] - 2026-10-02
 
