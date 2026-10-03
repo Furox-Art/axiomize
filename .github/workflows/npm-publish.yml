@@ -2,14 +2,14 @@ name: npm Publish
 
 # Normal npm releases happen in release.yml, from the same
 # .github/pypi-release-trigger commit as the Python distributions. Keeping a
-# second automatic trigger was how package.json drifted a release behind
+# second automatic trigger is how package.json drifted a release behind
 # pyproject.toml, so this workflow cannot fire on a code push.
 #
-# This is the manual recovery path only: use it to publish an npm version after
-# a release.yml run failed between the preflight gates and the npm publish, or
-# to recover from an npm-side incident. Every gate that release.yml runs also
-# runs here, so a manual publish is held to the same standard as an automatic
-# one.
+# This is the manual recovery path. Use it to publish an npm version after a
+# release.yml run failed between its gates and the npm publish, or to publish
+# while the npmjs.com trusted publisher is not yet registered. Every gate that
+# release.yml runs also runs here, so a manual publish is held to the same
+# standard as an automatic one.
 on:
   workflow_dispatch:
     inputs:
@@ -17,6 +17,11 @@ on:
         description: "Why this manual npm publish is needed"
         required: true
         type: string
+      use_token_fallback:
+        description: "Publish with the NPM_TOKEN secret instead of OIDC trusted publishing. Drops the provenance attestation."
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: npm-publish
@@ -31,26 +36,109 @@ jobs:
     environment:
       name: npm
       url: https://www.npmjs.com/package/axiomize
-    # OIDC trusted publishing only. npm's CLI exchanges this job's GitHub OIDC
-    # identity for a short-lived publish token, so no long-lived NPM_TOKEN is
-    # read and none should exist in the npm environment. contents:read is for
-    # the checkout; contents:write is not needed to publish.
+    # id-token:write mints the OIDC token for the default trusted-publishing
+    # path. contents:read is for the checkout. contents:write is not needed to
+    # publish and is not granted.
+    #
+    # The token fallback path reads secrets.NPM_TOKEN, a long-lived credential.
+    # It exists because the npmjs.com trusted publisher is not registered yet;
+    # once it is, every publish should use OIDC and NPM_TOKEN should be deleted.
     permissions:
       contents: read
       id-token: write
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1.
-          # Node 20 ships npm 10.x, which cannot do OIDC at all.
+          # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1;
+          # Node 20 ships npm 10.x, which cannot do OIDC at all. Required for
+          # BOTH modes, because npm 11 is also where the CLI's OIDC detection
+          # and `--provenance` behaviour stabilised.
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          # Never cache in a release build: a warm cache is a way to publish
+          # bytes this checkout did not produce.
           package-manager-cache: false
       - name: Report the manual publish reason
         run: 'echo "manual npm publish requested: ${{ inputs.reason }}"'
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
+      - name: Verify the toolchain supports the selected auth mode
+        id: toolchain
+        # Numeric semver comparison, not a regex. A pattern such as
+        # ^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\. is wrong twice over: it rejects
+        # 11.5.1 and 11.19.0 (both of which satisfy >= 11.5.1) and accepts only
+        # 11.99.0 and 12+ within the 11 line. Compared as (major, minor, patch)
+        # integers instead.
+        run: |
+          set -euo pipefail
+          node -e '
+            // `node --version` prints a leading "v" ("v24.14.0"); npm does not.
+            // A pre-release suffix is ignored: only (major, minor, patch) matter
+            // for the minimum-version comparison.
+            const semver = (raw) => {
+              const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(raw).trim());
+              if (!m) return null;
+              return [Number(m[1]), Number(m[2]), Number(m[3])];
+            };
+            const gte = (a, b) => a[0] !== b[0] ? a[0] > b[0] : (a[1] !== b[1] ? a[1] > b[1] : a[2] >= b[2]);
+            const npmRaw = process.argv[1];
+            const npmVer = semver(npmRaw);
+            if (!npmVer) { console.error(`FAIL: cannot parse npm version ${npmRaw}`); process.exit(1); }
+            const nodeRaw = process.argv[2];
+            const nodeVer = semver(nodeRaw);
+            if (!nodeVer) { console.error(`FAIL: cannot parse node version ${nodeRaw}`); process.exit(1); }
+            const NPM_MIN = [11, 5, 1];
+            const NODE_MIN = [22, 14, 0];
+            if (!gte(npmVer, NPM_MIN)) {
+              console.error(`FAIL: npm ${npmRaw} is older than the required ${NPM_MIN.join(".")}; trusted publishing cannot work`);
+              process.exit(1);
+            }
+            if (!gte(nodeVer, NODE_MIN)) {
+              console.error(`FAIL: node ${nodeRaw} is older than the required ${NODE_MIN.join(".")}`);
+              process.exit(1);
+            }
+            console.log(`PASS npm ${npmRaw} >= ${NPM_MIN.join(".")}, node ${nodeRaw} >= ${NODE_MIN.join(".")}`);
+          ' "$(npm --version)" "$(node --version)"
+          echo "npm_version=$(npm --version)" >> "$GITHUB_OUTPUT"
+          echo "node_version=$(node --version)" >> "$GITHUB_OUTPUT"
+      - name: Select the publish credential mode
+        id: select-mode
+        # OIDC is the default and the target state. The token path is an
+        # explicit, opt-in fallback that exists only while the trusted publisher
+        # is unregistered. Both are fail-closed: each fails with a specific
+        # message rather than silently degrading to whichever credential happens
+        # to be present.
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.use_token_fallback }}" = "true" ]; then
+            mode=token
+          else
+            mode=oidc
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+          if [ "$mode" = "oidc" ]; then
+            if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+              echo "::error::OIDC publish requested but this job cannot mint an OIDC token."
+              echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is unset, so the runner did not grant id-token:write."
+              echo "::error::Either fix the id-token:write permission, or re-run with use_token_fallback=true to publish with NPM_TOKEN instead."
+              exit 1
+            fi
+            echo "mode=oidc (provenance attestation enabled)"
+          else
+            if [ -z "${NPM_TOKEN:-}" ]; then
+              echo "::error::Token publish requested but the NPM_TOKEN secret is empty."
+              echo "::error::Add a repository or npm-environment secret named NPM_TOKEN (an npm automation token), or re-run without use_token_fallback once the trusted publisher is registered."
+              exit 1
+            fi
+            echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
+            echo "::warning::Publishing with NPM_TOKEN instead of OIDC. Register the npmjs.com trusted publisher and delete NPM_TOKEN once this release is out."
+          fi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Parse every shipped JavaScript file
         run: |
           node --check index.js
@@ -59,9 +147,10 @@ jobs:
       - name: npm package contract tests
         run: npm test
       - name: npm/Python version lockstep and registry contract
-        # Fails closed on any version disagreement, and --check-registry fails
-        # closed if this exact version already exists on npm. npm versions are
-        # immutable, so this must never be skipped to "try a publish".
+        # Fails closed on any version disagreement across the six sources, and
+        # --check-registry fails closed if this exact version already exists on
+        # npm. npm versions are immutable, so a republish can never succeed and
+        # would leave the two registries permanently out of step.
         run: python .github/scripts/npm_release_contract.py --check-registry
       - name: Assert the tarball contains only the allowlisted files
         run: |
@@ -85,7 +174,19 @@ jobs:
               raise SystemExit(f'FAIL: npm tarball has unexpected files {sorted(extra)}')
           print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
           "
-      - name: Publish to npm with OIDC trusted publishing
-        # No NODE_AUTH_TOKEN and no continue-on-error: a failed publish must
-        # fail loudly rather than let the two registries drift apart.
+      - name: Publish to npm (OIDC trusted publishing)
+        if: steps.select-mode.outputs.mode == 'oidc'
+        # No NODE_AUTH_TOKEN: npm's CLI authenticates from this job's OIDC
+        # identity. Provenance is generated automatically for OIDC publishes
+        # from a public repository; --provenance is explicit so the attestation
+        # survives a future change to that default. No continue-on-error: a
+        # failed publish must fail loudly rather than let the registries drift.
         run: npm publish --provenance --access public
+      - name: Publish to npm (NPM_TOKEN fallback)
+        if: steps.select-mode.outputs.mode == 'token'
+        # --provenance is deliberately absent: provenance is backed by a Sigstore
+        # attestation derived from the OIDC identity, and a long-lived token
+        # cannot mint one. Passing the flag here would fail the publish.
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
