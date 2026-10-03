@@ -47,10 +47,22 @@ jobs:
           print(f"version={data['project']['version']}")
           PY
       - name: Install test, build and security tooling
+        # build/twine/pip-audit are pinned exactly. twine <= 6.2.0 replaces
+        # packaging's metadata-version list at import time, so packaging's
+        # knowledge of Metadata-Version 2.5 is discarded and `twine check
+        # --strict` rejects valid artifacts with "'2.5' is not a valid metadata
+        # version". This repository emits 2.5 (PEP 639 license keys in
+        # pyproject.toml), so the gate's outcome must not depend on what pip
+        # resolves that day. .github/scripts/release_toolchain_guard.py enforces
+        # the pins, the floor, and that the toolchain still validates 2.5.
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
-          pip install build twine pip-audit
+          pip install "build==1.6.1" "twine==7.0.0" "pip-audit==2.10.1"
+      - name: Verify the release toolchain can validate our metadata
+        # Runs before the build so a bad toolchain is reported before artifacts
+        # exist, rather than as a confusing `twine check` failure afterwards.
+        run: python .github/scripts/release_toolchain_guard.py
       - name: Validate dependency graph
         run: python -m pip check
       - name: Security contract
@@ -64,7 +76,9 @@ jobs:
       - name: Build distributions
         run: python -m build
       - name: Validate distributions
-        run: python -m twine check dist/*
+        # --strict is load-bearing: without it twine's warnings do not fail the
+        # release, and a long_description that PyPI cannot render ships anyway.
+        run: python -m twine check --strict dist/*
       - name: Assert both wheel and sdist were produced
         # `python -m build` can silently produce only one artifact; publishing a
         # half-built release is not recoverable, so assert both exist here.
@@ -315,9 +329,13 @@ jobs:
       - name: Enforce npm package contract
         run: python .github/scripts/npm_release_contract.py
       - name: Build exact wheel
+        # build is pinned here too, for the same reason as in preflight: the
+        # wheel these jobs install and smoke must be byte-identical to the one
+        # preflight validated, and an unpinned build backend makes that depend on
+        # the day.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
+          python -m pip install "build==1.6.1"
           python -m build --wheel
       - name: Install and smoke real wheel + CLI
         run: python .github/scripts/platform_wheel_cli_smoke.py --wheel-dir dist
