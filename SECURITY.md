@@ -37,3 +37,33 @@ Axiomize distinguishes three classes of execution:
 3. **Arbitrary code / theorem elaboration** is not an operating-system sandbox. It requires explicit trust and runs with reduced environment exposure, time limits, and process/resource controls where the platform supports them.
 
 Network-facing REST service binding is loopback-only by default. Remote binding requires an explicit opt-in and bearer token. File-backed run inspection is confined to the configured run root.
+
+## Supply chain
+
+Distribution integrity and build provenance are separate properties, and Axiomize publishes them
+at different levels on purpose. State at `1.12.5`:
+
+| Channel | Signed build provenance | What you can verify today |
+|---|---|---|
+| PyPI | **yes**, PEP 740 attestations for the wheel and the sdist | A Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi`, whose attested subject digest equals the file you downloaded |
+| npm | **no** — published in token mode, which cannot mint an attestation | The tarball digest only, via `dist.integrity` |
+
+What this does and does not mean for you:
+
+- npm `dist.signatures` are present on every published version. They sign the *registry metadata*,
+  proving the registry has not altered its own record. They are not build provenance, and they
+  would be equally present on a broken release.
+- `dist.integrity` and PyPI `digests.sha256` prove the bytes you received are the bytes the
+  registry published. They do not identify who built them or from which commit.
+- Only an attestation bundle carries the build-workflow identity, and today only the PyPI
+  distributions do.
+
+Pinning by digest is the honest recommendation for the npm shim. The gap closes when the npm
+trusted publisher is registered (owner `Furox-Art`, repository `axiomize`, workflow `release.yml`,
+environment `npm`) and a release is published through it; attestations cannot be backfilled onto an
+already-published version.
+
+`docs/documentation.md` carries the exact commands, the correct per-file PyPI endpoint shape, and
+what each of the three mechanisms proves. `.github/scripts/check_provenance_claims.py` re-checks
+the documented claims against both live registries on every CI run, and fails rather than skips when
+a registry cannot be reached, so these statements cannot quietly go stale or wrong.

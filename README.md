@@ -316,14 +316,37 @@ is repeated at the top of this README for clients that scrape it.
 - Agent skill pack: [skills/axiomize/SKILL.md](skills/axiomize/SKILL.md), plus the
   [15 perspective lenses](skills/axiomize/perspectives/)
 
+## Supply chain
+
+PyPI `1.12.5` is published with **PEP 740 attestations**: both the wheel and the sdist serve a
+Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi`, and each
+attested digest matches the file you download. You can confirm that before installing.
+
+npm `1.12.5` is **not** attested. It was published with a long-lived `NPM_TOKEN`, which cannot
+mint an attestation, so that tarball is digest-verifiable only:
+
+```bash
+npm view axiomize@1.12.5 dist.integrity   # pin this; npm ci enforces it from a lockfile
+```
+
+Three different things are easy to confuse. A **PEP 740 attestation** says a build workflow signed
+this exact file digest. **npm `dist.signatures`** says only that the *registry* has not altered its
+own metadata — every npm version has those, token or OIDC, and they are not build provenance.
+**`dist.integrity` / `digests.sha256`** say the bytes you have are the bytes that were published,
+but not who built them.
+
+Pinning by digest is the honest recommendation today. Registering the npm trusted publisher
+(owner `Furox-Art`, repository `axiomize`, workflow `release.yml`, environment `npm`) is what would
+close the npm gap; PyPI's is already registered. Verification commands, the per-file PyPI endpoint
+shape, and what each of the three proves are in
+[docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not),
+and CI re-checks the claims above against both registries on every run.
+
 ## npm
 
 `npx axiomize` works and forwards to `python -m axiomize.cli`, so it needs Python and
 `pip install axiomize` underneath; it is not a standalone binary. npm `1.12.2` is published
-and broken (`index.js` had a syntax error); `1.12.4` is the first working release. PyPI
-`1.12.4` carries PEP 740 attestations, the npm tarball does not. Full detail, including
-verification commands and how to tell registry metadata signatures from provenance:
-[docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not).
+and broken (`index.js` had a syntax error); `1.12.4` is the first working release.
 
 ## License
 

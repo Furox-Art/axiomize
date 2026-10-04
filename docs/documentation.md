@@ -101,40 +101,166 @@ curl -s https://pypi.org/pypi/axiomize/json \
 
 The npm version badge follows the PyPI version. It is present only when the registry version
 matches; otherwise the README must say which of the two states it is in, because a repository fix
-is not a published fix. As of `1.12.4` both registries report `1.12.4` as latest, so the badge is
+is not a published fix. As of `1.12.5` both registries report `1.12.5` as latest, so the badge is
 in place.
 
 ## Supply-chain attestations: what exists and what does not
 
 Do not write "published with provenance" without checking which registry you mean. The two
-ecosystems differ here, and the npm package is the weaker of the pair.
+ecosystems differ here, and the npm package is the weaker of the pair. State at `1.12.5`:
 
-| Registry | Mechanism | Endpoint | State at 1.12.4 |
+| Registry | Mechanism | Endpoint | State at 1.12.5 |
 |---|---|---|---|
-| PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | present for both the wheel and the sdist |
-| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.12.4` was published in token mode |
+| PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | **present** for both the wheel and the sdist |
+| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.12.5` was published in token mode |
 
-A 404 from either endpoint means no attestation exists for that artifact. Confirm the endpoint
-itself works before reading a 404 as "absent", by querying a package known to publish
-attestations; otherwise you cannot tell a missing attestation from a wrong URL:
+The asymmetry is real and worth being explicit about: **PyPI `1.12.5` is attested, npm `1.12.5` is
+not.** Both PyPI files serve a bundle naming `GitHub / Furox-Art/axiomize / release.yml`,
+environment `pypi`, predicate `https://docs.pypi.org/attestations/publish/v1`, one transparency-log
+entry each, and the attested subject digest equals the digest of the file a consumer downloads.
+The npm tarball is digest-verifiable only.
+
+### Reading a 404 correctly
+
+The two registries use different URL shapes, and getting them wrong looks like an absent
+attestation when it is not:
 
 ```bash
-# should be 200 with an attestation bundle
-curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/vite@6.0.5
-# the same shape for this project
-curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.4
+# PyPI: PER-FILE. A directory-style URL names no artifact and 404s even when every
+# file in that release is attested, so it proves nothing either way.
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://pypi.org/integrity/axiomize/1.12.5/axiomize-1.12.5.tar.gz/provenance      # 200
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://pypi.org/integrity/axiomize/1.12.5/                                                        # 404, meaningless
+
+# npm: PER-VERSION.
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.12.5                                      # 404, genuinely absent
 ```
 
-Two further details worth stating precisely rather than implying:
+A 404 on a correct URL means no attestation for that artifact. Confirm the endpoint can also say
+"yes" and "no" before trusting either answer, by querying a package known to publish with trusted
+publishing and one known not to:
 
-- A PyPI attestation is bound to one file digest. Re-uploading a different file under the same
-  version does not verify against the published statement.
-- npm registry `dist.signatures` is **not** provenance. Every npm version has those: they sign the
-  registry metadata so the registry cannot tamper with it. They prove the registry is honest about
-  the artifact, not that a build workflow produced it. Only an attestations bundle is provenance.
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/vite@6.0.5     # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/left-pad@1.3.0   # 404
+```
 
-If the npm shim is ever republished with trusted publishing, add the attestations URL to the README
-table above and record the run date. Do not backfill an attestation onto the existing 1.12.4.
+`.github/scripts/check_provenance_claims.py` runs that negative control on every CI run, and fails
+if the endpoint stops discriminating.
+
+### Three different things, easy to confuse
+
+| Thing | Where it lives | What it proves | What it does not prove |
+|---|---|---|---|
+| **PEP 740 attestation** | `pypi.org/integrity/.../provenance` | A build workflow signed this exact file digest, through the Sigstore transparency log | That the build was correct, or that its inputs were trustworthy |
+| **npm `dist.signatures`** | registry metadata, ECDSA under npm's registry key | The **registry** has not altered its own metadata for this version | **Anything about the build.** Every npm version has these, published or broken, token or OIDC. Transport integrity, not provenance. |
+| **`dist.integrity` / `digests.sha256`** | registry metadata | The bytes you downloaded are the bytes the registry published | That anyone built them, or from which commit |
+
+A package can have all three, two, or none. `1.12.5` has an attestation on PyPI, registry metadata
+signatures on npm, and digests on both.
+
+## What a consumer can verify today
+
+### PyPI — attestation or digest
+
+```bash
+# 1. attestation: confirm the bundle names this repo and workflow, and that its
+#    subject digest matches what you downloaded
+curl -s https://pypi.org/integrity/axiomize/1.12.5/axiomize-1.12.5.tar.gz/provenance \
+  | python -c "import base64,json,sys; b=json.load(sys.stdin)['attestation_bundles'][0]; s=json.loads(base64.b64decode(b['attestations'][0]['envelope']['statement'])); print(b['publisher']); print([(x['name'],x['digest']['sha256']) for x in s['subject']])"
+
+# 2. digest: pin it
+pip download axiomize==1.12.5 --no-deps -d /tmp/ax
+python -c "import hashlib; print(hashlib.sha256(open('/tmp/ax/axiomize-1.12.5-py3-none-any.whl','rb').read()).hexdigest())"
+```
+
+Compare against `2efd63813e5143b26991738cea643fd874491991e84543cf58706103f3715be5` (wheel) and
+`a0ac70a91b62b314e342f6a536e8bc00628795f24efeb60d03b577476932dff4` (sdist) at `1.12.5`.
+
+### npm — digest only
+
+```bash
+npm view axiomize@1.12.5 dist.integrity
+# sha512-3NVuYiKiEWaZVrEo1Ilp2e+d7yq5ZkuwqVsZUk7qfoY6LQM9D9eSWhhgZbMpdW/whwe4n1tQFavsX8bI1uk3zA==
+
+npm view axiomize@1.12.5 dist.shasum
+# d509b75fc654fb5f52e2e62a886fbdd54a31dfd6
+```
+
+`npm pack axiomize@1.12.5`, then hash the tarball with SHA-512 and base64 to compare against
+`dist.integrity`. `npm ci` and `npm install` enforce `dist.integrity` automatically when a
+`package-lock.json` pins it, which is the practical pinning mechanism on the npm side.
+
+**Pinning by digest is the honest recommendation for this project today.** It proves the bytes you
+review are the bytes that were published. It does not prove who built them, so it does not replace
+the PyPI attestation, and the npm gap is not closed by it.
+
+### The in-repo integrity stories, which are different again
+
+Do not conflate package provenance with the hashes this project computes at runtime:
+
+- `axiomize.portable-bundle.v1` export carries a SHA-256 over the canonical Model IR
+- the run ledger records a content hash and verifies it when a stored run is loaded
+- `docs/benchmark-results.md` records commit plus runner, case-set and rubric sha256
+
+Those bind artifacts to their content and inputs. None of them is a registry or build attestation.
+
+## Trusted publishers: one satisfied, one pending
+
+Attestations require a registered trusted publisher; a long-lived API token cannot mint one. The
+PyPI side is already configured and evidenced by the bundles above. The npm side is not, which is
+the whole reason `1.12.5` is digest-only there.
+
+| Registry | Owner / org | Repository | Workflow | Environment | Status |
+|---|---|---|---|---|---|
+| PyPI | `Furox-Art` | `axiomize` | `release.yml` | `pypi` | **satisfied** — evidenced by the `1.12.5` bundles naming this repo and workflow |
+| npm | `Furox-Art` | `axiomize` | `release.yml` | `npm` | **pending** — no trusted publisher registered |
+
+For npm, register the trusted publisher at npmjs.com for `axiomize` with owner `Furox-Art`,
+repository `axiomize`, workflow filename `release.yml` and environment `npm`. The release job
+already defaults to OIDC and already fails loudly if `id-token:write` is not granted; it currently
+publishes in token mode because `vars.npm_publish_mode` is `token`. Once the publisher is
+registered, unset that variable so the OIDC path is taken, then delete the `NPM_TOKEN` secret.
+
+Once npm is republished that way, add its attestations URL to the table above and update this
+page's claim block. **Do not backfill an attestation onto an already-published version:**
+attestations are bound to a publish event.
+
+## Machine-checked claim block
+
+`.github/scripts/check_provenance_claims.py` parses this block on every CI run and fails the build
+if a documented `attested` value disagrees with the live registry. Editing the value here to match
+what you *want* to be true does not help: the check reads the registry, not the file.
+
+The current block, verified 2026-10-04 against the live endpoints:
+
+<!-- provenance-claims:begin -->
+```json
+[
+  {"registry": "pypi", "package": "axiomize", "version": "1.12.5",
+   "filename": "axiomize-1.12.5-py3-none-any.whl", "attested": true},
+  {"registry": "pypi", "package": "axiomize", "version": "1.12.5",
+   "filename": "axiomize-1.12.5.tar.gz", "attested": true},
+  {"registry": "npm", "package": "axiomize", "version": "1.12.5", "attested": false}
+]
+```
+<!-- provenance-claims:end -->
+
+How the check behaves, so it is not mistaken for something weaker than it is:
+
+- a claim of `attested: true` that resolves to 404 fails
+- a claim of `attested: false` that resolves to a real bundle fails
+- a 200 that is not a parseable bundle with a `publisher` and at least one attestation fails
+- a registry that cannot be reached at all **fails** the check; an unconfirmed claim never passes
+  silently
+- the npm endpoint is negative-controlled against `left-pad@1.3.0` on every run; if that stops
+  returning 404 the gate fails, because a 200 would no longer mean anything
+- removing this block entirely fails, since a claim that cannot be parsed cannot be trusted
+
+Run it locally with `python .github/scripts/check_provenance_claims.py`. Use `--offline` only to
+inspect the table without network access; CI never passes that flag.
 
 ## PyPI description sync (manual step)
 
