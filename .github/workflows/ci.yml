@@ -25,6 +25,13 @@ jobs:
         run: python -m compileall -q src skills tests .github/scripts
       - name: Enforce source/workflow security contract
         run: python .github/scripts/security_contract_smoke.py
+      - name: Verify documented provenance claims against the live registries
+        # A docs claim about build provenance is only worth making if the registry
+        # agrees. This step is additive: no permissions, triggers or job names change,
+        # so the required `security-contract` context is unchanged. The script fails on
+        # an unreachable registry rather than skipping, so a network outage cannot
+        # silently green-light an unverified claim.
+        run: python .github/scripts/check_provenance_claims.py
       - name: Stage docs pages
         run: python .github/scripts/stage_docs.py
       - name: Build documentation in strict mode

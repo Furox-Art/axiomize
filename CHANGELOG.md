@@ -4,6 +4,52 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 ## Unreleased
 
+Documentation only, against the live `1.12.5` release. No version bump, no publish, no tag. The
+provenance statements below were verified against the registries on 2026-10-04 rather than assumed.
+
+### Fixed
+
+- the provenance documentation was pinned to `1.12.4` while `1.12.5` is the live release on both
+  PyPI and npm. `README.md`, `SECURITY.md` and `docs/documentation.md` now state `1.12.5`
+- **`docs/documentation.md` stated npm `1.12.4` provenance state without stating the PyPI state for
+  the current release.** It now states the asymmetry explicitly: PyPI `1.12.5` **is** attested
+  (PEP 740 bundles for both the wheel and the sdist, attested digest equal to the downloaded file,
+  one transparency-log entry each), npm `1.12.5` **is not**, because it was published in token mode
+  and a long-lived `NPM_TOKEN` cannot mint a Sigstore attestation
+- npm `dist.signatures` was described as "not provenance" without saying what it *does* prove. It
+  is now contrasted in a three-way table against PEP 740 attestations and `dist.integrity`, with
+  the claim stated for each: attestation means a build workflow signed this digest;
+  `dist.signatures` means only that the registry has not altered its own metadata and is present on
+  every version including the broken `1.12.2`; digests mean the bytes match what was published but
+  not who built them
+- the per-file shape of the PyPI provenance endpoint was undocumented, and a directory-style URL
+  like `pypi.org/integrity/axiomize/1.12.5/` 404s whether or not the release is attested. That
+  makes a real attestation look absent. The correct form, and the fact that the directory form
+  proves nothing either way, are now written down
+- there was no consumer-facing verification guidance. `README.md`, `SECURITY.md` and
+  `docs/documentation.md` now carry the exact commands for checking a PyPI attestation against a
+  downloaded file, pinning a PyPI digest, pinning an npm `dist.integrity`, and the recommendation
+  to pin by digest where no attestation exists
+- trusted-publisher coordinates were never written down. Both are now, with PyPI marked
+  **satisfied** (evidenced by the `1.12.5` bundles naming `Furox-Art/axiomize` and `release.yml`)
+  and npm marked **pending**, together with what to change once it is registered
+
+### Added
+
+- `.github/scripts/check_provenance_claims.py`: parses a machine-checkable claim block in
+  `docs/documentation.md` and fails when a documented `attested` value disagrees with the live
+  registry. A claim of `true` that 404s fails; a claim of `false` that returns a real bundle fails;
+  a 200 that is not a parseable bundle fails; a registry that cannot be reached fails rather than
+  skips; the npm endpoint is negative-controlled against `left-pad@1.3.0` on every run so a 200
+  cannot become meaningless; and deleting the claim block fails
+- wired into the existing required `security-contract` job as one additive step. No permission,
+  trigger or job-name change, so the required check context is unchanged. A provenance claim can no
+  longer be introduced without registry evidence
+
+No security claim was weakened. The PyPI attestation claim is stronger than before: it was
+unqualified for a version that is no longer live, and it is now explicit, digest-matched and
+continuously re-verified.
+
 ## [1.12.5] - 2026-10-04
 
 Documentation only. No library code, CLI surface, or public API change; the importable surface,
