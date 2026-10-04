@@ -1,2 +1,17 @@
 axiomize 1.12.5
-attempt 2
+attempt 3
+# Attempt 2 died in the `release npm-package` job, not in the PyPI path.
+# npmjs.com trusted publishing was not registered, so the OIDC exchange
+# returned E404 for axiomize@1.12.5. `publish` needs `npm-package`, so PyPI was
+# skipped as well and 1.12.5 reached neither registry.
+#
+# This attempt changes no version and no lockstep surface. What changed is the
+# environment: the repository variable npm_publish_mode is set to `token`, so
+# the npm job takes the NPM_TOKEN branch instead of OIDC. The release toolchain
+# is also pinned (build 1.6.1, twine 7.0.0) and
+# .github/scripts/release_toolchain_guard.py verifies before the build that
+# twine can still validate the Metadata-Version 2.5 these artifacts carry.
+#
+# Note for after this lands: npm_publish_mode should be unset and NPM_TOKEN
+# deleted once the npmjs.com trusted publisher is registered, so future
+# releases carry a provenance attestation.
