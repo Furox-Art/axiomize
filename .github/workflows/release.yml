@@ -119,7 +119,7 @@ jobs:
         # A released artifact with no known dependency inventory cannot be
         # triaged later. The SBOM is generated from the exact dist/ contents
         # that are about to be published, and uploaded with them.
-        uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
           path: dist
           format: spdx-json
