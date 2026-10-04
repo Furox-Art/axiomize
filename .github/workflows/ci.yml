@@ -173,9 +173,11 @@ jobs:
       - name: Enforce npm package contract
         run: python .github/scripts/npm_release_contract.py
       - name: Build and install the exact wheel artifact
+        # build is pinned to the version release.yml uses, so this job and the
+        # release produce the same wheel from the same source.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
+          python -m pip install "build==1.6.1"
           python -m build --wheel
           python -m pip install --force-reinstall dist/*.whl
       - name: Validate installed dependency graph
@@ -222,7 +224,7 @@ jobs:
       - name: Build exact wheel
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
+          python -m pip install "build==1.6.1"
           python -m build --wheel
       - name: Install and smoke real wheel + CLI
         run: python .github/scripts/platform_wheel_cli_smoke.py --wheel-dir dist
