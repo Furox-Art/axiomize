@@ -275,15 +275,20 @@ function testPublishModes() {
   );
   process.stdout.write('PASS npm-publish.yml: use_token_fallback input defaults to false (OIDC preferred)\n');
 
-  // The automatic release trigger cannot carry dispatch inputs through `needs`,
-  // so it selects the mode from a repository variable instead.
+  // Automatic version-trigger pushes must use the repository's verified
+  // token path directly; manual dispatches keep the explicit OIDC/token choice.
   const release = readWorkflow('release.yml');
   assert.match(
     release,
-    /vars\.npm_publish_mode/,
-    'release.yml: the push path must resolve the mode from the npm_publish_mode variable',
+    /github\.event_name[\s\S]*workflow_dispatch[\s\S]*else[\s\S]*mode=token/,
+    'release.yml: automatic push releases must select token mode',
   );
-  process.stdout.write('PASS release.yml: push path resolves the mode from vars.npm_publish_mode\n');
+  assert.doesNotMatch(
+    release,
+    /vars\.npm_publish_mode/,
+    'release.yml: automatic publishing must not depend on a repository variable',
+  );
+  process.stdout.write('PASS release.yml: automatic pushes use the verified token path\n');
 
   // Both modes must fail closed with an actionable message.
   for (const name of workflows) {
