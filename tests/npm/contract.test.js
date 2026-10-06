@@ -275,15 +275,19 @@ function testPublishModes() {
   );
   process.stdout.write('PASS npm-publish.yml: use_token_fallback input defaults to false (OIDC preferred)\n');
 
-  // The automatic release trigger cannot carry dispatch inputs through `needs`,
-  // so it selects the mode from a repository variable instead.
+  // Automatic release pushes choose a credential before any publish attempt:
+  // use the verified NPM_TOKEN path while the secret exists, otherwise OIDC.
   const release = readWorkflow('release.yml');
   assert.match(
     release,
-    /vars\.npm_publish_mode/,
-    'release.yml: the push path must resolve the mode from the npm_publish_mode variable',
+    /if \[ -n "\$\{NPM_TOKEN:-\}" \]; then[\s\S]*mode=token[\s\S]*else[\s\S]*mode=oidc/,
+    'release.yml: the push path must choose token when NPM_TOKEN exists and OIDC otherwise',
   );
-  process.stdout.write('PASS release.yml: push path resolves the mode from vars.npm_publish_mode\n');
+  assert.ok(
+    !/steps\.[\w-]+\.outcome\s*!=\s*['"]success['"]/.test(release),
+    'release.yml: credential selection must happen before publish, not after an OIDC failure',
+  );
+  process.stdout.write('PASS release.yml: automatic push selects a credential before publishing\n');
 
   // Both modes must fail closed with an actionable message.
   for (const name of workflows) {
