@@ -5,9 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/pypi-release-trigger"
-  # A manual run can pick the npm credential mode explicitly. The automatic push
-  # trigger cannot carry dispatch inputs, so for that path the mode comes from
-  # the `npm_publish_mode` repository variable instead.
+  # Manual runs can still choose the npm credential mode explicitly. Automatic
+  # release-trigger pushes use the repository's verified NPM_TOKEN path so a
+  # missing npm Trusted Publisher cannot stall a cross-registry release.
   workflow_dispatch:
     inputs:
       use_token_fallback:
@@ -181,21 +181,15 @@ jobs:
         # rather than silently degrading to whichever credential happens to be
         # present.
         #
-        # Mode resolution: a manual dispatch uses the `use_token_fallback` input;
-        # an automatic push cannot carry inputs through `needs`, so it uses the
-        # `npm_publish_mode` repository variable (unset or "oidc" by default).
+        # Mode resolution: manual dispatch keeps the explicit checkbox.
+        # Automatic version-trigger pushes use the verified token path.
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             requested="${{ inputs.use_token_fallback }}"
             [ "$requested" = "true" ] && mode=token || mode=oidc
           else
-            mode="${{ vars.npm_publish_mode }}"
-            case "$mode" in
-              token) ;;
-              ""|oidc) mode=oidc ;;
-              *) echo "::error::vars.npm_publish_mode is '$mode'; expected 'oidc' or 'token'"; exit 1 ;;
-            esac
+            mode=token
           fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
 
@@ -203,18 +197,18 @@ jobs:
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
               echo "::error::OIDC publish requested but this job cannot mint an OIDC token."
               echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is unset, so the runner did not grant id-token:write."
-              echo "::error::Either fix the id-token:write permission, or set the repository variable npm_publish_mode=token to publish with NPM_TOKEN instead."
+              echo "::error::Either fix the id-token:write permission, or use a manual token-mode dispatch while the trusted publisher is unavailable."
               exit 1
             fi
             echo "mode=oidc (provenance attestation enabled)"
           else
             if [ -z "${NPM_TOKEN:-}" ]; then
               echo "::error::Token publish requested but the NPM_TOKEN secret is empty."
-              echo "::error::Add a repository or npm-environment secret named NPM_TOKEN (an npm automation token), or unset npm_publish_mode once the trusted publisher is registered."
+              echo "::error::Add a repository or npm-environment secret named NPM_TOKEN, or use a manual OIDC dispatch after the trusted publisher is registered."
               exit 1
             fi
             echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
-            echo "::warning::Publishing with NPM_TOKEN instead of OIDC. Register the npmjs.com trusted publisher and unset npm_publish_mode once this release is out."
+            echo "::warning::Automatic releases use NPM_TOKEN until npm Trusted Publishing is registered."
           fi
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
