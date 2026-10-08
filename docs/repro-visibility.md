@@ -229,6 +229,30 @@ python -m pytest tests/test_canvasxpress_export.py -q
 
 26 tests pass. The module is additionally mypy-clean and adds no ruff findings.
 
+## MCP sensitivity chart from a recorded run
+
+The chart exporter remains usable as Python functions for all five chart types. A lightweight
+MCP wrapper adds the specific Reddit proof-of-concept mapping without guessing any results:
+
+```python
+from axiomize.runs.state import RunState
+from axiomize.server.mcp_server import call_tool
+
+run = RunState(sensitivity_results={"K_cat": 0.82, "K_m": -0.44, "E_tot": 0.21})
+run.save("runs/experiment-001")
+response = call_tool("axiomize.model_visualize", {"run_dir": "experiment-001"}, run_root="runs")
+chart = response["chart"]           # CanvasXpress-compatible data/config only
+metadata = response["metadata"]     # stored tool versions, input and chart SHA-256
+```
+
+The renderer can consume `chart["data"]` and `chart["config"]`. A separate
+`metadata` object avoids relying on CanvasXpress accepting arbitrary application keys.
+The only currently dispatched `chart_type` is `"sensitivity"`; trajectory, heatmap,
+Scatter3D and network exporters are available as Python functions, not MCP chart types yet.
+Non-finite scores, path traversal, missing manifests and modified run payloads are rejected.
+The MCP integration is exercised by `tests/test_canvasxpress_mcp.py`; no external browser
+test or CanvasXpress package is needed for its JSON/schema contracts.
+
 ## What this does not establish
 
 - The three examples run one model family (linear ODE) on one machine. Cross-environment comparison
@@ -238,5 +262,10 @@ python -m pytest tests/test_canvasxpress_export.py -q
   numerical agreement across different BLAS, scipy or platform builds is not asserted.
 - The charts are validated as JSON definitions and re-parsed after writing. They are not rendered
   here, because rendering needs the external CanvasXpress library and a browser.
-- The `model_visualize` MCP tool named in the provenance block is the intended consumer. The wiring
-  is recorded and testable; the tool itself is not dispatched by `axiomize/server/mcp_server.py` yet.
+- The `axiomize.model_visualize` MCP tool now reads an integrity-checked stored run beneath
+  the configured run root and emits a CanvasXpress sensitivity bar definition plus separate
+  provenance metadata. The tool is read-only, rejects missing sensitivity scores, and does not
+  claim browser rendering. The `chart_spec_sha256` covers canonical UTF-8 JSON of the
+  `chart` renderer payload only; its metadata retains the originally recorded `input_hash`,
+  `run_sha256`, solver settings and tool versions. The saved manifest is integrity-checked
+  against `run.json`, but without a digital signature its metadata is not an authenticity proof.
