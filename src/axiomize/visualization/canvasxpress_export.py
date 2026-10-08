@@ -139,10 +139,11 @@ def sensitivity_chart(scores: Mapping[str, float], *,
                       config: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Ranked horizontal bar chart of sensitivity indices.
 
-    The companion Matplotlib helper is ``plot_sensitivity``; this emits the same
-    ranking as an interactive CanvasXpress bar chart instead of a PNG. Each
-    parameter is one variable with one sample, so the ranking is preserved
-    regardless of the chart's orientation.
+    The companion Matplotlib helper is ``plot_sensitivity``; this emits the
+    same ranked, signed scores as an interactive CanvasXpress bar chart instead
+    of a PNG. CanvasXpress Bar charts expect parameter categories as samples
+    (``y.smps``) and their scores as one data series (``y.vars``), not one
+    variable per parameter with a single sample.
     """
     if not scores:
         raise ValueError("scores must not be empty")
@@ -158,10 +159,10 @@ def sensitivity_chart(scores: Mapping[str, float], *,
         "showDataValues": False,
         **(dict(config or {})),
     }
-    return chart_definition(vars=names, smps=["sensitivity"],
-                            data=[[value] for value in values],
-                            config=settings, title=title,
-                            variable_annotations={"parameter": names})
+    # A single series with one sample per parameter matches the CanvasXpress
+    # Bar data contract and preserves the existing Matplotlib ranking.
+    return chart_definition(vars=["Sensitivity"], smps=names, data=[values],
+                            config=settings, title=title)
 
 
 def trajectory_chart(time: Sequence[float], series: Mapping[str, Sequence[float]], *,
