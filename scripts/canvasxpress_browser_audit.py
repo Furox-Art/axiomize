@@ -147,6 +147,7 @@ def main() -> int:
     if not result["fixed"].get("rendered"):
         raise SystemExit("FAIL: corrected CanvasXpress chart did not render with actual vendor library")
     print("PASS: corrected sensitivity layout renders with the pinned CanvasXpress JavaScript library")
+    print("Side-by-side screenshot and machine-readable report saved under browser-audit/")
     return 0
 
 
