@@ -41,6 +41,11 @@ _TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "axiomize.clean_data": _schema("Clean paired numeric observations with an audit trail.",
         {"t": _NUMBER_ARRAY, "y": _NUMBER_ARRAY, "drop_nonfinite": {"type": "boolean"},
          "sort_time": {"type": "boolean"}, "duplicate_policy": {"type": "string"}}, ["t", "y"]),
+    "axiomize.model_visualize": _schema(
+        "Build a CanvasXpress sensitivity chart from an integrity-checked recorded run. "
+        "Returns renderer data/config and separate provenance; no files are written.",
+        {"run_dir": {"type": "string", "minLength": 1},
+         "chart_type": {"type": "string", "enum": ["sensitivity"]}}, ["run_dir"]),
     "axiomize.compare_runs": _schema("Compare two stored reproducible runs beneath the configured run root.",
         {"before_dir": {"type": "string"}, "after_dir": {"type": "string"}}, ["before_dir", "after_dir"]),
     "axiomize.solve": _schema("Solve the backward-compatible reference SIR model.",
@@ -162,6 +167,16 @@ def _call_tool(name: str, arguments: dict[str, Any], *, run_root: str | Path = "
     if name == "axiomize.intake": return services.intake_service(arguments)
     if name == "axiomize.workflow_policy": return services.workflow_policy_service(arguments)
     if name == "axiomize.clean_data": return services.clean_data_service(arguments)
+    if name == "axiomize.model_visualize":
+        from axiomize.visualization.mcp_charts import visualize_recorded_run
+
+        run_dir = arguments.get("run_dir")
+        if not isinstance(run_dir, str):
+            raise ValueError("run_dir must be a string")
+        chart_type = arguments.get("chart_type", "sensitivity")
+        if not isinstance(chart_type, str):
+            raise ValueError("chart_type must be a string")
+        return visualize_recorded_run(run_root, run_dir, chart_type=chart_type)
     if name == "axiomize.compare_runs":
         confined = dict(arguments)
         confined["before_dir"] = str(resolve_run_directory(run_root, str(arguments["before_dir"])))
