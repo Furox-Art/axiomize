@@ -1,0 +1,131 @@
+==============================================================================
+REPRODUCIBILITY RUN RECORD AND RERUN VERIFICATION
+==============================================================================
+run id         : sliding-block-2026-10-08
+model          : sliding-block-linear-drag (family=ode)
+problem        : passive block decelerated by linear speed-dependent drag
+horizon        : t in [0, 5] s, 101 output points
+
+------------------------------------------------------------------------------
+1. RECORDED COMPUTATION
+------------------------------------------------------------------------------
+  engine status      : PASS
+  solver             : scipy / DOP853
+  rhs evaluations    : 203
+  v_final            : 1.641699972490 m/s
+  closed form        : 1.641699972478 m/s
+
+------------------------------------------------------------------------------
+2. CAPTURED REPRODUCIBILITY METADATA (measured, not asserted)
+------------------------------------------------------------------------------
+  run_format_version : 1
+  axiomize_version   : 1.12.5
+  input_hash         : cdc76fecdc5b892d6c76cd730a17f73651e9355df86ec28793e215c964bed1c4
+
+  tool_versions (every optional backend reports honestly):
+    python         3.12.3
+    axiomize       1.12.5
+    numpy          2.5.3
+    scipy          1.18.1
+    sympy          1.12
+    networkx       3.7
+    statsmodels    0.15.0
+    matplotlib     3.11.2
+    z3             5.1.0.0
+    control        0.10.2
+    cvxpy          1.9.3
+    casadi         3.8.1
+    pymc           not-installed
+    jax            not-installed
+
+  solver_settings (defaults and tolerances actually used):
+{
+    "approve_heavy": true,
+    "atol": 1e-12,
+    "backend": "scipy",
+    "method": "DOP853",
+    "points": 101,
+    "rtol": 1e-10,
+    "seed": 0,
+    "t_span": [
+        0.0,
+        5.0
+    ]
+}
+
+  mathematical assumptions (4 recorded):
+    1. block on a level surface: no slope, no rolling resistance, no contact friction
+    2. linear speed-dependent drag force of magnitude F*v/v_ref
+    3. W is the cumulative heat delivered to the surroundings, not a state function of v
+    4. closed population of one rigid body; no deformation, no lift
+
+  equations (3 recorded):
+    dx/dt = v
+    dW/dt = F*v**2/v_ref
+    dv/dt = -(F/m)*v/v_ref
+
+  validation_results:
+    status                          : PASS
+    structural/scientific checks     : 25 structural, 0 scientific
+
+------------------------------------------------------------------------------
+3. PERSISTED RUN DIRECTORY AND INTEGRITY VERIFICATION
+------------------------------------------------------------------------------
+  manifest.json        1054 bytes
+  run.json            11929 bytes
+
+  declared run_sha256 : 12df316892d86794701ad0dddfe78aa75f84fbc904dd0f431a9669d4b0ed1430
+  actual run_sha256   : 12df316892d86794701ad0dddfe78aa75f84fbc904dd0f431a9669d4b0ed1430
+  integrity match     : True
+  declared input_hash : cdc76fecdc5b892d6c76cd730a17f73651e9355df86ec28793e215c964bed1c4
+  RunState.load(verify_integrity=True) succeeded: sliding-block-2026-10-08
+
+------------------------------------------------------------------------------
+4. RERUN VERIFICATION: re-execute the stored computation
+------------------------------------------------------------------------------
+  regenerated status          : PASS
+  trajectory identical bit-for-bit: True
+  max |v_recorded - v_rerun|  : 0.000e+00 m/s
+  v_final recorded / rerun    : 1.641699972490 / 1.641699972490
+  rhs evaluations recorded / rerun: 203 / 203
+
+  A rerun from the same record, on the same machine, with the same solver
+  settings, reproduces the trajectory exactly. That is the property a
+  reproducibility record has to have before environment differences can be
+  discussed at all.
+
+------------------------------------------------------------------------------
+5. COMPARING RUNS: identical record, and a deliberately changed one
+------------------------------------------------------------------------------
+  a) two runs of the same computation
+     same_input_hash : True
+     same_results    : True
+     likely_reasons  : ['no recorded reproducibility difference detected']
+
+  b) same model, one solver tolerance loosened (rtol 1e-10 -> 1e-07)
+     same_input_hash : True
+     differences     : ['solver_settings']
+     likely_reasons  : ['solver/numerical settings changed']
+     solver_settings delta:
+       atol: 1e-12 -> 1e-09
+       rtol: 1e-10 -> 1e-07
+
+     This is what a reproducibility difference has to look like when it is
+     reported: the changed setting is named, and the changed result with it.
+     'tool_versions changed' and 'inputs differ' are distinguished from each
+     other rather than collapsed into 'results do not match'.
+
+==============================================================================
+SUMMARY
+==============================================================================
+  * Assumptions, equations, solver defaults, tolerances, the seed and the
+    versions of Python, Axiomize and every optional backend are captured as
+    measured metadata, not as prose.
+  * The run directory is integrity-hashed and the hashes are verified on load.
+  * Re-executing the stored computation reproduces the trajectory bit-for-bit.
+  * compare_run_states separates a changed solver setting from a changed
+    environment and names which one occurred.
+==============================================================================
+
+SELF-CHECK: metadata captured, integrity verified, rerun exact, and the
+deliberately loosened tolerance was detected and named. Output matches behaviour.
