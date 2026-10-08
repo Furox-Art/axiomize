@@ -1,0 +1,146 @@
+==============================================================================
+PHYSICAL-PLAUSIBILITY VALIDATION: dimensional checks pass, three models differ
+==============================================================================
+model          : sliding-block-linear-drag
+family         : ode, integrated by scipy solve_ivp (DOP853)
+horizon        : t in [0, 5] s, 101 output points
+parameters     : m=1 kg, v_ref=10 m/s, F=5 N
+initial state  : x=0 m, v=20 m/s, W=0 J
+initial energy : 0.5*m*v0^2 = 200 J
+closed form    : v(t) = v0 * exp(-F*t/(m*v_ref)), time constant 2 s
+solver         : rtol=1e-10, atol=1e-12
+
+------------------------------------------------------------------------------
+NUMERICAL BASELINE: the CORRECT model's energy residual vs solver tolerance
+------------------------------------------------------------------------------
+The energy ledger is a statement about physics, but it is measured through a
+discretized integrator. Tightening the tolerance must shrink the residual. The
+falsification threshold is chosen above the residual at the settings used below,
+so a discretization artefact is never reported as a scientific failure.
+
+      rtol     atol    nfev   energy_residual[J]    closed_form_err
+     1e-07    1e-09     131         1.185912e-06       1.206840e-08
+     1e-08    1e-10     143         1.543693e-07       1.494671e-09
+     1e-10    1e-12     203         2.129127e-09       1.954190e-11
+     1e-12    1e-14     320         2.469847e-11       2.086109e-13
+
+  The residual falls at every step: 1.2e-06 -> 1.5e-07 -> 2.1e-09 -> 2.5e-11 J.
+  At the settings used for the three candidates (rtol=1e-10,
+  atol=1e-12) the residual is 2.1e-09 J, below the energy
+  threshold of 1e-07 J.
+
+------------------------------------------------------------------------------
+MODEL CORRECT:  dv/dt = -(F/m)*v/v_ref
+------------------------------------------------------------------------------
+  engine status            : PASS
+  solver                   : scipy / DOP853 (nfev=203)
+  structural checks        : 25 run, 25 PASS, 0 FAIL
+  unit checks              : 7 run, all PASS
+  Dimensional analysis is satisfied identically by all three models.
+
+    t[s]         v[m/s]           W[J]     0.5mv^2+W[J]
+     0.0     20.0000000      0.0000000      200.0000000
+     1.0     12.1306132    126.4241118      200.0000000
+     2.0      7.3575888    172.9329434      200.0000000
+     3.0      4.4626032    190.0425863      200.0000000
+     4.0      2.7067057    196.3368722      200.0000000
+     5.0      1.6417000    198.6524106      200.0000000
+
+  observables measured from the run:
+    energy_residual                  2.129127e-09
+    speed_above_initial              0.000000e+00
+    heat_decrease                    0.000000e+00
+    closed_form_relative_error       1.954190e-11
+
+  falsifiers:
+    energy_ledger_closes                 threshold=1e-07      observed=2.129127e-09 -> ValidationStatus.PASS
+    dissipative_force_never_accelerates  threshold=0          observed=0.000000e+00 -> ValidationStatus.PASS
+    cumulative_heat_nondecreasing        threshold=0          observed=0.000000e+00 -> ValidationStatus.PASS
+    matches_closed_form_solution         threshold=1e-08      observed=1.954190e-11 -> ValidationStatus.PASS
+  model_status: ValidationStatus.PASS
+
+------------------------------------------------------------------------------
+MODEL WRONG_SIGN:  dv/dt = +(F/m)*v/v_ref
+------------------------------------------------------------------------------
+  engine status            : PASS
+  solver                   : scipy / DOP853 (nfev=233)
+  structural checks        : 25 run, 25 PASS, 0 FAIL
+  unit checks              : 7 run, all PASS
+  Dimensional analysis is satisfied identically by all three models.
+
+    t[s]         v[m/s]           W[J]     0.5mv^2+W[J]
+     0.0     20.0000000      0.0000000      200.0000000
+     1.0     32.9744254    343.6563657      887.3127314
+     2.0     54.3656366   1277.8112198     2755.6224396
+     3.0     89.6337814   3817.1073846     7834.2147693
+     4.0    147.7811220  10719.6300066    21639.2600134
+     5.0    243.6498792  29482.6318205    59165.2636410
+
+  observables measured from the run:
+    energy_residual                  5.896526e+04
+    speed_above_initial              2.236499e+02
+    heat_decrease                    0.000000e+00
+    closed_form_relative_error       1.210041e+01
+
+  falsifiers:
+    energy_ledger_closes                 threshold=1e-07      observed=5.896526e+04 -> ValidationStatus.FAIL
+    dissipative_force_never_accelerates  threshold=0          observed=2.236499e+02 -> ValidationStatus.FAIL
+    cumulative_heat_nondecreasing        threshold=0          observed=0.000000e+00 -> ValidationStatus.PASS
+    matches_closed_form_solution         threshold=1e-08      observed=1.210041e+01 -> ValidationStatus.FAIL
+  model_status: ValidationStatus.FAIL
+
+------------------------------------------------------------------------------
+MODEL WRONG_SCALE:  dv/dt = -2*(F/m)*v/v_ref
+------------------------------------------------------------------------------
+  engine status            : PASS
+  solver                   : scipy / DOP853 (nfev=308)
+  structural checks        : 25 run, 25 PASS, 0 FAIL
+  unit checks              : 7 run, all PASS
+  Dimensional analysis is satisfied identically by all three models.
+
+    t[s]         v[m/s]           W[J]     0.5mv^2+W[J]
+     0.0     20.0000000      0.0000000      200.0000000
+     1.0      7.3575888     86.4664717      113.5335283
+     2.0      2.7067057     98.1684361      101.8315639
+     3.0      0.9957414     99.7521248      100.2478752
+     4.0      0.3663128     99.9664537      100.0335463
+     5.0      0.1347589     99.9954600      100.0045400
+
+  observables measured from the run:
+    energy_residual                  9.999546e+01
+    speed_above_initial              0.000000e+00
+    heat_decrease                    0.000000e+00
+    closed_form_relative_error       2.499883e-01
+
+  falsifiers:
+    energy_ledger_closes                 threshold=1e-07      observed=9.999546e+01 -> ValidationStatus.FAIL
+    dissipative_force_never_accelerates  threshold=0          observed=0.000000e+00 -> ValidationStatus.PASS
+    cumulative_heat_nondecreasing        threshold=0          observed=0.000000e+00 -> ValidationStatus.PASS
+    matches_closed_form_solution         threshold=1e-08      observed=2.499883e-01 -> ValidationStatus.FAIL
+  model_status: ValidationStatus.FAIL
+
+==============================================================================
+SUMMARY
+==============================================================================
+model           engine    falsification     energy_residual[J]   closed_form_err
+CORRECT         PASS      PASS                    2.129127e-09      1.954190e-11
+WRONG_SIGN      PASS      FAIL                    5.896526e+04      1.210041e+01
+WRONG_SCALE     PASS      FAIL                    9.999546e+01      2.499883e-01
+
+Interpretation
+  * Structural and unit checks cannot separate the three models. F/m * v/v_ref
+    has the same dimension whatever the sign and whatever the numeric factor, so
+    every unit check passes for all three.
+  * Conservation of energy separates CORRECT from both broken models.
+  * The closed-form reference solution separates CORRECT from WRONG_SCALE even
+    though WRONG_SCALE never violates passivity. Its speed trace looks plausible;
+    it simply decays twice as fast as the drag law it declares.
+  * WRONG_SIGN trips passivity as well. The block speeds up instead of slowing,
+    passing its own initial speed with no external work done.
+  * None of these verdicts needs a human to read the numbers: each is a named
+    observable, a threshold and a direction evaluated against real output.
+==============================================================================
+
+SELF-CHECK: all three models simulate and pass every structural and unit check;
+CORRECT satisfies all four falsifiers while WRONG_SIGN and WRONG_SCALE are both
+rejected. The committed output matches current engine behaviour.

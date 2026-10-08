@@ -30,6 +30,7 @@ nav:
   - Reference:
       - Agent integration (MCP/REST/CLI): integrations.md
       - Portable export formats: portable-export.md
+      - Reproducibility and interactive charts: repro-visibility.md
       - Benchmark results: benchmark-results.md
   - Security:
       - Trust boundaries: security.md

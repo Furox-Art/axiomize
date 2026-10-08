@@ -1,0 +1,76 @@
+{
+  "config": {
+    "graphType": "Network",
+    "networkLayoutAlgorithm": "force",
+    "showSampleNames": true,
+    "title": "Model dependency graph: sliding block with linear drag"
+  },
+  "y": {
+    "data": [
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "smps": [
+      "x",
+      "v",
+      "W",
+      "m",
+      "F",
+      "v_ref"
+    ],
+    "vars": [
+      "x",
+      "v",
+      "W",
+      "m",
+      "F",
+      "v_ref"
+    ]
+  }
+}

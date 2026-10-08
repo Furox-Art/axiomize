@@ -1,0 +1,40 @@
+{
+  "config": {
+    "colorScheme": "Blues",
+    "graphOrientation": "horizontal",
+    "graphType": "Bar",
+    "showDataValues": false,
+    "title": "Final speed: parameter sensitivity",
+    "xAxis": [
+      "Sensitivity score"
+    ]
+  },
+  "y": {
+    "data": [
+      [
+        0.2211485449903913
+      ],
+      [
+        0.3576396610032468
+      ],
+      [
+        0.4212117940063619
+      ]
+    ],
+    "smps": [
+      "sensitivity"
+    ],
+    "vars": [
+      "v_ref",
+      "F",
+      "m"
+    ]
+  },
+  "z": {
+    "parameter": [
+      "v_ref",
+      "F",
+      "m"
+    ]
+  }
+}
