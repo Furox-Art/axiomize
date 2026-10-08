@@ -205,7 +205,7 @@ allowed to spend; `reproduce` and `compare-runs` work on stored run directories.
 
 ### MCP and REST
 
-The MCP server exposes **34 tools** named `axiomize.<verb>`. `axiomize.model_*` mirrors the
+The MCP server exposes **35 tools** named `axiomize.<verb>`. `axiomize.model_*` mirrors the
 `model --action` values above; the unprefixed names (`solve`, `fit_model`, `cross_validate`,
 `sensitivity_analysis`, `uncertainty_analysis`, `falsify`, `compare_models`, `intake`,
 `workflow_policy`, `clean_data`, `compare_runs`, `experiment_design`, `inspect_run`,
