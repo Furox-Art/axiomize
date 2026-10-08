@@ -1,0 +1,110 @@
+==============================================================================
+CANVASXPRESS CHART-DEFINITION EXPORT
+==============================================================================
+model          : sliding-block-linear-drag (family=ode)
+horizon        : t in [0, 5] s, 41 output points
+solver         : scipy / DOP853 (rtol=1e-10, atol=1e-12)
+output dir     : canvasxpress/
+
+CanvasXpress consumes a JSON document with a ``y`` block (vars/smps/data),
+optional ``x``/``z`` annotation blocks and a ``config`` block. Every value
+below comes from a real Axiomize run; nothing is hand-computed.
+
+------------------------------------------------------------------------------
+GENERATED CHART DEFINITIONS
+------------------------------------------------------------------------------
+  01-state-trajectory.json
+    graphType   : Line
+    vars        : 2 (v [m/s], W [J])
+    smps        : 41
+    size        : 12503 bytes
+    annotations : ['x']
+    provenance  : yes
+  02-sensitivity.json
+    graphType   : Bar
+    vars        : 3 (v_ref, F, m)
+    smps        : 1
+    size        : 577 bytes
+    annotations : ['z']
+    provenance  : no
+  03-response-surface.json
+    graphType   : Heatmap
+    vars        : 5 (10, 15, 20, 25, ...)
+    smps        : 6
+    size        : 1656 bytes
+    annotations : ['x', 'z']
+    provenance  : no
+  04-response-surface-3d.json
+    graphType   : Scatter3D
+    vars        : 3 (drag force F [N], initial speed v0 [m/s], v(5s) [m/s])
+    smps        : 30
+    size        : 2499 bytes
+    annotations : []
+    provenance  : no
+  05-dependency-graph.json
+    graphType   : Network
+    vars        : 6 (x, v, W, m, ...)
+    smps        : 6
+    size        : 965 bytes
+    annotations : []
+    provenance  : no
+
+------------------------------------------------------------------------------
+PROVENANCE BOUND INTO THE TRAJECTORY CHART
+------------------------------------------------------------------------------
+  run_input_sha256 : cdc76fecdc5b892d6c76cd730a17f73651e9355df86ec28793e215c964bed1c4
+  axiomize_version : 1.12.5
+  python           : 3.12.3
+  numpy            : 2.5.3
+  scipy            : 1.18.1
+  solver settings  : {"atol": 1e-12, "backend": "scipy", "method": "DOP853", "points": 41, "rtol": 1e-10, "seed": 0, "t_span": [0.0, 5.0]}
+  selected model   : sliding-block-linear-drag
+  assumptions      : 3 recorded
+  recorded results : v_final=1.641699972, energy_residual=2.034e-09
+  validation       : PASS
+  served_by_mcp_tool: model_visualize
+
+  The chart therefore answers 'what run produced this picture' without anyone
+  having to have been in the conversation when it was made. A chart whose
+  provenance hash does not match a recorded run can be rejected, not argued with.
+
+------------------------------------------------------------------------------
+SENSITIVITY INDICES (measured, Monte Carlo, n=400, seed=0)
+------------------------------------------------------------------------------
+  m        0.421212
+  F        0.357640
+  v_ref    0.221149
+
+------------------------------------------------------------------------------
+RESPONSE SURFACE: v(5s) over F [N] by v0 [m/s]
+------------------------------------------------------------------------------
+  v0\F           2         4         6         8        10        12
+     10    3.67879   1.35335   0.49787   0.18316   0.06738   0.02479
+     15    5.51819   2.03003   0.74681   0.27473   0.10107   0.03718
+     20    7.35759   2.70671   0.99574   0.36631   0.13476   0.04958
+     25    9.19699   3.38338   1.24468   0.45789   0.16845   0.06197
+     30   11.03638   4.06006   1.49361   0.54947   0.20214   0.07436
+
+==============================================================================
+RENDERING THE DEFINITIONS
+==============================================================================
+  A definition is consumed by the CanvasXpress JavaScript library, which is not
+  a dependency of this package. To render one in a browser, load the library and
+  point it at the file:
+
+    <canvas id="cx" width="640" height="480"></canvas>
+    <script src="https://www.canvasxpress.org/releases/canvasXpress.min.js"></script>
+    <script>
+      fetch('01-state-trajectory.json').then(r => r.json()).then(function (cx) {
+        new CanvasXpress('cx', cx.y ? {y: cx.y, x: cx.x, z: cx.z} : cx.data,
+                        Object.assign({}, cx.config || {}, {title: 'Axiomize run'}));
+      });
+    </script>
+
+  No Python-side rendering is claimed or performed here, because none is needed:
+  the deliverable is the chart definition, and it is valid JSON on disk.
+==============================================================================
+
+SELF-CHECK: 5 definitions written and re-parsed; every y block is
+rectangular and finite, every definition carries a graphType, and the trajectory
+chart's provenance hash matches the run that produced it.
