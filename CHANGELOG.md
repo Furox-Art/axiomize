@@ -50,6 +50,91 @@ No security claim was weakened. The PyPI attestation claim is stronger than befo
 unqualified for a version that is no longer live, and it is now explicit, digest-matched and
 continuously re-verified.
 
+## [1.13.0] - 2026-10-09
+
+Three additions that make physical correctness and reproducibility checkable
+rather than asserted. No existing surface, console script or entry point
+changes; `axiomize.visualization.canvasxpress_export` is the one new importable
+module.
+
+### Added
+
+**Physical-plausibility validation** (`examples/physical_plausibility_validation.py`).
+Dimensional analysis is necessary but not sufficient. Three models that share one
+Model IR shape, one unit table and one solver differ only in the sign and the
+magnitude of a drag force, so all 25 structural and all 7 unit checks pass
+identically for every one of them. Conservation of energy, passivity and an
+independent closed-form reference separate them: on the committed run `CORRECT`
+closes its energy ledger to 2.1e-09 J, `WRONG_SIGN` misses by 5.9e+04 J and
+`WRONG_SCALE` by 1.0e+02 J.
+
+`WRONG_SCALE` is the catch the check exists for. Its speed trace never exceeds its
+initial speed and its heat is monotone, so it looks plausible; it simply decays
+twice as fast as the drag law it declares, and only the conservation ledger or the
+closed form falsifies it. Numerical error is kept separate from model error: a
+four-step tolerance ladder shows the residual falling monotonically
+(1.2e-06 -> 2.5e-11 J), and the falsification threshold sits above the residual at
+the settings used. The example rewrites its own captured output and exits non-zero
+if that output stops describing current engine behaviour.
+
+**Reproducibility run record** (`examples/reproducibility_run_record.py`). A run is
+only reproducible if the record states what was assumed, what it was solved with,
+and what came out. The record captures the mathematical assumptions, the equations,
+the solver defaults and tolerances, the seed, and the versions of Python, Axiomize
+and every optional backend, with a backend that is not installed reported as
+not-installed rather than guessed at. It persists an integrity-hashed run
+directory, recomputes the hash independently on load, and re-executes the stored
+computation: the regenerated trajectory matches the recorded one bit-for-bit
+(`max |dv| = 0.0`, `nfev` 203/203).
+
+`compare_run_states` explains a divergence rather than merely flagging it. Given a
+record with one loosened solver tolerance it names the changed setting
+(`rtol` 1e-10 -> 1e-07, `atol` 1e-12 -> 1e-09) and its likely reason, which is what
+makes a divergence explainable instead of mysterious. The run directory is written
+to a temporary location, so a clean checkout is left with nothing behind.
+
+**CanvasXpress export** (`src/axiomize/visualization/canvasxpress_export.py`).
+Builds CanvasXpress JSON chart definitions from the same numeric results the rest
+of the engine produces, so an interactive chart can never be built from a number
+that is not also recorded in the run. Five chart kinds are covered: trajectory,
+sensitivity, response surface, 3D response surface and dependency graph.
+
+Two properties are deliberate. No silent invention: every value passes the same
+finite/shape checks the simulation path uses, so a NaN, a ragged matrix or a
+misaligned annotation raises instead of producing a chart that silently drops rows,
+which is how CanvasXpress would otherwise misalign every sample. And charts carry
+their own provenance: `attach_run_record` binds the input hash, recorded results,
+validation outcome, assumptions, solver settings and tool versions under a reserved
+`axiomize` key that CanvasXpress ignores, so a chart can be audited without the
+conversation that produced it. The module emits JSON only and needs no browser,
+JavaScript runtime or optional visualization backend. Sensitivity ranking is shared
+with the existing Matplotlib helper, so a chart and a PNG can never disagree. The
+Matplotlib helpers in `axiomize.visualization.plots` are untouched.
+
+`docs/repro-visibility.md` ties the three examples together with exact reproduction
+commands and the real captured outputs, and states plainly what they do not
+establish: one model family on one machine, reproducibility verified within a
+single environment only, charts validated as JSON definitions but not rendered, and
+the `model_visualize` MCP tool recorded as the intended consumer without being
+dispatched by the server yet.
+
+### Quality
+
+Measured on this branch rather than carried forward: coverage improved from 69.4%
+to 70.2% and mypy errors fell from 35 to 28. Ruff holds at 81 findings, so the
+ratchet budget is unchanged.
+
+### Not changed here
+
+- cross-environment reproducibility is not demonstrated. Only the interpreter that
+  has the optional backends installed ran the comparison, so "reproduces the
+  trajectory bit-for-bit" is a claim about one environment, not a portability claim
+- the CanvasXpress charts are validated as JSON definitions and re-parsed, never
+  rendered. No external CanvasXpress JavaScript was loaded, so the check is that the
+  definitions are well-formed and internally consistent, not that they draw
+- `model_visualize` is documented as the intended MCP consumer of the export module
+  but is not yet dispatched by `mcp_server.py`
+
 ## [1.12.5] - 2026-10-04
 
 Documentation only. No library code, CLI surface, or public API change; the importable surface,

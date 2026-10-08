@@ -11,8 +11,8 @@ abstract: >-
 authors:
   - family-names: "Furox"
     given-names: "Art"
-version: 1.12.5
-date-released: "2026-10-04"
+version: 1.13.0
+date-released: "2026-10-09"
 license: MIT
 repository-code: "https://github.com/Furox-Art/axiomize"
 url: "https://github.com/Furox-Art/axiomize"
