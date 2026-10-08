@@ -159,7 +159,7 @@ module is additive, emits JSON only, and needs no browser, JavaScript runtime or
 | File | `graphType` | vars × smps | bytes |
 |---|---|---|---|
 | `01-state-trajectory.json` | `Line` | 2 × 41 | 12534 |
-| `02-sensitivity.json` | `Bar` | 3 × 1 | 577 |
+| `02-sensitivity.json` | `Bar` | 1 × 3 | 461 |
 | `03-response-surface.json` | `Heatmap` | 5 × 6 | 1656 |
 | `04-response-surface-3d.json` | `Scatter3D` | 3 × 30 | 2499 |
 | `05-dependency-graph.json` | `Network` | 6 × 6 | 965 |
@@ -250,8 +250,25 @@ The renderer can consume `chart["data"]` and `chart["config"]`. A separate
 The only currently dispatched `chart_type` is `"sensitivity"`; trajectory, heatmap,
 Scatter3D and network exporters are available as Python functions, not MCP chart types yet.
 Non-finite scores, path traversal, missing manifests and modified run payloads are rejected.
-The MCP integration is exercised by `tests/test_canvasxpress_mcp.py`; no external browser
-test or CanvasXpress package is needed for its JSON/schema contracts.
+The MCP JSON contract is exercised by `tests/test_canvasxpress_mcp.py`. A separate
+GitHub Actions browser audit checks the original and corrected sensitivity layouts against
+a pinned upstream CanvasXpress JavaScript bundle and preserves the comparison screenshot.
+
+### CanvasXpress sensitivity layout and actual browser audit
+
+CanvasXpress's official Bar examples encode each category as a sample (`y.smps`),
+with one variable (`y.vars`) and a single row of signed sensitivity values
+(`y.data`). The original one-sample, multiple-variable layout still forms a
+rectangular JSON matrix but changes chart semantics. `sensitivity_chart` and
+`axiomize.model_visualize` now use one variable with one sample per parameter
+without touching the other chart exporters or the Matplotlib renderer.
+
+The `CanvasXpress browser audit` GitHub Actions workflow checks out
+`neuhausi/canvasxpress-js` at the immutable upstream commit
+`76a2074800474700f151c8bf9c6d6bd07a0d7717`, draws the old and corrected
+specifications from identical signed inputs in Chrome, and uploads a side-by-side
+PNG and a machine-readable report. This is separate from the pure Python contract
+tests; the JavaScript bundle is not redistributed with Axiomize.
 
 ## What this does not establish
 
