@@ -16,7 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.12.5** on PyPI and npm.
+Current package line: **1.13.0** on PyPI and npm.
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
 Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
