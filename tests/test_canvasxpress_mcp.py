@@ -38,8 +38,9 @@ def test_recorded_sensitivity_exports_renderer_payload_and_original_versions(tmp
     result = _call_tool("axiomize.model_visualize", {"run_dir": "case"}, run_root=tmp_path)
     chart, provenance = result["chart"], result["metadata"]
     assert list(chart) == ["data", "config"]
-    assert chart["data"]["y"]["vars"] == ["N", "gamma", "beta"]
-    assert chart["data"]["y"]["data"] == [[0.21], [-0.44], [0.82]]
+    assert chart["data"]["y"]["vars"] == ["Sensitivity"]
+    assert chart["data"]["y"]["smps"] == ["N", "gamma", "beta"]
+    assert chart["data"]["y"]["data"] == [[0.21, -0.44, 0.82]]
     assert chart["config"]["graphType"] == "Bar"
     assert chart["config"]["xAxisTitle"] == "Sensitivity score"
     assert provenance["run_sha256"] == manifest["run_sha256"]
@@ -65,7 +66,7 @@ def test_chart_hash_is_stable_across_recorded_score_key_order(tmp_path):
 
 def test_works_with_explicit_nested_scores_and_no_fabricated_fallback(tmp_path):
     _record(tmp_path, {"scores": {"b": -0.5, "a": 0.1}, "method": "screening"})
-    assert visualize_recorded_run(tmp_path, "case")["chart"]["data"]["y"]["vars"] == ["a", "b"]
+    assert visualize_recorded_run(tmp_path, "case")["chart"]["data"]["y"]["smps"] == ["a", "b"]
     _record(tmp_path, {})
     # No invented sensitivity values from a generic result such as 'outcome'.
     with pytest.raises(ValueError, match="no recorded sensitivity"):
@@ -134,7 +135,7 @@ def test_jsonrpc_roundtrip_and_error_response(tmp_path):
     assert response["id"] == 7
     assert response["result"]["isError"] is False
     result = json.loads(response["result"]["content"][0]["text"])
-    assert result["chart"]["data"]["y"]["vars"] == ["N", "gamma", "beta"]
+    assert result["chart"]["data"]["y"]["smps"] == ["N", "gamma", "beta"]
     request["params"]["arguments"]["run_dir"] = "../outside"
     error = handle_message(request, run_root=tmp_path)
     assert error["error"]["code"] == -32602
