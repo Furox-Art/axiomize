@@ -265,7 +265,7 @@ without touching the other chart exporters or the Matplotlib renderer.
 
 The `CanvasXpress browser audit` GitHub Actions workflow checks out
 `neuhausi/canvasxpress-js` at the immutable upstream commit
-`76a2074800474700f151c8bf9c6d6bd07a0d7717`, draws the old and corrected
+`7c3d0287926e93659583109d567f89c75cdd1825`, draws the old and corrected
 specifications from identical signed inputs in Chrome, and uploads a side-by-side
 PNG and a machine-readable report. This is separate from the pure Python contract
 tests; the JavaScript bundle is not redistributed with Axiomize.
