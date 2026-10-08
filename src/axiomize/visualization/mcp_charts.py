@@ -21,6 +21,8 @@ from axiomize.visualization.canvasxpress_export import sensitivity_chart
 def _scores_from_run(run: RunState) -> dict[str, float]:
     source: Any = run.sensitivity_results
     if not source:
+        if not isinstance(run.results, dict):
+            raise ValueError("recorded results must be an object")
         for key in ("sensitivity_results", "sensitivity_scores"):
             candidate = run.results.get(key)
             if isinstance(candidate, dict) and candidate:
@@ -66,6 +68,8 @@ def visualize_recorded_run(
 
     run = RunState.load_under_root(run_root, run_dir)
     manifest_path = directory / "manifest.json"
+    if manifest_path.stat().st_size > MAX_RUN_JSON_BYTES:
+        raise ValueError("manifest.json exceeds the run-state size limit")
     raw_manifest = manifest_path.read_bytes()
     if len(raw_manifest) > MAX_RUN_JSON_BYTES:
         raise ValueError("manifest.json exceeds the run-state size limit")
@@ -79,6 +83,8 @@ def visualize_recorded_run(
         raise ValueError("manifest.json must record run_sha256")
     if manifest.get("input_hash") != run.input_hash():
         raise ValueError("recorded input hash does not match the run")
+    if not isinstance(run.validation_results, dict):
+        raise ValueError("recorded validation_results must be an object")
     versions = manifest.get("tool_versions")
     if not isinstance(versions, dict):
         raise ValueError("manifest.json must record tool_versions")
