@@ -153,7 +153,7 @@ def sensitivity_chart(scores: Mapping[str, float], *,
     settings = {
         "graphType": "Bar",
         "graphOrientation": "horizontal",
-        "xAxis": ["Sensitivity score"],
+        "xAxisTitle": "Sensitivity score",
         "colorScheme": "Basic",
         "showDataValues": False,
         **(dict(config or {})),
