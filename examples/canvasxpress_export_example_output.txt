@@ -22,10 +22,10 @@ GENERATED CHART DEFINITIONS
     provenance  : yes
   02-sensitivity.json
     graphType   : Bar
-    vars        : 3 (v_ref, F, m)
-    smps        : 1
-    size        : 577 bytes
-    annotations : ['z']
+    vars        : 1 (Sensitivity)
+    smps        : 3
+    size        : 461 bytes
+    annotations : []
     provenance  : no
   03-response-surface.json
     graphType   : Heatmap

@@ -159,7 +159,7 @@ module is additive, emits JSON only, and needs no browser, JavaScript runtime or
 | File | `graphType` | vars × smps | bytes |
 |---|---|---|---|
 | `01-state-trajectory.json` | `Line` | 2 × 41 | 12534 |
-| `02-sensitivity.json` | `Bar` | 3 × 1 | 577 |
+| `02-sensitivity.json` | `Bar` | 1 × 3 | 461 |
 | `03-response-surface.json` | `Heatmap` | 5 × 6 | 1656 |
 | `04-response-surface-3d.json` | `Scatter3D` | 3 × 30 | 2499 |
 | `05-dependency-graph.json` | `Network` | 6 × 6 | 965 |
@@ -229,6 +229,47 @@ python -m pytest tests/test_canvasxpress_export.py -q
 
 26 tests pass. The module is additionally mypy-clean and adds no ruff findings.
 
+## MCP sensitivity chart from a recorded run
+
+The chart exporter remains usable as Python functions for all five chart types. A lightweight
+MCP wrapper adds the specific Reddit proof-of-concept mapping without guessing any results:
+
+```python
+from axiomize.runs.state import RunState
+from axiomize.server.mcp_server import call_tool
+
+run = RunState(sensitivity_results={"K_cat": 0.82, "K_m": -0.44, "E_tot": 0.21})
+run.save("runs/experiment-001")
+response = call_tool("axiomize.model_visualize", {"run_dir": "experiment-001"}, run_root="runs")
+chart = response["chart"]           # CanvasXpress-compatible data/config only
+metadata = response["metadata"]     # stored tool versions, input and chart SHA-256
+```
+
+The renderer can consume `chart["data"]` and `chart["config"]`. A separate
+`metadata` object avoids relying on CanvasXpress accepting arbitrary application keys.
+The only currently dispatched `chart_type` is `"sensitivity"`; trajectory, heatmap,
+Scatter3D and network exporters are available as Python functions, not MCP chart types yet.
+Non-finite scores, path traversal, missing manifests and modified run payloads are rejected.
+The MCP JSON contract is exercised by `tests/test_canvasxpress_mcp.py`. A separate
+GitHub Actions browser audit checks the original and corrected sensitivity layouts against
+a pinned upstream CanvasXpress JavaScript bundle and preserves the comparison screenshot.
+
+### CanvasXpress sensitivity layout and actual browser audit
+
+CanvasXpress's official Bar examples encode each category as a sample (`y.smps`),
+with one variable (`y.vars`) and a single row of signed sensitivity values
+(`y.data`). The original one-sample, multiple-variable layout still forms a
+rectangular JSON matrix but changes chart semantics. `sensitivity_chart` and
+`axiomize.model_visualize` now use one variable with one sample per parameter
+without touching the other chart exporters or the Matplotlib renderer.
+
+The `CanvasXpress browser audit` GitHub Actions workflow checks out
+`neuhausi/canvasxpress-js` at the immutable upstream commit
+`7c3d0287926e93659583109d567f89c75cdd1825`, draws the old and corrected
+specifications from identical signed inputs in Chrome, and uploads a side-by-side
+PNG and a machine-readable report. This is separate from the pure Python contract
+tests; the JavaScript bundle is not redistributed with Axiomize.
+
 ## What this does not establish
 
 - The three examples run one model family (linear ODE) on one machine. Cross-environment comparison
@@ -238,5 +279,10 @@ python -m pytest tests/test_canvasxpress_export.py -q
   numerical agreement across different BLAS, scipy or platform builds is not asserted.
 - The charts are validated as JSON definitions and re-parsed after writing. They are not rendered
   here, because rendering needs the external CanvasXpress library and a browser.
-- The `model_visualize` MCP tool named in the provenance block is the intended consumer. The wiring
-  is recorded and testable; the tool itself is not dispatched by `axiomize/server/mcp_server.py` yet.
+- The `axiomize.model_visualize` MCP tool now reads an integrity-checked stored run beneath
+  the configured run root and emits a CanvasXpress sensitivity bar definition plus separate
+  provenance metadata. The tool is read-only, rejects missing sensitivity scores, and does not
+  claim browser rendering. The `chart_spec_sha256` covers canonical UTF-8 JSON of the
+  `chart` renderer payload only; its metadata retains the originally recorded `input_hash`,
+  `run_sha256`, solver settings and tool versions. The saved manifest is integrity-checked
+  against `run.json`, but without a digital signature its metadata is not an authenticity proof.

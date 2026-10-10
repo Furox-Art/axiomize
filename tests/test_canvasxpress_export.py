@@ -113,9 +113,11 @@ def test_sensitivity_chart_ranks_by_magnitude_like_matplotlib_helper() -> None:
     scores = {"beta": 0.8, "gamma": -0.3, "N": 0.05}
     chart = sensitivity_chart(scores)
     # Same ranking the Matplotlib helper applies: ascending absolute value.
-    assert chart["y"]["vars"] == ["N", "gamma", "beta"]
-    assert chart["y"]["data"] == [[0.05], [-0.3], [0.8]]
-    assert chart["z"]["parameter"] == ["N", "gamma", "beta"]
+    assert chart["y"]["vars"] == ["Sensitivity"]
+    assert chart["y"]["smps"] == ["N", "gamma", "beta"]
+    assert chart["y"]["data"] == [[0.05, -0.3, 0.8]]
+    assert "z" not in chart  # parameters are sample labels, not variables
+    assert chart["config"]["xAxisTitle"] == "Sensitivity score"
     assert chart["config"]["graphType"] == "Bar"
     assert chart["config"]["graphOrientation"] == "horizontal"
 
@@ -123,6 +125,20 @@ def test_sensitivity_chart_ranks_by_magnitude_like_matplotlib_helper() -> None:
 def test_sensitivity_chart_rejects_empty_scores() -> None:
     with pytest.raises(ValueError, match="must not be empty"):
         sensitivity_chart({})
+
+
+def test_sensitivity_chart_matches_official_canvasxpress_single_series_bar_contract() -> None:
+    """Compare the data layout to https://www.canvasxpress.org/examples/bar-8.html."""
+    scores = {"k_cat": 0.7, "k_m": -0.4, "enzyme": 0.2}
+    chart = sensitivity_chart(scores)
+    assert set(chart["y"]) == {"vars", "smps", "data"}
+    assert len(chart["y"]["vars"]) == 1
+    assert len(chart["y"]["data"]) == 1
+    assert len(chart["y"]["smps"]) == len(scores)
+    assert chart["y"]["data"] == [[0.2, -0.4, 0.7]]
+    assert chart["y"]["smps"] == ["enzyme", "k_m", "k_cat"]
+    assert len(chart["y"]["data"][0]) == len(chart["y"]["smps"])
+    assert json.loads(json.dumps(chart, allow_nan=False)) == chart
 
 
 # --- trajectory_chart -------------------------------------------------------
@@ -269,7 +285,8 @@ def test_sensitivity_ranking_is_shared_with_matplotlib_helper(tmp_path) -> None:
     scores = {"beta": 0.8, "gamma": -0.3, "N": 0.05}
     expected = sorted(scores, key=lambda name: abs(scores[name]))
     chart = sensitivity_chart(scores)
-    assert chart["y"]["vars"] == expected
+    assert chart["y"]["smps"] == expected
+    assert chart["y"]["vars"] == ["Sensitivity"]
     assert math.isfinite(sum(chart["y"]["data"][0]))
     # The helper the ranking is shared with must still be importable from here.
     assert callable(plots.plot_sensitivity)
