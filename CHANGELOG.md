@@ -2,6 +2,12 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.13.1] - 2026-10-12
+
+Housekeeping release. Publishes the post-1.13.0 repository state (ruff and mypy
+toolchain bumps) to PyPI and npm: the 1.13.0 upload predates that commit, so both
+registries were one commit behind `main`. No behavioural change.
+
 ## Unreleased
 
 Documentation only, against the live `1.12.5` release. No version bump, no publish, no tag. The
