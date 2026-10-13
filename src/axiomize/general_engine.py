@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from axiomize import general_engine_core as _core
 from axiomize.general_engine_core import *  # noqa: F401,F403
+from axiomize.general_engine_core import _word_tokens, require_dimensional_consistency, term_present
 from axiomize.limits import (
     MAX_ARRAY_ITEMS,
     MAX_BAYES_DRAWS,
@@ -314,13 +315,16 @@ def recommend_model_families(
     base = list(_base_recommend_model_families(domain=domain, signals=signals, idea=idea))
     signal_set = {str(value).strip().lower().replace("-", "_") for value in (signals or [])}
     text = str(idea).lower()
+    # Token-anchored, like the core matcher: a bare "multiphysics" substring
+    # inside an unrelated word must not promote MULTIPHYSICS to rank 1.
+    tokens = _word_tokens(idea)
     wants_multiphysics = bool(
         {"multiphysics", "multi_physics", "coupled_physics", "multi_scale", "multiscale"} & signal_set
-        or "multiphysics" in text
-        or "multi-physics" in text
-        or "coupled physics" in text
-        or "multiscale" in text
-        or "multi-scale" in text
+        or term_present("multiphysics", text=text, tokens=tokens)
+        or term_present("multi-physics", text=text, tokens=tokens)
+        or term_present("coupled physics", text=text, tokens=tokens)
+        or term_present("multiscale", text=text, tokens=tokens)
+        or term_present("multi-scale", text=text, tokens=tokens)
     )
     if not wants_multiphysics:
         return base
@@ -363,6 +367,12 @@ def _simulate_once(
     structure = model.validate_structure()
     if any(check["status"] == "FAIL" for check in structure):
         return {"status": "FAIL", "stage": "structure", "checks": structure}
+
+    # Same closed unit/dimensional gate the core executor and the application
+    # services use. Without it the facade path (advanced families and the
+    # numerical-refinement driver) could execute a model the validate/fit
+    # services refuse to touch.
+    require_dimensional_consistency(model)
 
     cost = estimate_compute(model, action="simulate", points=points)
     if cost["requires_user_approval"] and not approve_heavy:

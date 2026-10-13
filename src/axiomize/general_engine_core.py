@@ -13,6 +13,7 @@ import importlib.util
 import json
 import math
 import platform
+import re
 from typing import Any, Callable
 
 import numpy as np
@@ -43,12 +44,68 @@ def _module_present(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
 
+def _word_tokens(text: str) -> frozenset[str]:
+    """Split ``text`` into lowercase alphanumeric word tokens.
+
+    Apostrophes and hyphens split a token: ``don't`` is ``don`` + ``t`` and
+    ``agent-based`` is ``agent`` + ``based``. Splitting is what makes the
+    matching below token-anchored instead of substring-anchored.
+    """
+    return frozenset(re.findall(r"[a-z0-9]+", str(text).lower()))
+
+
+# Suffixes that turn a lexicon stem into the same word class: plural, verb and
+# derived forms. Everything else has to match the term exactly, otherwise a
+# short stem leaks into unrelated words ("prior" into "prioritize", "gene" into
+# "generic").
+_TOKEN_INFLECTIONS = frozenset({
+    "", "s", "es", "ed", "d", "ing", "ly", "al", "ic", "e", "er", "ers",
+    "or", "ion", "ions", "ity", "ies", "y",
+})
+
+# A stem this long is unambiguous enough on its own to prefix-match, which is how
+# the lexicon expresses word families it cannot enumerate ("oscillat" hits
+# "oscillation" and "oscillator", "epidem" hits "epidemiology").
+_STEM_MIN_LENGTH = 6
+
+
+def _token_matches(token: str, term: str) -> bool:
+    if not token.startswith(term):
+        return False
+    suffix = token[len(term):]
+    if suffix in _TOKEN_INFLECTIONS:
+        return True
+    return len(term) >= _STEM_MIN_LENGTH
+
+
+def term_present(term: str, *, text: str, tokens: frozenset[str]) -> bool:
+    """Report whether ``term`` occurs in ``text`` on a word boundary.
+
+    Substring matching misclassifies: ``system`` is satisfied by ``ecosystem``,
+    ``force`` by ``enforced``/``reinforced``, and ``ph `` by ``graph theory``.
+    A single word term therefore has to match at the start of a whole token, so
+    ``ecosystem`` no longer counts as ``system`` while ``oscillat`` still hits
+    ``oscillation``/``oscillator`` (the lexicon uses stems deliberately).
+
+    A term that contains whitespace or a hyphen is a deliberate multi-word or
+    compound phrase (``coupled physics``, ``agent-based``) and is matched
+    literally, since token matching cannot express an ordered phrase.
+    """
+    term = term.strip()
+    if not term:
+        return False
+    if any(character.isspace() or character == "-" for character in term):
+        return term in text
+    return any(_token_matches(token, term) for token in tokens)
+
+
 def infer_domain(text: str) -> dict[str, Any]:
     """Conservative deterministic domain hinting for provider-independent use."""
     lower = str(text).lower()
+    tokens = _word_tokens(text)
     lexicon = {
         "physics": ("force", "energy", "momentum", "oscillat", "quantum", "field", "fluid", "heat"),
-        "chemistry": ("reaction", "concentration", "molecule", "catal", "ph ", "molar", "kinetic"),
+        "chemistry": ("reaction", "concentration", "molecule", "catalyst", "acid", "solvent", "molar", "kinetic"),
         "biology": ("cell", "gene", "protein", "population", "organism", "enzyme", "growth"),
         "epidemiology": ("epidem", "infect", "suscept", "disease", "transmission", "incidence"),
         "engineering": ("controller", "control", "sensor", "actuator", "circuit", "mechanical", "system"),
@@ -58,7 +115,7 @@ def infer_domain(text: str) -> dict[str, Any]:
     }
     scored: list[tuple[int, str, list[str]]] = []
     for domain, words in lexicon.items():
-        hits = [w for w in words if w in lower]
+        hits = [w for w in words if term_present(w, text=lower, tokens=tokens)]
         if hits:
             scored.append((len(hits), domain, hits))
     if not scored:
@@ -77,30 +134,34 @@ def recommend_model_families(*, domain: str = "general", signals: list[str] | No
     """Rank 2-3 candidate model families without inventing equations."""
     signals_l = {str(v).strip().lower().replace("-", "_") for v in (signals or [])}
     text = idea.lower()
+    tokens = _word_tokens(idea)
     ranked: list[tuple[int, ModelFamily, str]] = []
 
     def add(score: int, family: ModelFamily, reason: str) -> None:
         ranked.append((score, family, reason))
 
-    if {"spatial", "diffusion", "field"} & signals_l or any(w in text for w in ("spatial", "diffusion", "field")):
+    def says(*terms: str) -> bool:
+        return any(term_present(term, text=text, tokens=tokens) for term in terms)
+
+    if {"spatial", "diffusion", "field"} & signals_l or says("spatial", "diffusion", "field"):
         add(100, ModelFamily.PDE, "spatial/field dynamics signal")
-    if {"stochastic", "noise", "random"} & signals_l or any(w in text for w in ("noise", "random", "stochastic")):
+    if {"stochastic", "noise", "random"} & signals_l or says("noise", "random", "stochastic"):
         add(95, ModelFamily.STOCHASTIC, "stochastic/noise signal")
-    if {"optimization", "optimal", "decision"} & signals_l or any(w in text for w in ("optimiz", "optimal", "minimize", "maximize")):
+    if {"optimization", "optimal", "decision"} & signals_l or says("optimiz", "optimal", "minimize", "maximize"):
         add(95, ModelFamily.OPTIMIZATION, "optimization objective signal")
-    if {"network", "graph"} & signals_l or any(w in text for w in ("network", "graph", "contact")):
+    if {"network", "graph"} & signals_l or says("network", "graph", "contact"):
         add(90, ModelFamily.NETWORK, "network/graph structure signal")
-    if {"causal", "intervention", "counterfactual"} & signals_l or any(w in text for w in ("causal", "intervention", "counterfactual")):
+    if {"causal", "intervention", "counterfactual"} & signals_l or says("causal", "intervention", "counterfactual"):
         add(90, ModelFamily.CAUSAL, "causal/intervention question")
-    if {"control", "controller"} & signals_l or any(w in text for w in ("controller", "control system", "feedback")):
+    if {"control", "controller"} & signals_l or says("controller", "control system", "feedback"):
         add(90, ModelFamily.CONTROL, "feedback/control signal")
-    if {"agent", "individual_based"} & signals_l or "agent-based" in text:
+    if {"agent", "individual_based"} & signals_l or says("agent-based"):
         add(90, ModelFamily.AGENT_BASED, "individual/agent behavior signal")
-    if {"event", "queue"} & signals_l or any(w in text for w in ("queue", "event-driven", "arrival")):
+    if {"event", "queue"} & signals_l or says("queue", "event-driven", "arrival"):
         add(85, ModelFamily.DISCRETE_EVENT, "event/queue signal")
-    if {"bayesian", "posterior"} & signals_l or any(w in text for w in ("bayesian", "posterior", "prior")):
+    if {"bayesian", "posterior"} & signals_l or says("bayesian", "posterior", "prior"):
         add(85, ModelFamily.BAYESIAN, "Bayesian inference signal")
-    if {"algebraic", "equilibrium", "steady_state"} & signals_l or "equilibrium" in text:
+    if {"algebraic", "equilibrium", "steady_state"} & signals_l or says("equilibrium"):
         add(75, ModelFamily.ALGEBRAIC, "equilibrium/algebraic relation signal")
 
     domain_defaults = {
@@ -294,6 +355,39 @@ def _compile_ode(model: ModelIR, parameter_values: dict[str, float]) -> tuple[li
     return names, rhs
 
 
+def require_dimensional_consistency(model: ModelIR) -> dict[str, Any]:
+    """Run the engine's shared unit/dimensional validation for a run.
+
+    Every other engine entry point (validate, fit, compare, repair) routes
+    through :func:`validate_model` plus the equation-level
+    declared-vs-actual dimension checks. Execution must not be a loophole in
+    that contract, so this helper is the single closed gate that
+    ``simulate_model`` (and every caller that reaches it) goes through first.
+
+    Returns the full validation payload when the model is consistent, and raises
+    :class:`~axiomize.dimensional_engine.ModelDimensionMismatch` otherwise. The
+    failure is deliberately an exception rather than an in-band ``status``: a
+    dimensionally inconsistent run has no meaningful result to hand back, and a
+    silent ``PASS`` here is exactly the failure mode the mandatory-units claim
+    exists to prevent.
+    """
+    from axiomize.dimensional_engine import (
+        ModelDimensionMismatch,
+        merge_dimension_checks,
+    )
+
+    validation = merge_dimension_checks(validate_model(model), model)
+    if validation.get("status") == "FAIL":
+        failed = [c for c in validation.get("checks", []) if c.get("status") == "FAIL"]
+        names = [str(c.get("name", "<unnamed check>")) for c in failed]
+        raise ModelDimensionMismatch(
+            "model failed mandatory unit/dimensional validation and was not executed: "
+            + ", ".join(names),
+            validation=validation,
+        )
+    return validation
+
+
 def simulate_model(model: ModelIR, *, t_span: tuple[float, float] = (0.0, 1.0),
                    points: int = 200, parameter_overrides: dict[str, float] | None = None,
                    seed: int = 0, approve_heavy: bool = False) -> dict[str, Any]:
@@ -301,6 +395,9 @@ def simulate_model(model: ModelIR, *, t_span: tuple[float, float] = (0.0, 1.0),
     structure = model.validate_structure()
     if any(c["status"] == "FAIL" for c in structure):
         return {"status": "FAIL", "stage": "structure", "checks": structure}
+    # Fail closed on units before any solver runs, exactly as the rest of the
+    # engine does. A model that cannot pass this gate is never executed.
+    require_dimensional_consistency(model)
     cost = estimate_compute(model, action="simulate", points=points)
     if cost["requires_user_approval"] and not approve_heavy:
         return {
