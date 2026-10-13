@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -245,34 +246,36 @@ def test_dispatch_worker_count_is_never_zero() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _workflow(name: str) -> dict:
-    import yaml
-
-    return yaml.safe_load((ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8"))
-
-
 def test_windows_runner_produces_a_preserved_packaging_artifact() -> None:
-    """Windows must not be a build-and-discard-only platform in the release path."""
-    release = _workflow("release.yml")
-    jobs = release["jobs"]
+    """Windows must not be a build-and-discard-only platform in the release path.
+
+    The workflow YAML is checked as text, not with PyYAML: the CI environment
+    intentionally does not install it, and a packaging-gap guard that cannot run
+    is the very class of silent gap this test exists to catch.
+    """
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     # The matrix of platform jobs must cover Windows explicitly.
-    matrix_os = [
-        job.get("strategy", {}).get("matrix", {}).get("os")
-        for job in jobs.values()
-        if isinstance(job, dict) and isinstance(job.get("strategy", {}).get("matrix", {}), dict)
-    ]
-    assert ["ubuntu-latest", "windows-latest", "macos-latest"] in matrix_os
+    assert re.search(r"^\s*os:\s*\[.*windows-latest", release, re.MULTILINE), (
+        "no release-path job runs on Windows"
+    )
+    assert "macos-latest" in release and "ubuntu-latest" in release
     # And the platform job must keep the wheel it built instead of discarding it.
-    platform_job = jobs["platform-smoke"]
-    uploads = [
-        step for step in platform_job["steps"]
-        if str(step.get("uses", "")).startswith("actions/upload-artifact")
+    lines = release.splitlines()
+    platforms = [
+        index for index, line in enumerate(lines)
+        if "Preserve the platform packaging artifact" in line
     ]
-    assert uploads, "the platform-smoke job builds a wheel on every OS and preserves none"
-    for step in uploads:
-        assert step["with"]["if-no-files-found"] == "error"
-        assert step["with"]["path"] == "dist/*.whl"
-        assert "matrix.os" in step["with"]["name"]
+    assert platforms, "no release-path job preserves the wheels it builds"
+    for index in platforms:
+        window = "\n".join(lines[index:index + 16])
+        assert "actions/upload-artifact" in window, "the preservation step does not upload"
+        assert re.search(r"^\s*path:\s*dist/\*\.whl\b", window, re.MULTILINE), (
+            "the upload does not preserve the built wheel"
+        )
+        assert "if-no-files-found: error" in window, "an upload would silently drop artifacts"
+        assert re.search(r"^\s*name:\s*platform-wheel-", window, re.MULTILINE), (
+            "the preserved artifact is not named per platform"
+        )
 
 
 @pytest.mark.parametrize("workflow", ["ci.yml", "release.yml"])
