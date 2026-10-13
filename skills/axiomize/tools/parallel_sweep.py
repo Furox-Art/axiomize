@@ -25,18 +25,52 @@ MAX_WORKERS = 32
 MAX_MONTE_CARLO_RUNS = 100_000
 
 
+def _default_workers() -> int:
+    """Resolve the configured default worker count and validate it.
+
+    The default is derived from the host CPU count, so it is still routed
+    through the same bound check as an explicit ``--workers`` value. An
+    unexplained host value (0, or a ceiling above the hard limit) must be a
+    loud config-load failure rather than a dispatch that silently over- or
+    under-subscribes the pool.
+    """
+    cpu_count = os.cpu_count()
+    if not isinstance(cpu_count, int) or cpu_count < 1:
+        return 1
+    return _bounded_workers(min(8, cpu_count, MAX_WORKERS))
+
+
 def _bounded_workers(workers):
-    if isinstance(workers, bool):
+    """Validate a requested worker count at config load.
+
+    ``ProcessPoolExecutor`` raises an opaque ``ValueError`` for ``max_workers
+    <= 0`` and spawns without complaint for an oversized pool, so the bound is
+    enforced here where the reason is still the ``--workers`` flag. Booleans and
+    non-integral floats are rejected explicitly: ``int(True)`` is 1 and
+    ``int(2.5)`` is 2, both of which would silently reinterpret the request.
+    """
+    if isinstance(workers, bool) or workers is None:
         raise ValueError("workers must be an integer")
+    if isinstance(workers, str):
+        raise ValueError("workers must be an integer, not a string")
+    if isinstance(workers, float) and not workers.is_integer():
+        raise ValueError("workers must be an exact integer")
     try:
         value = int(workers)
     except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError("workers must be an integer") from exc
-    if isinstance(workers, float) and not workers.is_integer():
-        raise ValueError("workers must be an exact integer")
     if value < 1 or value > MAX_WORKERS:
         raise ValueError(f"workers must be between 1 and {MAX_WORKERS}")
     return value
+
+
+def _dispatch_workers(requested: int, task_count: int) -> int:
+    """Clamp a validated worker count to the batch size, never below 1.
+
+    ``min(requested, task_count)`` alone passes 0 to the executor when the batch
+    is empty, which surfaces as an opaque pool error instead of a bounded job.
+    """
+    return max(1, min(requested, max(1, int(task_count))))
 
 
 def _bounded_runs(total_runs):
@@ -94,7 +128,7 @@ def job_sweep(workers):
     betas = np.round(np.linspace(0.2, 0.5, 7), 3)
     gammas = np.round(np.linspace(0.05, 0.2, 4), 3)
     tasks = [(b, g, 10, 100_000) for g in gammas for b in betas]
-    actual_workers = min(workers, len(tasks))
+    actual_workers = _dispatch_workers(workers, len(tasks))
 
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=actual_workers) as ex:
@@ -122,7 +156,7 @@ def job_sweep(workers):
 def job_mc(workers, total_runs=400):
     workers = _bounded_workers(workers)
     total_runs = _bounded_runs(total_runs)
-    actual_workers = min(workers, total_runs)
+    actual_workers = _dispatch_workers(workers, total_runs)
     beta, gamma, I0, N = 0.3, 0.1, 1, 5000
     base, remainder = divmod(total_runs, actual_workers)
     seeds = [1000 + i for i in range(actual_workers)]
@@ -153,12 +187,14 @@ def job_mc(workers, total_runs=400):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    default_workers = min(8, os.cpu_count() or 2, MAX_WORKERS)
     p.add_argument("--job", choices=["sweep", "mc"], default="sweep")
-    p.add_argument("--workers", type=int, default=default_workers)
+    p.add_argument("--workers", type=int, default=None)
     args = p.parse_args()
+    # Worker bounds are enforced once, at config load, before any job runs. The
+    # resolved default is validated too, so the exit reason is the bound and not
+    # a later pool failure.
     try:
-        workers = _bounded_workers(args.workers)
+        workers = _bounded_workers(args.workers if args.workers is not None else _default_workers())
     except ValueError as exc:
         p.error(str(exc))
     raise SystemExit(job_sweep(workers) if args.job == "sweep" else job_mc(workers))

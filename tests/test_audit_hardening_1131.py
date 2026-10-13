@@ -12,6 +12,8 @@ L-2  the deterministic domain/family hinting matched lexicon terms as raw
 
 from __future__ import annotations
 
+import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -131,3 +133,106 @@ def test_multiphysics_phrase_is_not_promoted_by_a_substring() -> None:
     promoted = recommend_model_families(idea="coupled physics of a multiphysics reactor")
     assert promoted[0]["family"] == "multiphysics"
     assert promoted[0]["rank"] == 1
+
+
+# ---------------------------------------------------------------------------
+# M-4: an auth failure and a missing record are different failures
+# ---------------------------------------------------------------------------
+
+
+def _rest_server(tmp_path: Path, *, auth_token: str | None = None):
+    import threading
+
+    from axiomize.server.rest_server import start_server
+
+    server = start_server("127.0.0.1", 0, run_root=tmp_path, auth_token=auth_token)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def _get(server, path: str, *, token: str | None = None):
+    import urllib.error
+    import urllib.request
+
+    headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
+    request = urllib.request.Request(f"http://127.0.0.1:{server.server_address[1]}{path}", headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return response.status, json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
+def test_missing_run_is_404_not_an_auth_error(tmp_path: Path) -> None:
+    """A token-authenticated caller asking for an absent run gets a 404."""
+    server = _rest_server(tmp_path, auth_token="a-very-long-research-token")
+    try:
+        status, body = _get(server, "/runs/does-not-exist", token="a-very-long-research-token")
+        assert status == 404
+        assert body == {"error": "run not found or failed integrity checks"}
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_failed_auth_is_401_even_for_a_missing_run(tmp_path: Path) -> None:
+    """A missing record must not mask an auth failure, in either direction."""
+    server = _rest_server(tmp_path, auth_token="a-very-long-research-token")
+    try:
+        status, body = _get(server, "/runs/does-not-exist", token="wrong-token-entirely")
+        assert status == 401
+        assert body == {"error": "unauthorized"}
+        # ... and the same missing record is still a 404 for the right caller.
+        assert _get(server, "/runs/does-not-exist", token="a-very-long-research-token")[0] == 404
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+# ---------------------------------------------------------------------------
+# M-5: parallel batch worker bounds are enforced at config load
+# ---------------------------------------------------------------------------
+
+
+def _sweep_module():
+    path = ROOT / "skills" / "axiomize" / "tools" / "parallel_sweep.py"
+    spec = importlib.util.spec_from_file_location("axiomize_parallel_sweep_test", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("workers", [0, -1, -32, 33, 64, 1000, 10 ** 9])
+def test_absurd_worker_counts_are_rejected_at_config_load(workers: int) -> None:
+    module = _sweep_module()
+    with pytest.raises(ValueError, match="workers must be between 1 and"):
+        module._bounded_workers(workers)
+
+
+@pytest.mark.parametrize("workers", [True, False, None, "4", "many", 2.5, 0.5])
+def test_non_integer_worker_requests_are_rejected(workers) -> None:
+    module = _sweep_module()
+    with pytest.raises(ValueError, match="workers must be"):
+        module._bounded_workers(workers)
+
+
+def test_worker_bounds_accept_the_declared_range() -> None:
+    module = _sweep_module()
+    assert module._bounded_workers(1) == 1
+    assert module._bounded_workers(module.MAX_WORKERS) == module.MAX_WORKERS
+    assert module._bounded_workers(4.0) == 4
+
+
+def test_resolved_default_worker_count_is_also_bounded() -> None:
+    module = _sweep_module()
+    assert 1 <= module._default_workers() <= module.MAX_WORKERS
+
+
+def test_dispatch_worker_count_is_never_zero() -> None:
+    module = _sweep_module()
+    assert module._dispatch_workers(8, 28) == 8
+    assert module._dispatch_workers(8, 4) == 4
+    # An empty batch must not hand 0 to ProcessPoolExecutor.
+    assert module._dispatch_workers(8, 0) == 1
+    assert module._dispatch_workers(8, -3) == 1
