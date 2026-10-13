@@ -14,6 +14,23 @@ _ALLOWED_FUNCTIONS = {
 }
 
 
+class ModelDimensionMismatch(ValueError):
+    """A Model IR failed the mandatory unit/dimensional gate before execution.
+
+    Simulation is fail-closed: a model whose declared units, or whose
+    declared-vs-actual equation dimensions, do not agree is never executed.
+    The full validation payload is attached so a caller can render the exact
+    failing checks instead of guessing from the message.
+    """
+
+    def __init__(self, message: str, *, validation: dict[str, Any]) -> None:
+        self.validation = validation
+        self.failed_checks = [
+            check for check in validation.get("checks", []) if check.get("status") == "FAIL"
+        ]
+        super().__init__(message)
+
+
 def _combine(left: dict[str, float], right: dict[str, float], sign: float = 1.0) -> dict[str, float]:
     out = dict(left)
     for key, value in right.items():
@@ -184,10 +201,24 @@ def equation_dimension_checks(model: Any) -> list[dict[str, Any]]:
 
 
 def merge_dimension_checks(validation: dict[str, Any], model: Any) -> dict[str, Any]:
-    """Merge equation checks into validation without hiding prior results."""
+    """Merge equation checks into validation without hiding prior results.
+
+    An exception raised while deriving dimensions (an unparseable unit, for
+    instance) is recorded as a FAIL check rather than propagated. A caller that
+    is about to execute the model needs one verdict, not a crash whose severity
+    it cannot see; ``status`` is the fail-closed one, so a malformed unit blocks
+    the run instead of slipping past it.
+    """
     out = dict(validation)
     checks = list(out.get("checks", []))
-    equation_checks = equation_dimension_checks(model)
+    try:
+        equation_checks = equation_dimension_checks(model)
+    except Exception as exc:
+        equation_checks = [{
+            "name": "equation_dimension_engine",
+            "status": "FAIL",
+            "detail": f"{type(exc).__name__}: {exc}",
+        }]
     checks.extend(equation_checks)
     out["checks"] = checks
     if any(item.get("status") == "FAIL" for item in equation_checks):

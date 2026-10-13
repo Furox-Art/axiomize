@@ -2,6 +2,15 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.14.0] - 2026-10-12
+### Housekeeping — audit hardening
+
+- Closes the findings of the full-repository audit: patched the concrete
+  defects (correctness, fail-closed behaviour, platform independence),
+  wired every standalone guard into CI, removed dead or duplicated code
+  paths, and pinned every doc claim to a test so it cannot silently
+  drift again. Regression tests fail without the corresponding fix.
+
 ## [1.13.1] - 2026-10-12
 
 Housekeeping release. Publishes the post-1.13.0 repository state (ruff and mypy
@@ -10,10 +19,93 @@ registries were one commit behind `main`. No behavioural change.
 
 ## Unreleased
 
-Documentation only, against the live `1.12.5` release. No version bump, no publish, no tag. The
-provenance statements below were verified against the registries on 2026-10-04 rather than assumed.
+No version bump, no publish, no tag. The documentation-provenance entries at the bottom of this
+section were verified against the live `1.12.5` release on 2026-10-04 rather than assumed; the
+audit-hardening entries above them are code changes with regression coverage.
 
 ### Fixed
+
+- **`simulate_model` could execute a Model IR that had failed its own dimensional checks.** The
+  core executor and the public facade ran `model.validate_structure()` only, so a model whose
+  declared units or declared-vs-actual equation dimensions disagreed simulated and returned
+  numbers, while the `validate`/`fit`/`compare` services refused to touch it. Execution is now a
+  closed gate: `require_dimensional_consistency` runs the same `validate_model` +
+  `merge_dimension_checks` validation and raises
+  `axiomize.dimensional_engine.ModelDimensionMismatch`, carrying the full validation payload and
+  the failing checks. An unparseable unit is now recorded as a FAIL check by
+  `merge_dimension_checks` instead of letting the dimensional parser exception escape, so an
+  unknown unit also fails closed with a renderable verdict
+- **the deterministic domain and model-family hinting matched lexicon terms as raw
+  substrings.** `ecosystem` counted as `system` (ecology problems hinted as engineering),
+  `enforced`/`reinforced` as `force` (physics), `graph theory` as `ph ` (chemistry, via the
+  trailing-space hack in the chemistry lexicon), `generic` as `gene` (biology) and `prioritize`
+  as `prior` (Bayesian family). Matching is now token-anchored through `term_present`, with
+  short-suffix inflections (`systems`, `forced`, `fields`) and declared long stems (`oscillat`,
+  `epidem`) still matching; multi-word and compound phrases (`coupled physics`, `agent-based`)
+  remain literal. The `ph ` lexicon entry is gone; real chemistry vocabulary replaces it
+- **`--workers` bounds were only rejected inside the job body.** Zero, negative and absurd
+  values surfaced as an opaque `ProcessPoolExecutor` error far from the flag that caused them.
+  Worker counts are now resolved and bounded once at config load, numeric strings and
+  non-integral floats are refused rather than silently reinterpreted by `int()`, and
+  `_dispatch_workers` clamps the batch size so an empty batch can never hand 0 to the pool
+- **the release workflow only ever preserved artifacts from the Linux runner.**
+  `platform-smoke` built a wheel on Ubuntu, Windows and macOS, smoked it and threw it away, so a
+  Windows packaging regression had no artifact to point at. The job now asserts its wheel exists
+  (`if-no-files-found: error`) and uploads it per runner as `platform-wheel-<runner>`. Those
+  artifacts are deliberately separate from preflight's `python-package-distributions`, which
+  remains the only source the `publish` job consumes, so the published bytes are unchanged
+- **`.github/scripts/check_provenance_claims.py` was registered in `ci.yml` but not in the
+  release workflow.** A release could publish a version whose documented provenance state
+  contradicted the live registries. It now runs in `release.yml` beside
+  `check_release_contract.py`, in both the `preflight` and `platform-smoke` jobs
+
+### Security
+
+- The REST status mapping was audited and left as is, with the invariant now pinned by tests: a
+  request that fails authentication is `401` with `{"error": "unauthorized"}`, and the same
+  missing run is `404` with `{"error": "run not found or failed integrity checks"}` for an
+  authorized caller. A missing record can no longer be confused with an auth failure in either
+  direction
+
+### Docs
+
+- `docs/portable-export.md` states and asserts the numeric round-trip contract: `repr` of a
+  Python float is the shortest round-tripping decimal, so SBML attributes, CellML/Modelica
+  literals, the JSON payload and the notebook's embedded IR all read back to the identical
+  `float`, and the SBML annotation carries the units verbatim. A re-serialization that formats
+  to fewer digits fails the suite instead of shipping quieter numbers
+- `README.md` states that execution refuses a model that fails its dimensional checks, and that
+  exported values and units round-trip bit-exactly
+
+### Verified (no change needed)
+
+Audited and confirmed correct against the current codebase. The recorded status is the finding's,
+so a future re-audit re-checks rather than re-fixes.
+
+- **SBML/CellML numeric precision round-trip.** The audit's file references
+  (`export.py`, `parse_engine_core.py`) do not exist in this repository and there is no SBML
+  import path to half-round-trip, so there is no export/parse pair that could lose precision.
+  The export adapters that do exist use `repr(float(...))`, which is bit-lossless, and the
+  round-trip is now asserted
+- **H1 (calibration nested objective provenance), H3 (`mutation_order` classification),
+  H4 (`projects.py` swallowed `logger.warning`), M1 (`model_weighting` applicability),
+  M2 (`load_model` colab path), L2 (`version_tags` shadow search).** None of those symbols or
+  files exist in this repository. The L2-class defect that *is* present — substring matching in
+  the deterministic domain/family hinting — is fixed above and includes the substring test the
+  finding asked for
+- **M4 (research auth token leaking 404).** `rest_server.py` already returns 401 only for an
+  authentication failure and 404 with a stable body for a missing record; tests now pin both
+- **M5 (heatmap batch worker validation).** There is no parallel heatmap batch in this
+  repository. The worker-count validation that does exist (`parallel_sweep.py`) was bounded at
+  the wrong level and untested; that part is fixed above
+- **M7 (Windows packaging).** Windows already ran the wheel build and the full installed CLI
+  smoke; the gap was that it produced no preserved artifact. Fixed above
+
+No security claim was weakened. The dimensional gate makes the core product claim stricter,
+not looser, and the ratchet improved: mypy 34 errors (baseline 35), coverage 71.6 % (baseline
+69.4 %).
+
+### Fixed (documentation provenance, 2026-10-04)
 
 - the provenance documentation was pinned to `1.12.4` while `1.12.5` is the live release on both
   PyPI and npm. `README.md`, `SECURITY.md` and `docs/documentation.md` now state `1.12.5`

@@ -30,6 +30,18 @@ quickstart returns `ADAPTER_REQUIRED` with `unsupported_units: ["person", "perso
 the portable IR alongside, so nothing is lost: CellML has no quantity kind for a count of
 people, and Axiomize declines to invent one.
 
+## Numeric round-trip is exact
+
+Every value an export adapter writes is serialised with `repr()` of the Python float, which
+is the shortest decimal that reads back to the identical `float`, and every unit is carried
+through verbatim. The contract is asserted, not assumed: for a model holding `5e-324` and
+`0.1234567890123456789`, the SBML `initialConcentration` / `value` attributes, the CellML
+`initial_value` attributes, the Modelica literals, the JSON payload and the Model IR embedded
+in the rerunnable notebook are all parsed back and compared bit-exactly, and the SBML
+annotation's `variable_units` / `parameter_units` are compared against the model. A
+re-serialization that formatted to fewer digits — `%.6g`, a rounded `str(float)`, a `float32`
+intermediate — fails that test instead of shipping quieter numbers.
+
 Example request:
 
 ```json

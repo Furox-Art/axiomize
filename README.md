@@ -16,7 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.13.1** on PyPI and npm.
+Current package line: **1.14.0** on PyPI and npm.
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
 Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
@@ -280,12 +280,16 @@ is repeated at the top of this README for clients that scrape it.
 ## What it actually does
 
 - Validates dimensional consistency, so you cannot add meters to seconds
+- Refuses to simulate a model that fails those checks: execution goes through the same
+  validation as `axiomize model --action validate`, and a mismatch raises
+  `ModelDimensionMismatch` carrying the failing checks instead of returning numbers
 - Enforces scientific constraints as named, justified checks rather than prose
 - Separates numerical error from stochastic variability before claiming convergence
 - Compares candidate model families and records why one was chosen
 - Exports to JSON, Python, YAML, notebooks, SBML Level 3, CellML 2.0, Modelica, GraphML,
   Graphviz DOT and a SHA-256 portable bundle; see the [format table](#model-export-formats)
-  for which of those are conditional
+  for which of those are conditional. Values and units round-trip bit-exactly, and that is
+  asserted in the suite rather than assumed
 - Converts written reports to LaTeX via `axiomize-to-latex`, which is a separate path
 - Keeps an integrity-checked run ledger, so a stored result can be verified before use
 
