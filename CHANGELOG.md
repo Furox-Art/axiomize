@@ -2,6 +2,23 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.14.1] - 2026-10-13
+
+### Correctness
+
+- K-1 follow-up: the gate added to `simulate_model` sat on the public wrapper,
+  while `fit_ode_model` (and the nested solve/optimize/calibrate closures)
+  route through `_simulate_ode` directly. A model with inconsistent units
+  could therefore still be fitted and simulated by value through the internal
+  executor. The gate now lives on the executor itself, so every caller is
+  covered; `tests/test_audit_hardening_1131.py` pins it at the ODE-fit level
+  too.
+
+### Housekeeping
+
+- `POST /runs/<id>/reproduce` answered an unloadable run with an unhandled
+  `OSError` (a 500), while `GET /runs/<id>` answered 404. Same mapping now.
+
 ## [1.14.0] - 2026-10-12
 ### Housekeeping — audit hardening
 

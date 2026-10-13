@@ -424,6 +424,11 @@ def _simulate_ode(model: ModelIR, *, t_span: tuple[float, float], points: int,
                   parameter_overrides: dict[str, float] | None) -> dict[str, Any]:
     from scipy.integrate import solve_ivp
 
+    # The dimensional gate belongs on the executor, not only on the public
+    # simulate_model: every internal caller (fit_ode_model, nested
+    # solve/optimize/calibrate closures) routes through here, and a model with
+    # inconsistent units must not be able to run via any of them.
+    require_dimensional_consistency(model)
     pvals = _parameter_values(model, parameter_overrides)
     names, rhs = _compile_ode(model, pvals)
     by_name = {v.name: v for v in model.variables}

@@ -265,7 +265,14 @@ class Handler(BaseHTTPRequestHandler):
                 _send(self, 200, services.uncertainty_service(payload))
             elif path.startswith("/runs/") and path.endswith("/reproduce"):
                 run_id = path[len("/runs/"):-len("/reproduce")]
-                run = self._load_run(run_id)
+                # Same 404 contract as GET /runs/<id> above: a run that cannot
+                # be loaded (missing file, failed integrity) is a client-visible
+                # "not found", not an unhandled OSError that surfaces as a 500.
+                try:
+                    run = self._load_run(run_id)
+                except (OSError, ValueError):
+                    _send(self, 404, {"error": "run not found or failed integrity checks"})
+                    return
                 _send(self, 200, {"input_hash": run.input_hash(), "results": run.results})
             else:
                 _send(self, 404, {"error": "unknown route"})
