@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -236,3 +237,165 @@ def test_dispatch_worker_count_is_never_zero() -> None:
     # An empty batch must not hand 0 to ProcessPoolExecutor.
     assert module._dispatch_workers(8, 0) == 1
     assert module._dispatch_workers(8, -3) == 1
+
+
+# ---------------------------------------------------------------------------
+# M-7 / M-10: the release workflow must not carry a silent packaging gap, and
+# the provenance guard must stay wired in beside the other version guards
+# ---------------------------------------------------------------------------
+
+
+def _workflow(name: str) -> dict:
+    import yaml
+
+    return yaml.safe_load((ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8"))
+
+
+def test_windows_runner_produces_a_preserved_packaging_artifact() -> None:
+    """Windows must not be a build-and-discard-only platform in the release path."""
+    release = _workflow("release.yml")
+    jobs = release["jobs"]
+    # The matrix of platform jobs must cover Windows explicitly.
+    matrix_os = [
+        job.get("strategy", {}).get("matrix", {}).get("os")
+        for job in jobs.values()
+        if isinstance(job, dict) and isinstance(job.get("strategy", {}).get("matrix", {}), dict)
+    ]
+    assert ["ubuntu-latest", "windows-latest", "macos-latest"] in matrix_os
+    # And the platform job must keep the wheel it built instead of discarding it.
+    platform_job = jobs["platform-smoke"]
+    uploads = [
+        step for step in platform_job["steps"]
+        if str(step.get("uses", "")).startswith("actions/upload-artifact")
+    ]
+    assert uploads, "the platform-smoke job builds a wheel on every OS and preserves none"
+    for step in uploads:
+        assert step["with"]["if-no-files-found"] == "error"
+        assert step["with"]["path"] == "dist/*.whl"
+        assert "matrix.os" in step["with"]["name"]
+
+
+@pytest.mark.parametrize("workflow", ["ci.yml", "release.yml"])
+def test_provenance_claim_guard_is_registered_beside_the_version_guards(workflow: str) -> None:
+    """An unregistered guard cannot fail on drift, so registration is asserted."""
+    document = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+    assert "check_provenance_claims.py" in document
+    assert ".github/scripts/check_release_contract.py" in document
+
+
+# ---------------------------------------------------------------------------
+# K-2: exported numbers come back bit-exact, with their units
+# ---------------------------------------------------------------------------
+
+
+def _precision_model() -> ModelIR:
+    """A model whose values are not representable in short decimal form."""
+    return ModelIR.from_dict({
+        "schema_version": "1.0",
+        "name": "precision",
+        "domain": "physics",
+        "family": "ode",
+        "independent_variable": "t",
+        "independent_unit": "day",
+        "variables": [
+            {"name": "x", "unit": "dimensionless", "initial": 0.1234567890123456789},
+            {"name": "tiny", "unit": "1/day", "initial": 5e-324},
+        ],
+        "parameters": [
+            {"name": "k", "unit": "1/day", "value": 3.141592653589793238462643383279},
+            {"name": "floor", "unit": "1/day", "value": 1e-300},
+        ],
+        "equations": [
+            {"target": "x", "expression": "-k*x", "kind": "derivative"},
+            {"target": "tiny", "expression": "-floor*tiny", "kind": "derivative"},
+        ],
+    })
+
+
+def test_sbml_export_round_trips_values_and_units_losslessly() -> None:
+    """Every exported number must parse back to the identical float.
+
+    ``repr`` of a Python float is the shortest round-tripping decimal, so the
+    SBML ``initialConcentration``/``value`` attributes and the units carried in
+    the axiomize annotation are read back and compared bit-exactly. A
+    re-serialization that formats to fewer digits would break here.
+    """
+    model = _precision_model()
+    out = export_model(model, format="sbml-l3v2")
+    assert out["status"] == "PASS"
+    root = ET.fromstring(out["content"].split("\n", 1)[1])
+    sbml_ns = "{http://www.sbml.org/sbml/level3/version2/core}"
+    axiomize_ns = "{https://github.com/Furox-Art/axiomize/model-ir}"
+
+    by_id = {
+        element.get("id"): element.get("initialConcentration")
+        for element in root.iter(f"{sbml_ns}species")
+    }
+    for variable in model.variables:
+        assert float(by_id[variable.name]) == float(variable.initial)
+
+    by_param_id = {
+        element.get("id"): element.get("value")
+        for element in root.iter(f"{sbml_ns}parameter")
+    }
+    for parameter in model.parameters:
+        assert float(by_param_id[parameter.name]) == float(parameter.value)
+
+    annotation = json.loads(root.find(f".//{axiomize_ns}modelIR").text)
+    assert annotation["independent_unit"] == model.independent_unit
+    assert annotation["variable_units"] == {v.name: v.unit for v in model.variables}
+    assert annotation["parameter_units"] == {p.name: p.unit for p in model.parameters}
+
+
+def test_cellml_and_modelica_export_round_trip_values_losslessly() -> None:
+    model = _precision_model()
+    for fmt in ("cellml-2.0", "modelica-3.6"):
+        out = export_model(model, format=fmt)
+        assert out["status"] == "PASS", (fmt, out)
+        content = out["content"]
+        for parameter in model.parameters:
+            assert repr(float(parameter.value)) in content, (fmt, parameter.name)
+        for variable in model.variables:
+            assert repr(float(variable.initial)) in content, (fmt, variable.name)
+
+
+def test_json_export_round_trip_is_bit_exact() -> None:
+    model = _precision_model()
+    content = export_model(model, format="json")["content"]
+    restored = ModelIR.from_dict(json.loads(content))
+    assert [v.initial for v in restored.variables] == [v.initial for v in model.variables]
+    assert [p.value for p in restored.parameters] == [p.value for p in model.parameters]
+
+
+def test_notebook_export_round_trips_the_model_it_claims_to() -> None:
+    """The rerunnable notebook must reconstruct the exact same Model IR."""
+    import ast
+
+    model = _precision_model()
+    out = export_model(model, format="notebook")
+    notebook = out["notebook"]
+    # ``content`` is the published artifact; it must describe the same notebook
+    # object the caller was handed, including the compat alias.
+    assert out["content"] == json.dumps(notebook, indent=2)
+
+    source = "".join(notebook["cells"][1]["source"])
+
+    def _is_json_loads(call: ast.Call) -> bool:
+        func = call.func
+        return (
+            isinstance(func, ast.Attribute)
+            and func.attr == "loads"
+            and isinstance(func.value, ast.Name)
+            and func.value.id == "json"
+        )
+
+    literals = [
+        ast.literal_eval(node.args[0])
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call) and _is_json_loads(node)
+    ]
+    assert literals, "notebook does not embed a literal Model IR payload"
+    restored = ModelIR.from_dict(json.loads(literals[0]))
+    assert [v.initial for v in restored.variables] == [v.initial for v in model.variables]
+    assert [p.value for p in restored.parameters] == [p.value for p in model.parameters]
+    assert restored.to_dict() == model.to_dict()

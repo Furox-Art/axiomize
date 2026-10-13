@@ -36,6 +36,13 @@ jobs:
           python-version: "3.11"
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
+      - name: Verify documented provenance claims against the live registries
+        # The provenance guard belongs beside the other version guards in the
+        # release workflow, not only in CI. A release publishes a version whose
+        # documented provenance state must still match the registries, and a
+        # registry that cannot be reached fails here rather than silently
+        # green-lighting the claim.
+        run: python .github/scripts/check_provenance_claims.py
       - name: Resolve package metadata
         id: meta
         shell: bash
@@ -322,6 +329,11 @@ jobs:
         run: python .github/scripts/check_release_contract.py
       - name: Enforce npm package contract
         run: python .github/scripts/npm_release_contract.py
+      - name: Verify documented provenance claims against the live registries
+        # Registered here beside the other version guards so a release cannot
+        # publish a version whose documented provenance state the registry
+        # contradicts. A network failure fails this step; it never skips.
+        run: python .github/scripts/check_provenance_claims.py
       - name: Build exact wheel
         # build is pinned here too, for the same reason as in preflight: the
         # wheel these jobs install and smoke must be byte-identical to the one
@@ -333,6 +345,28 @@ jobs:
           python -m build --wheel
       - name: Install and smoke real wheel + CLI
         run: python .github/scripts/platform_wheel_cli_smoke.py --wheel-dir dist
+      - name: Assert the platform wheel was produced
+        # A runner that silently produced no wheel would otherwise leave this job
+        # green with nothing to show. `python -m build` can exit 0 without the
+        # expected artifact when the backend filters it out.
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$(ls dist/*.whl 2>/dev/null)" || { echo "::error::no wheel in dist/ on ${{ matrix.os }}"; exit 1; }
+          ls -l dist/
+      - name: Preserve the platform packaging artifact
+        # The published distributions come from preflight (Linux). Uploading the
+        # wheel each runner built closes the silent Windows gap: the Windows
+        # packaging path now produces an inspectable artifact instead of being
+        # asserted only through the smoke run and then discarded. These artifacts
+        # are deliberately NOT what `publish` uploads to PyPI; `publish` still
+        # consumes only preflight's `python-package-distributions`.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: platform-wheel-${{ matrix.os }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 30
 
   publish:
     needs: [preflight, platform-smoke, npm-package]
