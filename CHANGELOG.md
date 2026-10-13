@@ -2,7 +2,7 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
-## 1.14.0 — Audit hardening: dimensional gate in simulate
+## [1.14.0] - 2026-10-12
 ### Housekeeping — audit hardening
 
 - Closes the findings of the full-repository audit: patched the concrete
