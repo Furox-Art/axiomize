@@ -14,6 +14,7 @@ from typing import Any
 from axiomize.json_safety import json_safe
 from axiomize.limits import MAX_MCP_MESSAGE_BYTES
 from axiomize.runs.state import RunState, resolve_run_directory
+from axiomize.server.strict_json import loads as strict_json_loads
 
 SERVER_NAME = "axiomize"
 API_VERSION = "v1"
@@ -137,8 +138,8 @@ _LEGACY_TOOL_NAMES = {
 def _call_tool(name: str, arguments: dict[str, Any], *, run_root: str | Path = ".") -> dict[str, Any]:
     from axiomize.application import advanced_services as ads
     from axiomize.application import general_services as gs
-    from axiomize.application import surrogate_services as ss
     from axiomize.application import services
+    from axiomize.application import surrogate_services as ss
     from axiomize.routing.router import classify
 
     if not isinstance(arguments, dict):
@@ -187,6 +188,7 @@ def _call_tool(name: str, arguments: dict[str, Any], *, run_root: str | Path = "
     if name == "axiomize.fit_model":
         if arguments.get("model", "logistic") == "sir" and "N" in arguments:
             import numpy as np
+
             from axiomize.fitting.estimator import fit_sir_curve
             t = np.asarray(arguments["t"], dtype=float); y = np.asarray(arguments["y"], dtype=float)
             return fit_sir_curve(t, y, float(arguments["N"]), float(arguments.get("I0", y[0]))).to_dict()
@@ -275,9 +277,9 @@ def serve_stdio(*, run_root: str | Path = ".") -> None:
             if not raw:
                 continue
             try:
-                message = json.loads(raw.decode("utf-8"))
+                message = strict_json_loads(raw)
                 response = handle_message(message, run_root=root)
-            except (UnicodeError, json.JSONDecodeError):
+            except (UnicodeError, ValueError):
                 response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}}
         sys.stdout.write(json.dumps(json_safe(response), allow_nan=False, separators=(",", ":")) + "\n")
         sys.stdout.flush()

@@ -23,6 +23,7 @@ from urllib.parse import unquote, urlparse
 
 from axiomize.limits import MAX_JSON_BYTES
 from axiomize.runs.state import RunState, resolve_run_directory
+from axiomize.server.strict_json import loads as strict_json_loads
 
 _MAX_CONCURRENT_REQUESTS = 32
 _DEFAULT_CONNECTION_TIMEOUT_S = 30.0
@@ -50,8 +51,8 @@ def _read_json(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
     if len(raw) != length:
         raise ValueError("request body ended before Content-Length bytes were received")
     try:
-        payload = json.loads(raw.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+        payload = strict_json_loads(raw)
+    except (UnicodeError, ValueError) as exc:
         raise ValueError(f"invalid JSON request body: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError("request body must be a JSON object")
