@@ -9,7 +9,8 @@ verification when it re-executes refined models.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -23,11 +24,28 @@ def _relative_errors(reference: np.ndarray, candidate: np.ndarray) -> tuple[floa
     candidate = np.asarray(candidate, dtype=float)
     if reference.shape != candidate.shape:
         raise ValueError(f"refinement comparison shape mismatch: {reference.shape} != {candidate.shape}")
-    diff = candidate - reference
-    abs_l2 = float(np.sqrt(np.mean(diff * diff)))
-    scale = float(np.sqrt(np.mean(reference * reference)))
+    if reference.size == 0 or not np.all(np.isfinite(reference)) or not np.all(np.isfinite(candidate)):
+        raise ValueError("refinement comparison requires non-empty finite arrays")
+    with np.errstate(over="ignore", invalid="ignore"):
+        diff = candidate - reference
+    if not np.all(np.isfinite(diff)):
+        raise ValueError("refinement difference overflowed")
+
+    def rms(values: np.ndarray) -> float:
+        # Directly squaring large-but-finite values can overflow even when
+        # their RMS is representable (e.g., an identical 1e308 reference).
+        largest = float(np.max(np.abs(values)))
+        if largest == 0.0:
+            return 0.0
+        normalized = values / largest
+        return largest * float(np.sqrt(np.mean(normalized * normalized)))
+
+    abs_l2 = rms(diff)
+    scale = rms(reference)
     rel_l2 = abs_l2 / max(scale, np.finfo(float).eps)
     rel_linf = float(np.max(np.abs(diff))) / max(float(np.max(np.abs(reference))), np.finfo(float).eps)
+    if not all(math.isfinite(value) for value in (abs_l2, rel_l2, rel_linf)):
+        raise ValueError("refinement relative errors overflowed")
     return abs_l2, rel_l2, rel_linf
 
 
@@ -154,7 +172,7 @@ def _pde_study(
     comparisons: list[dict[str, Any]] = []
     aggregate_errors: list[float] = []
     refinement_ratios: list[float] = []
-    for coarse, fine in zip(runs, runs[1:]):
+    for coarse, fine in zip(runs, runs[1:]):  # noqa: B905 (adjacent pairs)
         state_errors: dict[str, Any] = {}
         max_rel_l2 = 0.0
         for name in sorted(coarse["states"]):
@@ -264,7 +282,7 @@ def _tolerance_study(
     comparisons: list[dict[str, Any]] = []
     aggregate_errors: list[float] = []
     refinement_ratios: list[float] = []
-    for coarse, fine in zip(runs, runs[1:]):
+    for coarse, fine in zip(runs, runs[1:]):  # noqa: B905 (adjacent pairs)
         state_errors: dict[str, Any] = {}
         max_rel_l2 = 0.0
         for name in sorted(coarse["states"]):

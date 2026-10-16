@@ -7,6 +7,7 @@ and a recommended action.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,7 +34,13 @@ class CrossResult:
 
 def compare_values(primary: float, verification: float, tolerance: float,
                    name: str = "result") -> CrossResult:
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("cross-validation tolerance must be finite and non-negative")
+    if not math.isfinite(primary) or not math.isfinite(verification):
+        raise ValueError("independent method outputs must be finite")
     diff = abs(primary - verification)
+    if not math.isfinite(diff):
+        raise ValueError("cross-validation difference overflowed")
     if diff <= tolerance:
         return CrossResult(ValidationStatus.PASS, primary, verification, diff, [])
     return CrossResult(
