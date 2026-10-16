@@ -34,13 +34,18 @@ class RequestTooLarge(ValueError):
 
 
 def _read_json(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
-    raw_length = handler.headers.get("Content-Length")
-    if raw_length is None:
+    lengths = handler.headers.get_all("Content-Length", [])
+    if handler.headers.get_all("Transfer-Encoding", []) or len(lengths) > 1:
+        raise ValueError("ambiguous or unsupported HTTP request framing")
+    if not lengths:
         return {}
-    try:
-        length = int(raw_length)
-    except ValueError as exc:
-        raise ValueError("invalid Content-Length") from exc
+    raw_length = lengths[0].strip()
+    if not raw_length.isascii() or not raw_length.isdecimal():
+        raise ValueError("invalid Content-Length")
+    # Reject absurd decimal headers before calling int() or allocating.
+    if len(raw_length) > len(str(MAX_JSON_BYTES)):
+        raise RequestTooLarge(f"request body exceeds hard limit of {MAX_JSON_BYTES} bytes")
+    length = int(raw_length)
     if length < 0:
         raise ValueError("Content-Length cannot be negative")
     if length > MAX_JSON_BYTES:
@@ -155,6 +160,17 @@ class Handler(BaseHTTPRequestHandler):
         expected = self._server.auth_token
         if expected is None:
             return True
+        # Different intermediaries may pick different credentials when
+        # duplicate fields or competing authentication channels are used.
+        if (
+            len(self.headers.get_all("Authorization", [])) > 1
+            or len(self.headers.get_all("X-Axiomize-Token", [])) > 1
+            or (
+                self.headers.get("Authorization") is not None
+                and self.headers.get("X-Axiomize-Token") is not None
+            )
+        ):
+            return False
         auth = self.headers.get("Authorization", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else self.headers.get("X-Axiomize-Token", "")
         return bool(supplied) and hmac.compare_digest(str(supplied), expected)
