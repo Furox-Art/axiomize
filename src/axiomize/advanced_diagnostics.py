@@ -22,6 +22,21 @@ from axiomize.general_engine import (
 from axiomize.model_ir import ModelFamily, ModelIR
 
 
+def _finite_scalar(value: Any, name: str, *, non_negative: bool = False) -> float:
+    """Reject non-finite inputs before they can satisfy a scientific gate."""
+    if isinstance(value, (bool, str, bytes)):
+        raise ValueError(f"{name} must be a finite numeric value")
+    try:
+        numeric = float(value)
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a finite numeric value") from exc
+    if not math.isfinite(numeric):
+        raise ValueError(f"{name} must be a finite numeric value")
+    if non_negative and numeric < 0:
+        raise ValueError(f"{name} must be non-negative")
+    return numeric
+
+
 def stopping_decision(
     history: list[float],
     *,
@@ -39,10 +54,10 @@ def stopping_decision(
     successive changes indicate convergence. No criterion is invented when the
     caller has not supplied enough information.
     """
-    if patience < 1:
-        raise ValueError("patience must be at least 1")
-    if relative_tolerance < 0 or absolute_tolerance < 0:
-        raise ValueError("tolerances must be non-negative")
+    if isinstance(patience, bool) or not isinstance(patience, int) or patience < 1:
+        raise ValueError("patience must be an integer at least 1")
+    relative_tolerance = _finite_scalar(relative_tolerance, "relative_tolerance", non_negative=True)
+    absolute_tolerance = _finite_scalar(absolute_tolerance, "absolute_tolerance", non_negative=True)
     values = np.asarray(history, dtype=float)
     if values.ndim != 1 or not np.all(np.isfinite(values)):
         raise ValueError("history must be a finite 1D sequence")
@@ -50,55 +65,68 @@ def stopping_decision(
     checks: list[dict[str, Any]] = []
     converged = False
     if values.size >= patience + 1:
-        previous = values[-patience - 1:-1]
+        previous = values[-patience - 1 : -1]
         current = values[-patience:]
-        delta = np.abs(current - previous)
-        scale = np.maximum(np.abs(previous), np.abs(current))
-        threshold = absolute_tolerance + relative_tolerance * scale
+        with np.errstate(over="ignore", invalid="ignore"):
+            delta = np.abs(current - previous)
+            scale = np.maximum(np.abs(previous), np.abs(current))
+            threshold = absolute_tolerance + relative_tolerance * scale
+        if not np.all(np.isfinite(delta)) or not np.all(np.isfinite(threshold)):
+            raise ValueError("stopping comparison overflowed")
         converged = bool(np.all(delta <= threshold))
-        checks.append({
-            "criterion": "incremental_improvement",
-            "status": "STOP" if converged else "CONTINUE",
-            "patience": int(patience),
-            "max_recent_change": float(np.max(delta)),
-            "max_recent_threshold": float(np.max(threshold)),
-        })
+        checks.append(
+            {
+                "criterion": "incremental_improvement",
+                "status": "STOP" if converged else "CONTINUE",
+                "patience": int(patience),
+                "max_recent_change": float(np.max(delta)),
+                "max_recent_threshold": float(np.max(threshold)),
+            }
+        )
     else:
-        checks.append({
-            "criterion": "incremental_improvement",
-            "status": "INSUFFICIENT_DATA",
-            "required_history": int(patience + 1),
-            "available_history": int(values.size),
-        })
+        checks.append(
+            {
+                "criterion": "incremental_improvement",
+                "status": "INSUFFICIENT_DATA",
+                "required_history": int(patience + 1),
+                "available_history": int(values.size),
+            }
+        )
 
     budget_exhausted = False
     if budget_limit is not None:
         if budget_used is None:
             raise ValueError("budget_used is required when budget_limit is supplied")
+        budget_used = _finite_scalar(budget_used, "budget_used", non_negative=True)
+        budget_limit = _finite_scalar(budget_limit, "budget_limit", non_negative=True)
         if budget_limit <= 0:
             raise ValueError("budget_limit must be positive")
-        budget_exhausted = float(budget_used) >= float(budget_limit)
-        checks.append({
-            "criterion": "compute_budget",
-            "status": "STOP" if budget_exhausted else "CONTINUE",
-            "used": float(budget_used),
-            "limit": float(budget_limit),
-            "fraction": float(budget_used) / float(budget_limit),
-        })
+        budget_exhausted = budget_used >= budget_limit
+        checks.append(
+            {
+                "criterion": "compute_budget",
+                "status": "STOP" if budget_exhausted else "CONTINUE",
+                "used": float(budget_used),
+                "limit": float(budget_limit),
+                "fraction": float(budget_used) / float(budget_limit),
+            }
+        )
 
     uncertainty_sufficient = False
     if uncertainty_target is not None:
         if uncertainty is None:
             raise ValueError("uncertainty is required when uncertainty_target is supplied")
-        if uncertainty_target < 0:
-            raise ValueError("uncertainty_target must be non-negative")
-        uncertainty_sufficient = float(uncertainty) <= float(uncertainty_target)
-        checks.append({
-            "criterion": "uncertainty_target",
-            "status": "STOP" if uncertainty_sufficient else "CONTINUE",
-            "uncertainty": float(uncertainty),
-            "target": float(uncertainty_target),
-        })
+        uncertainty = _finite_scalar(uncertainty, "uncertainty", non_negative=True)
+        uncertainty_target = _finite_scalar(uncertainty_target, "uncertainty_target", non_negative=True)
+        uncertainty_sufficient = uncertainty <= uncertainty_target
+        checks.append(
+            {
+                "criterion": "uncertainty_target",
+                "status": "STOP" if uncertainty_sufficient else "CONTINUE",
+                "uncertainty": float(uncertainty),
+                "target": float(uncertainty_target),
+            }
+        )
 
     stop = converged or budget_exhausted or uncertainty_sufficient
     reasons = [c["criterion"] for c in checks if c["status"] == "STOP"]
@@ -119,33 +147,32 @@ def _sample_parameter(
 ) -> np.ndarray:
     kind = str(spec.get("distribution", spec.get("kind", "normal"))).lower()
     if kind == "normal":
-        mean = float(spec.get("mean", baseline))
+        mean = _finite_scalar(spec.get("mean", baseline), "normal mean")
         if "std" not in spec:
             raise ValueError("normal parameter uncertainty requires std")
-        std = float(spec["std"])
-        if std < 0:
-            raise ValueError("normal std must be non-negative")
+        std = _finite_scalar(spec["std"], "normal std", non_negative=True)
         values = rng.normal(mean, std, size=samples)
     elif kind == "uniform":
         low = spec.get("low")
         high = spec.get("high")
         if low is None or high is None:
             raise ValueError("uniform parameter uncertainty requires low and high")
-        low_f, high_f = float(low), float(high)
+        low_f = _finite_scalar(low, "uniform low")
+        high_f = _finite_scalar(high, "uniform high")
         if high_f <= low_f:
             raise ValueError("uniform high must exceed low")
         values = rng.uniform(low_f, high_f, size=samples)
     elif kind == "fixed":
-        values = np.full(samples, float(spec.get("value", baseline)))
+        values = np.full(samples, _finite_scalar(spec.get("value", baseline), "fixed value"))
     else:
         raise ValueError(f"unsupported uncertainty distribution: {kind}")
 
     if bounds is not None:
         low, high = bounds
         if low is not None:
-            values = np.maximum(values, float(low))
+            values = np.maximum(values, _finite_scalar(low, "parameter lower bound"))
         if high is not None:
-            values = np.minimum(values, float(high))
+            values = np.minimum(values, _finite_scalar(high, "parameter upper bound"))
     return np.asarray(values, dtype=float)
 
 
@@ -176,7 +203,7 @@ def propagate_parameter_uncertainty(
     if samples > 100_000:
         raise ValueError("samples exceeds hard safety limit of 100000")
     q = np.asarray(quantiles, dtype=float)
-    if q.ndim != 1 or q.size == 0 or np.any((q < 0) | (q > 1)):
+    if q.ndim != 1 or q.size == 0 or not np.all(np.isfinite(q)) or np.any((q < 0) | (q > 1)):
         raise ValueError("quantiles must be probabilities in [0, 1]")
 
     cost = estimate_compute(model, action="uncertainty", points=points, samples=samples)
@@ -232,10 +259,7 @@ def propagate_parameter_uncertainty(
         output[state] = {
             "mean": np.mean(matrix, axis=0).tolist(),
             "std": np.std(matrix, axis=0, ddof=1).tolist() if len(arrays) > 1 else np.zeros(matrix.shape[1]).tolist(),
-            "quantiles": {
-                f"q{prob:g}": np.quantile(matrix, prob, axis=0).tolist()
-                for prob in q
-            },
+            "quantiles": {f"q{prob:g}": np.quantile(matrix, prob, axis=0).tolist() for prob in q},
         }
 
     first_time = successful[0].get("time")
@@ -327,31 +351,37 @@ def bifurcation_scan(
         try:
             equilibrium = _equilibrium_for_ode(model, parameter_values=params, guess=previous_guess)
             stability = local_stability(model, state=equilibrium, parameter_overrides={parameter: float(value)})
-            rows.append({
-                "parameter_value": float(value),
-                "status": "PASS",
-                "equilibrium": equilibrium,
-                "stability": stability,
-            })
+            rows.append(
+                {
+                    "parameter_value": float(value),
+                    "status": "PASS",
+                    "equilibrium": equilibrium,
+                    "stability": stability,
+                }
+            )
             previous_guess = equilibrium
         except Exception as exc:
-            rows.append({
-                "parameter_value": float(value),
-                "status": "FAIL",
-                "error": f"{type(exc).__name__}: {exc}",
-            })
+            rows.append(
+                {
+                    "parameter_value": float(value),
+                    "status": "FAIL",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
 
     transitions: list[dict[str, Any]] = []
     successful = [row for row in rows if row["status"] == "PASS"]
-    for left, right in zip(successful, successful[1:]):
+    for left, right in zip(successful, successful[1:], strict=False):
         lvalue = float(left["stability"]["max_real_part"])
         rvalue = float(right["stability"]["max_real_part"])
         if lvalue == 0.0 or rvalue == 0.0 or (lvalue < 0 < rvalue) or (rvalue < 0 < lvalue):
-            transitions.append({
-                "between": [left["parameter_value"], right["parameter_value"]],
-                "max_real_part": [lvalue, rvalue],
-                "classification": "local_stability_transition_candidate",
-            })
+            transitions.append(
+                {
+                    "between": [left["parameter_value"], right["parameter_value"]],
+                    "max_real_part": [lvalue, rvalue],
+                    "classification": "local_stability_transition_candidate",
+                }
+            )
 
     return {
         "status": "PASS" if successful else "FAIL",
