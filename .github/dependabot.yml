@@ -4,6 +4,7 @@ updates:
   # SHA, so a moved tag cannot silently change what CI executes.
   - package-ecosystem: "github-actions"
     directory: "/"
+    open-pull-requests-limit: 2
     schedule:
       interval: "weekly"
     labels:
@@ -26,6 +27,7 @@ updates:
   # so a vulnerable numpy or scipy would never raise a PR.
   - package-ecosystem: "pip"
     directory: "/"
+    open-pull-requests-limit: 2
     schedule:
       interval: "weekly"
     labels:
