@@ -11,6 +11,14 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
+    groups:
+      routine-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Python: requirements-test.txt is the manifest CI installs verbatim, and
   # pyproject.toml declares the runtime dependencies. The previous config
