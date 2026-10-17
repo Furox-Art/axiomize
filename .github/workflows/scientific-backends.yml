@@ -1,0 +1,74 @@
+name: Mandatory real scientific backends
+
+on:
+  push:
+    branches: [main, dev/strict-json-wire-20261017]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-pymc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install the actual PyMC sampler
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . "pymc>=5,<6" pytest
+          python -m pip check
+          python -c "import pymc; print('REAL_PYMC', pymc.__version__)"
+      - name: Run genuine posterior inference, not the unavailable fallback
+        run: python -m pytest -q -rs tests/test_gap1_pymc_jax.py -k "pymc_real_fit_when_installed"
+
+  real-jax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XLA_PYTHON_CLIENT_PREALLOCATE: "false"
+      JAX_PLATFORMS: cpu
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install the actual CPU JAX backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . "jax[cpu]>=0.5,<1" pytest
+          python -m pip check
+          python -c "import jax, jaxlib; print('REAL_JAX', jax.__version__, jaxlib.__version__)"
+      - name: Run isolated real-JAX automatic differentiation
+        run: python -m pytest -q -rs tests/test_gap1_pymc_jax.py -k "jax_real_grad_when_installed"
+
+  real-lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install reproducible Lean 4.30.0 toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL https://elan.lean-lang.org/elan-init.sh -o /tmp/axiomize-elan-init.sh
+          sh /tmp/axiomize-elan-init.sh -y --no-modify-path --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" toolchain install leanprover/lean4:v4.30.0
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0 lean --version
+      - name: Install tested Axiomize implementation
+        run: |
+          python -m pip install -e . pytest
+          python -m pip check
+      - name: Verify true and false theorems using real elaboration
+        run: |
+          python -c "from axiomize.formal.lean_adapter import LeanAdapter; assert LeanAdapter.availability().available, LeanAdapter.availability().reason"
+          python -m pytest -q -rs tests/test_gap2_formal.py -k "true_theorem_proved_by_real_lean or false_theorem_rejected_by_real_lean"

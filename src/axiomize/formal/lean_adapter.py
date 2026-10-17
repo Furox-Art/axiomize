@@ -75,7 +75,17 @@ class LeanAdapter(ScientificTool):
     def _minimal_env(home: str) -> dict[str, str]:
         allowed = {"PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "LC_CTYPE", "TZ"}
         env = {key: value for key, value in os.environ.items() if key in allowed}
-        env.update({"HOME": home, "USERPROFILE": home, "TMPDIR": home, "TEMP": home, "TMP": home})
+        # Elan discovers installed toolchains through ELAN_HOME. The isolated
+        # HOME must not accidentally make the verified compiler disappear or
+        # trigger an unreviewed toolchain download. Expose only this directory,
+        # not the caller's credentials or unrelated home environment.
+        elan_home = os.environ.get("ELAN_HOME")
+        if elan_home is None:
+            elan_home = str(Path.home() / ".elan")
+        env.update({
+            "HOME": home, "USERPROFILE": home, "TMPDIR": home,
+            "TEMP": home, "TMP": home, "ELAN_HOME": elan_home,
+        })
         return env
 
     def execute(self, payload: dict[str, Any]) -> dict[str, Any]:
