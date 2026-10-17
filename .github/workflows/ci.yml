@@ -116,7 +116,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Test suite with coverage
         run: |
-          python -m pytest tests/ -q --cov=axiomize --cov-report=xml --cov-report=term
+          python -m pytest tests/ -q --cov=axiomize --cov-branch --cov-report=xml --cov-report=term-missing
       - name: Ruff and mypy ratchet
         # Ratchet, not a zero-findings gate: fails when lint findings, type
         # errors or coverage get worse than .github/quality-baseline.json.

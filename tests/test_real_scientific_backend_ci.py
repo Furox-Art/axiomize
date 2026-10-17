@@ -26,6 +26,13 @@ def test_optional_backend_ci_has_three_mandatory_real_jobs() -> None:
     assert "continue-on-error: true" not in source
 
 
+def test_main_quality_job_measures_actual_branch_coverage() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    assert "--cov=axiomize --cov-branch --cov-report=xml" in workflow
+    assert "--cov-report=term-missing" in workflow
+    assert "python .github/scripts/quality_ratchet.py" in workflow
+
+
 def test_temporary_lean_home_retains_only_required_toolchain_locator(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
