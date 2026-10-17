@@ -252,9 +252,15 @@ class SolverSpec:
         atol = _finite(payload.get("atol", 1e-9), name="solver.atol")
         if rtol <= 0 or atol <= 0:
             raise ValueError("solver rtol and atol must be positive")
-        max_steps = None if payload.get("max_steps") is None else int(payload["max_steps"])
-        if max_steps is not None and max_steps <= 0:
-            raise ValueError("solver.max_steps must be positive")
+        raw_max_steps = payload.get("max_steps")
+        max_steps = None
+        if raw_max_steps is not None:
+            if isinstance(raw_max_steps, bool):
+                raise ValueError("solver.max_steps must be a positive integer")
+            numeric_steps = _finite(raw_max_steps, name="solver.max_steps")
+            if numeric_steps <= 0 or not numeric_steps.is_integer():
+                raise ValueError("solver.max_steps must be a positive integer")
+            max_steps = int(numeric_steps)
         fallbacks = payload.get("fallbacks", [])
         if not isinstance(fallbacks, (list, tuple)) or len(fallbacks) > 32:
             raise ValueError("solver.fallbacks must be an array with at most 32 entries")
