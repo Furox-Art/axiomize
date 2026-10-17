@@ -142,7 +142,7 @@ show_missing = true
 skip_covered = false
 # Enforced by .github/scripts/quality_ratchet.py against the recorded baseline,
 # so a drop in coverage fails CI instead of going unnoticed.
-fail_under = 88
+fail_under = 89
 
 [tool.ruff]
 line-length = 120

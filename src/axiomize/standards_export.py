@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import xml.etree.ElementTree as ET
+from contextlib import suppress
 from typing import Any
 
 import sympy as sp
@@ -43,14 +44,16 @@ def _symbols(model: ModelIR) -> dict[str, Any]:
 def _math_element(expression: str, symbols: dict[str, Any]) -> ET.Element:
     expr = _sympy_expression(expression, symbols)
     body = sp.printing.mathml(expr, printer="content")
-    return ET.fromstring(f'<math xmlns="{_MATHML_NS}">{body}</math>')
+    # SymPy's content MathML may use mml:msub for underscored symbols.
+    # Bind this prefix explicitly; without it the XML is malformed.
+    return ET.fromstring(
+        f'<math xmlns="{_MATHML_NS}" xmlns:mml="{_MATHML_NS}">{body}</math>'
+    )
 
 
 def _xml_text(root: ET.Element) -> str:
-    try:
+    with suppress(AttributeError):  # Python >=3.10 in supported CI
         ET.indent(root, space="  ")
-    except AttributeError:  # pragma: no cover - Python >=3.10 in supported CI
-        pass
     text = ET.tostring(root, encoding="unicode", xml_declaration=False)
     ET.fromstring(text)
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + text
