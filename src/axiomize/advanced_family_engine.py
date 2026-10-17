@@ -8,48 +8,30 @@ entry.
 
 from __future__ import annotations
 
-import ast
 import math
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
+from axiomize.bayesian.engine_v2 import _log_prior as _log_prior
+from axiomize.bayesian.engine_v2 import infer_bayesian_model as _infer_bayesian
 from axiomize.model_ir import ModelFamily, ModelIR
-
-_ALLOWED_FUNCTIONS = {
-    "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
-    "exp", "log", "sqrt", "Abs", "Min", "Max", "Heaviside",
-}
-
-
-def _validate_expression(expression: str, allowed_names: set[str]) -> None:
-    tree = ast.parse(str(expression), mode="eval")
-    allowed_nodes = (
-        ast.Expression, ast.Constant, ast.Name, ast.Load, ast.BinOp, ast.UnaryOp,
-        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod, ast.USub, ast.UAdd,
-        ast.Call,
-    )
-    for node in ast.walk(tree):
-        if not isinstance(node, allowed_nodes):
-            raise ValueError(f"unsupported expression syntax: {type(node).__name__}")
-        if isinstance(node, ast.Name) and node.id not in allowed_names and node.id not in _ALLOWED_FUNCTIONS:
-            raise ValueError(f"unknown symbol in expression: {node.id}")
-        if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name) or node.func.id not in _ALLOWED_FUNCTIONS:
-                raise ValueError("only approved mathematical functions may be called")
 
 
 def _compile_expression(expression: str, arg_names: list[str]) -> Callable[..., Any]:
+    """Compile using the canonical bounded AST, never legacy sympify."""
     import sympy as sp
 
+    from axiomize.safe_expression import sympy_expression
+
     symbols = {name: sp.Symbol(name, real=True) for name in arg_names}
-    _validate_expression(expression, set(symbols))
-    local_dict: dict[str, Any] = dict(symbols)
-    for name in _ALLOWED_FUNCTIONS:
-        if hasattr(sp, name):
-            local_dict[name] = getattr(sp, name)
-    expr = sp.sympify(expression, locals=local_dict)
-    return sp.lambdify([symbols[name] for name in arg_names], expr, modules=["numpy", "math"])
+    compiled = sympy_expression(str(expression), symbols)
+    return sp.lambdify(
+        [symbols[name] for name in arg_names],
+        compiled,
+        modules=["numpy", "math"],
+    )
 
 
 def _parameter_values(model: ModelIR, overrides: dict[str, float] | None = None) -> dict[str, float]:
@@ -123,11 +105,13 @@ def _finalize(model: ModelIR, result: dict[str, Any], validate_fn: Callable[...,
         result["status"] = "FAIL"
         result["validation"] = {
             "status": "FAIL",
-            "checks": [{
-                "name": "advanced_result_validation",
-                "status": "FAIL",
-                "detail": f"{type(exc).__name__}: {exc}",
-            }],
+            "checks": [
+                {
+                    "name": "advanced_result_validation",
+                    "status": "FAIL",
+                    "detail": f"{type(exc).__name__}: {exc}",
+                }
+            ],
             "scientific_constraints": [],
             "repair_requires_approval": False,
             "repair_proposal": None,
@@ -189,7 +173,9 @@ def simulate_advanced_family(
     return _finalize(model, result, validate_fn)
 
 
-def _compile_local_vector_field(model: ModelIR, parameters: dict[str, float]) -> tuple[list[str], Callable[[float, np.ndarray], np.ndarray]]:
+def _compile_local_vector_field(
+    model: ModelIR, parameters: dict[str, float]
+) -> tuple[list[str], Callable[[float, np.ndarray], np.ndarray]]:
     states = [v for v in model.variables if v.role == "state"]
     names = [v.name for v in states]
     by_target = {e.target: e for e in model.equations if e.kind == "derivative"}
@@ -225,8 +211,9 @@ def _boundary_spec(model: ModelIR, cfg: dict[str, Any], state: str) -> dict[str,
     return {}
 
 
-def _simulate_pde(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                  parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_pde(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del seed
     from scipy.integrate import solve_ivp
 
@@ -307,7 +294,9 @@ def _simulate_pde(model: ModelIR, *, t_span: tuple[float, float], points: int,
             bc = boundary[name]
             left = bc.get("left", {}) if isinstance(bc.get("left", {}), dict) else {}
             right = bc.get("right", {}) if isinstance(bc.get("right", {}), dict) else {}
-            periodic = str(left.get("type", "")).lower() == "periodic" or str(right.get("type", "")).lower() == "periodic"
+            periodic = (
+                str(left.get("type", "")).lower() == "periodic" or str(right.get("type", "")).lower() == "periodic"
+            )
             diff = coeff(diffusion_cfg, name, "diffusion")
             adv = coeff(advection_cfg, name, "advection")
             if diff != 0.0:
@@ -367,7 +356,7 @@ def _simulate_pde(model: ModelIR, *, t_span: tuple[float, float], points: int,
         return {"status": "FAIL", "family": model.family.value, "stage": "pde_solve", "solver_attempts": attempts}
     states: dict[str, Any] = {}
     for index, name in enumerate(state_names):
-        states[name] = solution.y[index * nx:(index + 1) * nx, :].T.tolist()
+        states[name] = solution.y[index * nx : (index + 1) * nx, :].T.tolist()
     return {
         "status": "PASS",
         "family": model.family.value,
@@ -375,7 +364,12 @@ def _simulate_pde(model: ModelIR, *, t_span: tuple[float, float], points: int,
         "coordinates": {str(cfg.get("space_variable", "x")): x.tolist()},
         "states": states,
         "parameters": parameters,
-        "solver": {"backend": "scipy", "method": attempts[-1]["method"], "spatial_method": "method_of_lines", "attempts": attempts},
+        "solver": {
+            "backend": "scipy",
+            "method": attempts[-1]["method"],
+            "spatial_method": "method_of_lines",
+            "attempts": attempts,
+        },
         "diagnostics": {
             "grid_points": nx,
             "dx": dx,
@@ -386,8 +380,9 @@ def _simulate_pde(model: ModelIR, *, t_span: tuple[float, float], points: int,
     }
 
 
-def _simulate_dae(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                  parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_dae(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del seed
     from scipy.integrate import solve_ivp
     from scipy.optimize import root
@@ -448,8 +443,9 @@ def _simulate_dae(model: ModelIR, *, t_span: tuple[float, float], points: int,
     solution = None
     for method in ("BDF", "Radau", "DOP853"):
         try:
-            candidate = solve_ivp(rhs, (t0, t1), y0, t_eval=t_eval, method=method,
-                                  rtol=model.solver.rtol, atol=model.solver.atol)
+            candidate = solve_ivp(
+                rhs, (t0, t1), y0, t_eval=t_eval, method=method, rtol=model.solver.rtol, atol=model.solver.atol
+            )
             attempts.append({"method": method, "success": bool(candidate.success), "message": str(candidate.message)})
             if candidate.success and np.all(np.isfinite(candidate.y)):
                 solution = candidate
@@ -462,7 +458,7 @@ def _simulate_dae(model: ModelIR, *, t_span: tuple[float, float], points: int,
     algebraic_values = np.zeros((len(alg_names), len(solution.t)), dtype=float)
     guess = z0.copy()
     max_residual = 0.0
-    for index, (time_value, y_value) in enumerate(zip(solution.t, solution.y.T)):
+    for index, (time_value, y_value) in enumerate(zip(solution.t, solution.y.T, strict=True)):
         guess, _ = solve_algebraic(float(time_value), y_value, guess)
         algebraic_values[:, index] = guess
         values = [float(time_value), *[float(v) for v in y_value], *[float(v) for v in guess], *pvals]
@@ -476,13 +472,19 @@ def _simulate_dae(model: ModelIR, *, t_span: tuple[float, float], points: int,
         "time": solution.t.tolist(),
         "states": states,
         "parameters": parameters,
-        "solver": {"backend": "scipy", "method": attempts[-1]["method"], "dae_form": "semi_explicit_index_1", "attempts": attempts},
+        "solver": {
+            "backend": "scipy",
+            "method": attempts[-1]["method"],
+            "dae_form": "semi_explicit_index_1",
+            "attempts": attempts,
+        },
         "diagnostics": {"max_algebraic_residual": max_residual, "finite": bool(np.all(np.isfinite(solution.y)))},
     }
 
 
-def _solve_optimization(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                        parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _solve_optimization(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del t_span, points, seed
     from scipy.optimize import minimize
 
@@ -502,7 +504,9 @@ def _solve_optimization(model: ModelIR, *, t_span: tuple[float, float], points: 
     if objective_expression is None:
         objective_equation = next((e for e in model.equations if e.kind == "objective"), None)
         if objective_equation is None:
-            raise ValueError("optimization requires metadata.optimization.objective or an equation with kind='objective'")
+            raise ValueError(
+                "optimization requires metadata.optimization.objective or an equation with kind='objective'"
+            )
         objective_expression = objective_equation.expression
     objective_fn = _compile_expression(str(objective_expression), args)
     sense = str(cfg.get("sense", cfg.get("objective_sense", "minimize"))).lower()
@@ -588,8 +592,9 @@ def _solve_optimization(model: ModelIR, *, t_span: tuple[float, float], points: 
     }
 
 
-def _simulate_control(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                      parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_control(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del seed
     from scipy.signal import lsim
 
@@ -685,13 +690,18 @@ def _simulate_control(model: ModelIR, *, t_span: tuple[float, float], points: in
         "solver": {"backend": "scipy.signal", "method": "state_space_lsim", "closed_loop": feedback is not None},
         "diagnostics": {
             "eigenvalues": [[float(np.real(value)), float(np.imag(value))] for value in eig],
-            "stability": "stable" if np.max(np.real(eig)) < 0 else "unstable" if np.max(np.real(eig)) > 0 else "marginal",
+            "stability": "stable"
+            if np.max(np.real(eig)) < 0
+            else "unstable"
+            if np.max(np.real(eig)) > 0
+            else "marginal",
         },
     }
 
 
-def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                      parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_network(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del seed
     from scipy.integrate import solve_ivp
 
@@ -704,10 +714,7 @@ def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: in
     if raw_nodes is None:
         discovered: list[Any] = []
         for edge in raw_edges:
-            if isinstance(edge, dict):
-                pair = [edge.get("source"), edge.get("target")]
-            else:
-                pair = list(edge[:2])
+            pair = [edge.get("source"), edge.get("target")] if isinstance(edge, dict) else list(edge[:2])
             for node in pair:
                 if node not in discovered:
                     discovered.append(node)
@@ -759,7 +766,10 @@ def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: in
     for sindex, variable in enumerate(state_vars):
         raw = initial_cfg.get(variable.name, variable.initial)
         if isinstance(raw, dict):
-            initial[sindex] = [float(raw.get(str(node), raw.get(node, variable.initial if variable.initial is not None else 0.0))) for node in nodes]
+            initial[sindex] = [
+                float(raw.get(str(node), raw.get(node, variable.initial if variable.initial is not None else 0.0)))
+                for node in nodes
+            ]
         elif isinstance(raw, list):
             values = np.asarray(raw, dtype=float)
             if values.shape != (n,):
@@ -794,8 +804,15 @@ def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: in
     solution = None
     for method in ("DOP853", "RK45", "Radau"):
         try:
-            candidate = solve_ivp(rhs, (t0, t1), initial.reshape(-1), t_eval=t_eval, method=method,
-                                  rtol=model.solver.rtol, atol=model.solver.atol)
+            candidate = solve_ivp(
+                rhs,
+                (t0, t1),
+                initial.reshape(-1),
+                t_eval=t_eval,
+                method=method,
+                rtol=model.solver.rtol,
+                atol=model.solver.atol,
+            )
             attempts.append({"method": method, "success": bool(candidate.success), "message": str(candidate.message)})
             if candidate.success and np.all(np.isfinite(candidate.y)):
                 solution = candidate
@@ -804,10 +821,7 @@ def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: in
             attempts.append({"method": method, "success": False, "message": f"{type(exc).__name__}: {exc}"})
     if solution is None:
         return {"status": "FAIL", "family": model.family.value, "stage": "network_solve", "solver_attempts": attempts}
-    states = {
-        name: solution.y[index * n:(index + 1) * n, :].T.tolist()
-        for index, name in enumerate(names)
-    }
+    states = {name: solution.y[index * n : (index + 1) * n, :].T.tolist() for index, name in enumerate(names)}
     return {
         "status": "PASS",
         "family": model.family.value,
@@ -816,194 +830,21 @@ def _simulate_network(model: ModelIR, *, t_span: tuple[float, float], points: in
         "states": states,
         "parameters": parameters,
         "solver": {"backend": "scipy+networkx-compatible", "method": attempts[-1]["method"], "attempts": attempts},
-        "diagnostics": {"nodes": n, "edges": int(np.count_nonzero(adjacency) if directed else np.count_nonzero(adjacency) // 2), "directed": directed},
-    }
-
-
-def _log_prior(value: float, prior: dict[str, Any] | None, bounds: tuple[float | None, float | None] | None,
-               center: float) -> float:
-    if bounds is not None:
-        low, high = bounds
-        if low is not None and value < float(low):
-            return -math.inf
-        if high is not None and value > float(high):
-            return -math.inf
-    if not prior:
-        scale = max(abs(center), 1.0) * 10.0
-        return -0.5 * ((value - center) / scale) ** 2 - math.log(scale)
-    dist = str(prior.get("dist", prior.get("distribution", "normal"))).lower()
-    if dist == "normal":
-        mu = float(prior.get("mu", prior.get("mean", center)))
-        sigma = float(prior.get("sigma", prior.get("sd", 1.0)))
-        if sigma <= 0:
-            raise ValueError("normal prior sigma must be positive")
-        return -0.5 * ((value - mu) / sigma) ** 2 - math.log(sigma)
-    if dist == "halfnormal":
-        sigma = float(prior.get("sigma", prior.get("sd", 1.0)))
-        if value < 0 or sigma <= 0:
-            return -math.inf
-        return -0.5 * (value / sigma) ** 2 - math.log(sigma)
-    if dist == "uniform":
-        low = float(prior.get("low", prior.get("lower", -math.inf)))
-        high = float(prior.get("high", prior.get("upper", math.inf)))
-        return 0.0 if low <= value <= high else -math.inf
-    if dist == "lognormal":
-        if value <= 0:
-            return -math.inf
-        mu = float(prior.get("mu", 0.0))
-        sigma = float(prior.get("sigma", 1.0))
-        if sigma <= 0:
-            raise ValueError("lognormal prior sigma must be positive")
-        logv = math.log(value)
-        return -0.5 * ((logv - mu) / sigma) ** 2 - math.log(value * sigma)
-    raise ValueError(f"unsupported builtin prior distribution: {dist}")
-
-
-def _infer_bayesian(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                    parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
-    del t_span
-    parameters = _parameter_values(model, parameter_overrides)
-    cfg = model.metadata.get("bayesian", {})
-    if not isinstance(cfg, dict):
-        raise ValueError("metadata.bayesian must be an object")
-    data = cfg.get("data", {})
-    if not isinstance(data, dict):
-        raise ValueError("bayesian.data must be an object")
-    observed_raw = cfg.get("observations", cfg.get("observed"))
-    if observed_raw is None and isinstance(cfg.get("outcome"), str):
-        observed_raw = data.get(str(cfg["outcome"]))
-    if observed_raw is None:
-        raise ValueError("bayesian inference requires observations")
-    observed = np.asarray(observed_raw, dtype=float)
-    if observed.ndim != 1 or observed.size < 2:
-        raise ValueError("bayesian observations must be a 1D array with at least 2 values")
-    mean_expression = cfg.get("mean_expression")
-    if mean_expression is None:
-        equation = next((e for e in model.equations if e.kind in {"likelihood", "observation", "mean"}), None)
-        if equation is None:
-            raise ValueError("bayesian inference requires mean_expression or likelihood/observation equation")
-        mean_expression = equation.expression
-    sampled_parameters = [p for p in model.parameters if p.fit or p.prior is not None]
-    if not sampled_parameters:
-        sampled_parameters = list(model.parameters)
-    if not sampled_parameters:
-        raise ValueError("bayesian inference requires at least one parameter")
-    predictor_names = sorted(k for k in data if k != cfg.get("outcome"))
-    pnames = [p.name for p in model.parameters]
-    args = [*predictor_names, *pnames]
-    mean_fn = _compile_expression(str(mean_expression), args)
-    predictor_values: list[Any] = []
-    for name in predictor_names:
-        array = np.asarray(data[name], dtype=float)
-        if array.ndim == 0:
-            predictor_values.append(float(array))
-        elif array.shape == observed.shape:
-            predictor_values.append(array)
-        else:
-            raise ValueError(f"bayesian.data.{name} must be scalar or match observations")
-    sigma_spec = cfg.get("sigma", 1.0)
-    if isinstance(sigma_spec, str) and sigma_spec not in pnames:
-        raise ValueError("bayesian sigma parameter name is unknown")
-    draws = int(cfg.get("draws", max(200, int(points))))
-    burn = int(cfg.get("burn", max(50, draws // 4)))
-    if draws < 50 or burn < 0 or draws > 200000:
-        raise ValueError("bayesian draws must be in [50, 200000] and burn nonnegative")
-    total = draws + burn
-    current = np.asarray([parameters[p.name] for p in sampled_parameters], dtype=float)
-    proposal_cfg = cfg.get("proposal_scale", {})
-    proposal_scale = np.zeros(len(sampled_parameters), dtype=float)
-    for index, parameter in enumerate(sampled_parameters):
-        if isinstance(proposal_cfg, dict) and parameter.name in proposal_cfg:
-            proposal_scale[index] = float(proposal_cfg[parameter.name])
-        elif isinstance(proposal_cfg, (int, float)):
-            proposal_scale[index] = float(proposal_cfg)
-        elif parameter.prior and str(parameter.prior.get("dist", "normal")).lower() in {"normal", "halfnormal", "lognormal"}:
-            proposal_scale[index] = 0.15 * float(parameter.prior.get("sigma", parameter.prior.get("sd", 1.0)))
-        elif parameter.bounds is not None and parameter.bounds[0] is not None and parameter.bounds[1] is not None:
-            proposal_scale[index] = 0.05 * (float(parameter.bounds[1]) - float(parameter.bounds[0]))
-        else:
-            proposal_scale[index] = 0.1 * max(abs(parameters[parameter.name]), 1.0)
-        proposal_scale[index] = max(proposal_scale[index], 1e-8)
-
-    sampled_index = {parameter.name: index for index, parameter in enumerate(sampled_parameters)}
-
-    def log_posterior(values: np.ndarray) -> float:
-        env = dict(parameters)
-        for parameter in sampled_parameters:
-            env[parameter.name] = float(values[sampled_index[parameter.name]])
-        prior_total = 0.0
-        for parameter in sampled_parameters:
-            lp = _log_prior(
-                env[parameter.name], parameter.prior, parameter.bounds,
-                parameters[parameter.name],
-            )
-            if not math.isfinite(lp):
-                return -math.inf
-            prior_total += lp
-        mean = np.asarray(mean_fn(*predictor_values, *[env[name] for name in pnames]), dtype=float)
-        if mean.ndim == 0:
-            mean = np.full(observed.shape, float(mean))
-        if mean.shape != observed.shape or not np.all(np.isfinite(mean)):
-            return -math.inf
-        sigma = env[sigma_spec] if isinstance(sigma_spec, str) else float(sigma_spec)
-        if sigma <= 0 or not math.isfinite(float(sigma)):
-            return -math.inf
-        residual = observed - mean
-        likelihood = -0.5 * float(np.sum((residual / sigma) ** 2)) - observed.size * math.log(float(sigma))
-        return prior_total + likelihood
-
-    rng = np.random.default_rng(seed)
-    current_lp = log_posterior(current)
-    if not math.isfinite(current_lp):
-        raise ValueError("initial Bayesian parameter values have zero/invalid posterior density")
-    chain = np.zeros((draws, len(sampled_parameters)), dtype=float)
-    accepted = 0
-    kept = 0
-    for iteration in range(total):
-        proposal = current + rng.normal(scale=proposal_scale, size=current.shape)
-        proposed_lp = log_posterior(proposal)
-        if math.isfinite(proposed_lp) and math.log(max(rng.random(), 1e-300)) < proposed_lp - current_lp:
-            current = proposal
-            current_lp = proposed_lp
-            accepted += 1
-        if iteration >= burn:
-            chain[kept] = current
-            kept += 1
-    summaries: dict[str, Any] = {}
-    posterior_parameters = dict(parameters)
-    for index, parameter in enumerate(sampled_parameters):
-        column = chain[:, index]
-        mean = float(np.mean(column))
-        posterior_parameters[parameter.name] = mean
-        summaries[parameter.name] = {
-            "mean": mean,
-            "sd": float(np.std(column, ddof=1)),
-            "q025": float(np.quantile(column, 0.025)),
-            "median": float(np.quantile(column, 0.5)),
-            "q975": float(np.quantile(column, 0.975)),
-        }
-    states = {v.name: float(v.initial) for v in model.variables if v.initial is not None}
-    result: dict[str, Any] = {
-        "status": "PASS",
-        "family": model.family.value,
-        "states": states,
-        "parameters": posterior_parameters,
-        "posterior": summaries,
-        "solver": {"backend": "builtin", "method": "random_walk_metropolis", "seed": int(seed)},
         "diagnostics": {
-            "draws": draws,
-            "burn": burn,
-            "acceptance_rate": float(accepted / total),
-            "finite": bool(np.all(np.isfinite(chain))),
+            "nodes": n,
+            "edges": int(np.count_nonzero(adjacency) if directed else np.count_nonzero(adjacency) // 2),
+            "directed": directed,
         },
     }
-    if bool(cfg.get("return_samples", False)):
-        result["samples"] = {parameter.name: chain[:, index].tolist() for index, parameter in enumerate(sampled_parameters)}
-    return result
 
 
-def _simulate_agent_based(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                          parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+# Historical single-chain implementation duplicated prior-density/inference
+# code but is replaced at package initialization by bounded multi-chain engine.
+# Keep compatibility names tied to the canonical backend so direct imports
+# cannot drift from the real scientific execution path.
+def _simulate_agent_based(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     parameters = _parameter_values(model, parameter_overrides)
     cfg = model.metadata.get("agents", model.metadata.get("agent_based", {}))
     if not isinstance(cfg, dict):
@@ -1054,7 +895,10 @@ def _simulate_agent_based(model: ModelIR, *, t_span: tuple[float, float], points
         means = [float(np.mean(values[index])) for index in range(len(names))]
         old = values.copy()
         for index, name in enumerate(names):
-            evaluated = np.asarray(functions[name](float(time[step - 1]), *[old[j] for j in range(len(names))], *means, *pvals), dtype=float)
+            evaluated = np.asarray(
+                functions[name](float(time[step - 1]), *[old[j] for j in range(len(names))], *means, *pvals),
+                dtype=float,
+            )
             if evaluated.ndim == 0:
                 evaluated = np.full(n_agents, float(evaluated))
             if evaluated.shape != (n_agents,):
@@ -1082,12 +926,17 @@ def _simulate_agent_based(model: ModelIR, *, t_span: tuple[float, float], points
         "states": {name: history[name].tolist() for name in names},
         "parameters": parameters,
         "solver": {"backend": "builtin", "method": "synchronous_agent_loop", "seed": int(seed)},
-        "diagnostics": {"agents": n_agents, "steps": len(time) - 1, "finite": bool(all(np.all(np.isfinite(history[name])) for name in names))},
+        "diagnostics": {
+            "agents": n_agents,
+            "steps": len(time) - 1,
+            "finite": bool(all(np.all(np.isfinite(history[name])) for name in names)),
+        },
     }
 
 
-def _simulate_discrete_event(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                             parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_discrete_event(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     parameters = _parameter_values(model, parameter_overrides)
     cfg = model.metadata.get("discrete_event", model.metadata.get("events", {}))
     if isinstance(cfg, list):
@@ -1162,12 +1011,17 @@ def _simulate_discrete_event(model: ModelIR, *, t_span: tuple[float, float], poi
         "states": {name: history[:, index].tolist() for index, name in enumerate(names)},
         "parameters": parameters,
         "solver": {"backend": "builtin", "method": "gillespie_event_queue", "seed": int(seed)},
-        "diagnostics": {"total_events": total_events, "event_counts": event_counts, "max_events_reached": total_events >= max_events},
+        "diagnostics": {
+            "total_events": total_events,
+            "event_counts": event_counts,
+            "max_events_reached": total_events >= max_events,
+        },
     }
 
 
-def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                     parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _simulate_hybrid(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del seed
     from scipy.integrate import solve_ivp
 
@@ -1201,19 +1055,18 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
         reset_raw = event.get("reset", {})
         if not isinstance(reset_raw, dict):
             raise ValueError("hybrid event reset must be an object")
-        reset = {
-            name: _compile_expression(str(expression), args)
-            for name, expression in reset_raw.items()
-        }
+        reset = {name: _compile_expression(str(expression), args) for name, expression in reset_raw.items()}
         unknown = sorted(set(reset) - set(names))
         if unknown:
             raise ValueError(f"hybrid reset references unknown states: {unknown}")
-        compiled.append({
-            "name": str(event.get("name", f"event_{len(compiled)}")),
-            "function": event_fn,
-            "reset": reset,
-            "direction": float(event.get("direction", 0.0)),
-        })
+        compiled.append(
+            {
+                "name": str(event.get("name", f"event_{len(compiled)}")),
+                "function": event_fn,
+                "reset": reset,
+                "direction": float(event.get("direction", 0.0)),
+            }
+        )
     y = np.asarray([float(v.initial) if v.initial is not None else np.nan for v in state_vars], dtype=float)
     if not np.all(np.isfinite(y)):
         raise ValueError("all hybrid states need finite initial values")
@@ -1226,6 +1079,7 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
     def event_wrapper(item: dict[str, Any]) -> Callable[[float, np.ndarray], float]:
         def fn(t: float, state: np.ndarray) -> float:
             return float(item["function"](float(t), *[float(v) for v in state], *pvals))
+
         fn.terminal = True  # type: ignore[attr-defined]
         fn.direction = item["direction"]  # type: ignore[attr-defined]
         return fn
@@ -1246,7 +1100,12 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
                 events=wrappers if wrappers else None,
             )
             if not solution.success or not np.all(np.isfinite(solution.y)):
-                return {"status": "FAIL", "family": model.family.value, "stage": "hybrid_continuous_solve", "message": str(solution.message)}
+                return {
+                    "status": "FAIL",
+                    "family": model.family.value,
+                    "stage": "hybrid_continuous_solve",
+                    "message": str(solution.message),
+                }
             y = np.asarray(solution.y[:, -1], dtype=float)
             hit_index = None
             hit_time = None
@@ -1267,10 +1126,21 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
             for state_name, reset_fn in item["reset"].items():
                 reset_state[names.index(state_name)] = float(reset_fn(*call_args))
             y = reset_state
-            event_log.append({"name": item["name"], "time": hit_time, "state_after": {name: float(y[j]) for j, name in enumerate(names)}})
+            event_log.append(
+                {
+                    "name": item["name"],
+                    "time": hit_time,
+                    "state_after": {name: float(y[j]) for j, name in enumerate(names)},
+                }
+            )
             events_this_interval += 1
             if events_this_interval >= max_events_per_interval:
-                return {"status": "FAIL", "family": model.family.value, "stage": "hybrid_event_chatter", "detail": "max_events_per_interval reached"}
+                return {
+                    "status": "FAIL",
+                    "family": model.family.value,
+                    "stage": "hybrid_event_chatter",
+                    "detail": "max_events_per_interval reached",
+                }
             epsilon = max(1e-12, (target - float(time[index - 1])) * 1e-10)
             current = min(target, hit_time + epsilon)
         history[index] = y
@@ -1286,8 +1156,9 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
     }
 
 
-def _estimate_causal(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                     parameter_overrides: dict[str, float] | None, seed: int) -> dict[str, Any]:
+def _estimate_causal(
+    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
+) -> dict[str, Any]:
     del t_span, points, seed
     parameters = _parameter_values(model, parameter_overrides)
     cfg = model.metadata.get("causal", {})
@@ -1336,7 +1207,7 @@ def _estimate_causal(model: ModelIR, *, t_span: tuple[float, float], points: int
     beta, *_ = np.linalg.lstsq(X, y, rcond=None)
     residual = y - X @ beta
     dof = max(1, y.size - X.shape[1])
-    sigma2 = float(np.sum(residual ** 2) / dof)
+    sigma2 = float(np.sum(residual**2) / dof)
     covariance = np.linalg.pinv(X.T @ X) * sigma2
     effect = float(beta[1])
     se = float(math.sqrt(max(0.0, covariance[1, 1])))
@@ -1376,9 +1247,15 @@ def _reduction(value: Any, mode: str) -> float:
     return float(np.asarray(array[-1]).mean()) if array.ndim >= 2 else float(array[-1])
 
 
-def _simulate_multiphysics(model: ModelIR, *, t_span: tuple[float, float], points: int,
-                           parameter_overrides: dict[str, float] | None, seed: int,
-                           simulate_fn: Callable[..., dict[str, Any]]) -> dict[str, Any]:
+def _simulate_multiphysics(
+    model: ModelIR,
+    *,
+    t_span: tuple[float, float],
+    points: int,
+    parameter_overrides: dict[str, float] | None,
+    seed: int,
+    simulate_fn: Callable[..., dict[str, Any]],
+) -> dict[str, Any]:
     del parameter_overrides
     cfg = model.metadata.get("multiphysics", {})
     if not isinstance(cfg, dict):
@@ -1459,11 +1336,13 @@ def _simulate_multiphysics(model: ModelIR, *, t_span: tuple[float, float], point
             new_values[key] = value
             old = previous.get(key, overrides[target_component].get(target_parameter, value))
             max_change = max(max_change, abs(value - old))
-            updates.append({
-                "from": f"{source_component}.{source_state}",
-                "to": f"{target_component}.{target_parameter}",
-                "value": value,
-            })
+            updates.append(
+                {
+                    "from": f"{source_component}.{source_state}",
+                    "to": f"{target_component}.{target_parameter}",
+                    "value": value,
+                }
+            )
         for (target_component, target_parameter), value in new_values.items():
             overrides[target_component][target_parameter] = value
         previous = new_values
