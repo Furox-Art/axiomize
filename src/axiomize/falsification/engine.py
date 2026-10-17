@@ -32,12 +32,18 @@ class Falsifier:
         }
 
 
-def evaluate_falsifiers(falsifiers: list[Falsifier],
-                        observations: dict[str, float]) -> dict[str, Any]:
-    results = [f.evaluate(observations[f.observable])
-               for f in falsifiers if f.observable in observations]
+def evaluate_falsifiers(falsifiers: list[Falsifier], observations: dict[str, float]) -> dict[str, Any]:
+    results = [f.evaluate(observations[f.observable]) for f in falsifiers if f.observable in observations]
     failed = [r for r in results if r["status"] == ValidationStatus.FAIL]
     missing = [f.observable for f in falsifiers if f.observable not in observations]
-    return {"results": results,
-            "model_status": ValidationStatus.FAIL if failed else ValidationStatus.PASS,
-            "untested": missing}
+    return {
+        "results": results,
+        "model_status": (
+            ValidationStatus.FAIL
+            if failed
+            else ValidationStatus.UNVERIFIED
+            if missing or not falsifiers
+            else ValidationStatus.PASS
+        ),
+        "untested": missing,
+    }
