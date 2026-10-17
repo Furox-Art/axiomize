@@ -11,7 +11,6 @@ Models:
 
 import argparse
 import math
-import sys
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -184,7 +183,7 @@ def gillespie_sir_once(beta, gamma, I0, N, t_max=180.0, rng=None):
         beta, gamma, I0, N, t_max, stochastic=True
     )
     rng = rng or np.random.default_rng()
-    S, I = N - I0, I0
+    S, I, R = N - I0, I0, 0
     t = 0.0
     peak_I = I0
     # In SIR each person can be infected at most once and recovered at most
@@ -199,18 +198,27 @@ def gillespie_sir_once(beta, gamma, I0, N, t_max=180.0, rng=None):
         total = rate_infection + rate_recovery
         if total <= 0:
             break
-        t += rng.exponential(1.0 / total)
+        wait = float(rng.exponential(1.0 / total))
+        if not math.isfinite(wait) or wait < 0:
+            raise ValueError("invalid Gillespie waiting time")
+        if t + wait > t_max:
+            t = t_max
+            break
+        t += wait
         if rng.random() < rate_infection / total:
             S -= 1
             I += 1
             peak_I = max(peak_I, I)
         else:
             I -= 1
+            R += 1
         events += 1
+    assert S + I + R == N
     return {
         "extinct_early": peak_I <= I0,
         "peak_I": peak_I,
-        "final_R": N - S,
+        "final_R": R,
+        "total_infected": N - S,
         "t_end": t,
         "events": events,
     }
@@ -252,7 +260,9 @@ def report_gillespie(args):
         for _ in range(runs)
     ]
     early_extinct = sum(r["extinct_early"] for r in results)
-    finals = np.array([r["final_R"] for r in results], dtype=float) / N
+    # Cumulative attack size counts active cases as well as recovered cases.
+    finals = np.array([r["total_infected"] for r in results], dtype=float) / N
+    recovered_fractions = np.array([r["final_R"] for r in results], dtype=float) / N
     peaks = np.array([r["peak_I"] for r in results])
     r0 = beta / gamma
     det_final = final_size_theory(beta, gamma)
@@ -265,10 +275,21 @@ def report_gillespie(args):
     print(f"runs                        = {runs}, seed = {args.seed}")
     print(f"P(early fade-out)           = {results_print:.4f}")
     print(f"theory fade-out prob        = {p_fadeout_theory:.4f}   [jump-chain]")
-    print(f"mean final size             = {finals.mean():.4f}  (deterministic theory: {det_final:.4f})")
     print(
-        f"final size 5-95% interval   = "
+        f"mean total infected (N-S)   = {(finals * N).mean():.2f}  "
+        f"({finals.mean():.4f} of N; asymptotic theory: {det_final:.4f})"
+    )
+    print(
+        f"mean recovered (R)          = {(recovered_fractions * N).mean():.2f}  "
+        f"({recovered_fractions.mean():.4f} of N at horizon)"
+    )
+    print(
+        f"total infected 5-95%        = "
         f"[{np.percentile(finals, 5):.4f}, {np.percentile(finals, 95):.4f}]"
+    )
+    print(
+        f"recovered 5-95%             = "
+        f"[{np.percentile(recovered_fractions, 5):.4f}, {np.percentile(recovered_fractions, 95):.4f}]"
     )
     major_mask = ~np.array([r["extinct_early"] for r in results])
     major = finals[major_mask]
@@ -290,6 +311,9 @@ def report_gillespie(args):
     checks = {
         "fade_out_prob_consistent": bool(abs(results_print - p_fadeout_theory) < tol),
         "finals_within_bounds": bool(np.all((finals >= 0) & (finals <= 1))),
+        "recovered_within_total_infected": bool(
+            np.all((recovered_fractions >= 0) & (recovered_fractions <= finals))
+        ),
         "peaks_at_least_initial": bool(np.all(peaks >= I0)),
     }
     print("\n--- sanity checks ---")

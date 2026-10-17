@@ -68,7 +68,7 @@ def _case_07() -> None:
 
 
 def _case_08() -> None:
-    from axiomize.tools.validate import gillespie_sir_once
+    from axiomize.tools.numerical.gillespie import gillespie_sir_once
     rng = np.random.default_rng(9)
     runs = [gillespie_sir_once(0.3, 0.1, 1, 5000, rng=rng) for _ in range(400)]
     observed = sum(item["extinct_early"] for item in runs) / len(runs)
