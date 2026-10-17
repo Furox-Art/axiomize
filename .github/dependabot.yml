@@ -4,6 +4,7 @@ updates:
   # SHA, so a moved tag cannot silently change what CI executes.
   - package-ecosystem: "github-actions"
     directory: "/"
+    open-pull-requests-limit: 2
     schedule:
       interval: "weekly"
     labels:
@@ -11,6 +12,14 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
+    groups:
+      routine-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Python: requirements-test.txt is the manifest CI installs verbatim, and
   # pyproject.toml declares the runtime dependencies. The previous config
@@ -18,6 +27,7 @@ updates:
   # so a vulnerable numpy or scipy would never raise a PR.
   - package-ecosystem: "pip"
     directory: "/"
+    open-pull-requests-limit: 2
     schedule:
       interval: "weekly"
     labels:

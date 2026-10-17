@@ -170,7 +170,7 @@ jobs:
       mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1;
           # Node 20 ships npm 10.x, which cannot do OIDC at all. npm's own
@@ -379,7 +379,7 @@ jobs:
       id-token: write
     steps:
       - name: Download tested distributions
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: python-package-distributions
           path: dist
