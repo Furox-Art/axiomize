@@ -17,6 +17,7 @@ Kurallar:
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -72,8 +73,8 @@ def _coerce_status(value: Any) -> ValidationStatus | None:
     if isinstance(value, str):
         try:
             return ValidationStatus[value.strip().upper()]
-        except KeyError:
-            raise ValueError(f"bilinmeyen status: {value!r}")
+        except KeyError as exc:
+            raise ValueError(f"bilinmeyen status: {value!r}") from exc
     return None
 
 
@@ -105,15 +106,10 @@ def _normalize_evidence(kind: str, value: Any) -> tuple[ValidationStatus, Any]:
             raw = to_dict()
         except Exception:  # noqa: BLE001 - yabanci to_dict() her seyi firlatabilir; hukumsuz saymak icin yutulur
             raw = None
-        if isinstance(raw, Mapping) and raw and any(
-            v for v in raw.values() if v
-        ):
+        if isinstance(raw, Mapping) and raw and any(v for v in raw.values() if v):
             return ValidationStatus.UNVERIFIED, "ham rapor, hukumsuz"
         return ValidationStatus.UNVERIFIED, "bos rapor / veri yok"
-    raise TypeError(
-        f"{kind}: beklenen girdi ValidationStatus, str, dict veya None; "
-        f"alinan {type(value).__name__}"
-    )
+    raise TypeError(f"{kind}: beklenen girdi ValidationStatus, str, dict veya None; alinan {type(value).__name__}")
 
 
 @dataclass(frozen=True)
@@ -144,9 +140,7 @@ class ConfidenceLedger:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "entries": {
-                kind: entry.to_dict() for kind, entry in self.entries.items()
-            },
+            "entries": {kind: entry.to_dict() for kind, entry in self.entries.items()},
             "overall_status": self.overall_status.value,
             "confidence": self.confidence,
             "scored_weight": self.scored_weight,
@@ -161,7 +155,14 @@ def _resolve_weights(
     if weights:
         for raw_kind, weight in weights.items():
             kind = _normalize_kind(str(raw_kind))
-            weight = float(weight)
+            if isinstance(weight, bool):
+                raise ValueError(f"{kind}: agirlik sonlu sayisal deger olmali")
+            try:
+                weight = float(weight)
+            except (ValueError, TypeError, OverflowError) as exc:
+                raise ValueError(f"{kind}: agirlik sonlu sayisal deger olmali") from exc
+            if not math.isfinite(weight):
+                raise ValueError(f"{kind}: agirlik sonlu sayisal deger olmali")
             if weight < 0:
                 raise ValueError(f"{kind}: agirlik negatif olamaz")
             resolved[kind] = weight
@@ -180,10 +181,7 @@ def _overall_status(statuses: dict[str, ValidationStatus]) -> ValidationStatus:
         return ValidationStatus.WARNING
     if all(s is ValidationStatus.PASS for s in values):
         return ValidationStatus.PASS
-    if all(
-        s in (ValidationStatus.TOOL_UNAVAILABLE, ValidationStatus.UNVERIFIED)
-        for s in values
-    ):
+    if all(s in (ValidationStatus.TOOL_UNAVAILABLE, ValidationStatus.UNVERIFIED) for s in values):
         if all(s is ValidationStatus.TOOL_UNAVAILABLE for s in values):
             return ValidationStatus.TOOL_UNAVAILABLE
         return ValidationStatus.UNVERIFIED
@@ -235,9 +233,7 @@ def build_ledger(
         if score is not None:
             weighted_sum += score * weight
             scored_weight += weight
-        entries[kind] = LedgerEntry(
-            kind=kind, status=status, weight=weight, score=score, detail=detail
-        )
+        entries[kind] = LedgerEntry(kind=kind, status=status, weight=weight, score=score, detail=detail)
 
     confidence = (weighted_sum / scored_weight) if scored_weight > 0 else 0.0
     overall = _overall_status({kind: e.status for kind, e in entries.items()})

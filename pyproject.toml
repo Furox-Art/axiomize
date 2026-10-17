@@ -128,7 +128,7 @@ addopts = "--strict-markers --strict-config -ra"
 testpaths = ["tests"]
 
 [tool.coverage.run]
-branch = false
+branch = true
 source = ["axiomize"]
 # The editable-install layout force-includes skills/axiomize/tools into the
 # wheel; measure the package the tests import.
@@ -142,7 +142,7 @@ show_missing = true
 skip_covered = false
 # Enforced by .github/scripts/quality_ratchet.py against the recorded baseline,
 # so a drop in coverage fails CI instead of going unnoticed.
-fail_under = 69
+fail_under = 73
 
 [tool.ruff]
 line-length = 120
