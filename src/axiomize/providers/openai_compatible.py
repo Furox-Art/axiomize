@@ -43,13 +43,30 @@ def _validate_base_url(value: str) -> str:
     return normalized
 
 
+def _reject_nonfinite_json_constant(value: str) -> None:
+    """Reject nonstandard JSON NaN/Infinity rather than trusting model output."""
+    raise ValueError(f"non-finite JSON constant is forbidden: {value}")
+
+
+def _finite_json_float(value: str) -> float:
+    """Reject syntactically valid exponents that overflow to infinity."""
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError("JSON floating-point number must be finite")
+    return number
+
+
 def _read_json_response(resp: Any) -> dict[str, Any]:
     raw = resp.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
     if len(raw) > MAX_PROVIDER_RESPONSE_BYTES:
         raise ValueError(f"provider response exceeds hard limit of {MAX_PROVIDER_RESPONSE_BYTES} bytes")
     try:
-        payload = json.loads(raw.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+        payload = json.loads(
+            raw.decode("utf-8"),
+            parse_constant=_reject_nonfinite_json_constant,
+            parse_float=_finite_json_float,
+        )
+    except (UnicodeError, ValueError) as exc:
         raise ValueError(f"provider returned invalid JSON: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError("provider response must be a JSON object")
@@ -63,8 +80,7 @@ class OpenAICompatibleProvider(ModelProvider):
     supports_tools = True
     supports_structured_output = True
 
-    def __init__(self, base_url: str, model: str = "default", api_key: str = "",
-                 timeout_s: float = 30.0) -> None:
+    def __init__(self, base_url: str, model: str = "default", api_key: str = "", timeout_s: float = 30.0) -> None:
         self.base_url = _validate_base_url(base_url)
         self.model = str(model)
         if not self.model or len(self.model) > 512:
@@ -108,10 +124,13 @@ class OpenAICompatibleProvider(ModelProvider):
     def generate(self, prompt: str) -> str:
         if not isinstance(prompt, str):
             raise ValueError("prompt must be a string")
-        body = self._post("/chat/completions", {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-        })
+        body = self._post(
+            "/chat/completions",
+            {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
         try:
             content = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
@@ -121,15 +140,22 @@ class OpenAICompatibleProvider(ModelProvider):
     def generate_structured(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(prompt, str) or not isinstance(schema, dict):
             raise ValueError("prompt must be a string and schema must be an object")
-        body = self._post("/chat/completions", {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {"type": "json_schema", "json_schema": {"name": "axiomize", "schema": schema}},
-        })
+        body = self._post(
+            "/chat/completions",
+            {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_schema", "json_schema": {"name": "axiomize", "schema": schema}},
+            },
+        )
         try:
             content = body["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+            parsed = json.loads(
+                content,
+                parse_constant=_reject_nonfinite_json_constant,
+                parse_float=_finite_json_float,
+            )
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise ValueError("provider did not return valid structured JSON content") from exc
         if not isinstance(parsed, dict):
             raise ValueError("structured provider output must be a JSON object")
