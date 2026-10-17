@@ -16,6 +16,7 @@ import numpy as np
 
 from axiomize.bayesian.engine_v2 import _log_prior as _log_prior
 from axiomize.bayesian.engine_v2 import infer_bayesian_model as _infer_bayesian
+from axiomize.causal_engine import estimate_causal_model as _estimate_causal
 from axiomize.model_ir import ModelFamily, ModelIR
 
 
@@ -1153,82 +1154,6 @@ def _simulate_hybrid(
         "events": event_log,
         "solver": {"backend": "scipy+builtin", "method": "event_driven_piecewise_ode"},
         "diagnostics": {"event_count": len(event_log), "finite": bool(np.all(np.isfinite(history)))},
-    }
-
-
-def _estimate_causal(
-    model: ModelIR, *, t_span: tuple[float, float], points: int, parameter_overrides: dict[str, float] | None, seed: int
-) -> dict[str, Any]:
-    del t_span, points, seed
-    parameters = _parameter_values(model, parameter_overrides)
-    cfg = model.metadata.get("causal", {})
-    if not isinstance(cfg, dict):
-        raise ValueError("metadata.causal must be an object")
-    identification = cfg.get("identification", model.metadata.get("causal_identification", {}))
-    if not isinstance(identification, dict):
-        identification = {}
-    adjustment = identification.get("adjustment_set", cfg.get("covariates", []))
-    if not isinstance(adjustment, list):
-        raise ValueError("causal adjustment_set/covariates must be an array")
-    identified = bool(
-        identification.get("randomized")
-        or identification.get("intervention")
-        or identification.get("identified_dag")
-        or (adjustment and identification.get("assumptions"))
-    )
-    if not identified:
-        return {
-            "status": "INSUFFICIENT_CAUSAL_EVIDENCE",
-            "family": model.family.value,
-            "detail": "causal conclusion cannot be drawn: provide randomization/intervention evidence or an identified DAG/adjustment set with assumptions",
-        }
-    data = cfg.get("data", {})
-    if not isinstance(data, dict):
-        raise ValueError("causal.data must be an object")
-    treatment = str(cfg.get("treatment", ""))
-    outcome = str(cfg.get("outcome", ""))
-    if not treatment or not outcome or treatment not in data or outcome not in data:
-        raise ValueError("causal model requires treatment/outcome names present in data")
-    y = np.asarray(data[outcome], dtype=float)
-    treatment_values = np.asarray(data[treatment], dtype=float)
-    if y.ndim != 1 or treatment_values.shape != y.shape or y.size < 3:
-        raise ValueError("causal treatment/outcome arrays must be same-length 1D arrays with at least 3 rows")
-    columns = [np.ones_like(y), treatment_values]
-    labels = ["intercept", treatment]
-    for name in adjustment:
-        if name not in data:
-            raise ValueError(f"causal adjustment variable {name!r} missing from data")
-        values = np.asarray(data[name], dtype=float)
-        if values.shape != y.shape:
-            raise ValueError(f"causal covariate {name!r} length mismatch")
-        columns.append(values)
-        labels.append(str(name))
-    X = np.column_stack(columns)
-    beta, *_ = np.linalg.lstsq(X, y, rcond=None)
-    residual = y - X @ beta
-    dof = max(1, y.size - X.shape[1])
-    sigma2 = float(np.sum(residual**2) / dof)
-    covariance = np.linalg.pinv(X.T @ X) * sigma2
-    effect = float(beta[1])
-    se = float(math.sqrt(max(0.0, covariance[1, 1])))
-    counterfactuals = []
-    intervention_values = cfg.get("intervention_values", [])
-    if isinstance(intervention_values, list):
-        means = [float(np.mean(np.asarray(data[name], dtype=float))) for name in adjustment]
-        for value in intervention_values:
-            row = np.asarray([1.0, float(value), *means], dtype=float)
-            counterfactuals.append({"do": {treatment: float(value)}, "predicted_outcome_mean": float(row @ beta)})
-    return {
-        "status": "PASS",
-        "family": model.family.value,
-        "states": {},
-        "parameters": parameters,
-        "causal_effect": {"treatment": treatment, "outcome": outcome, "estimate": effect, "std_error": se},
-        "counterfactuals": counterfactuals,
-        "identification": identification,
-        "solver": {"backend": "numpy", "method": "linear_backdoor_adjustment"},
-        "diagnostics": {"n": int(y.size), "design_rank": int(np.linalg.matrix_rank(X)), "columns": labels},
-        "causal_scope": "estimate is causal only conditional on the supplied identification assumptions",
     }
 
 

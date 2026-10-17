@@ -8,13 +8,13 @@ such instead of being silently replaced by a reference SIR/logistic model.
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import math
 import platform
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -25,11 +25,6 @@ from axiomize.model_ir import (
     ModelIR,
     ProvenanceEvent,
 )
-
-_ALLOWED_FUNCTIONS = {
-    "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
-    "exp", "log", "sqrt", "Abs", "Min", "Max", "Piecewise", "Heaviside",
-}
 
 
 class UnsupportedModelExecution(NotImplementedError):
@@ -285,31 +280,17 @@ def build_execution_plan(model: ModelIR, *, action: str = "simulate", points: in
 
 
 def _validate_expression_syntax(expression: str, allowed_names: set[str]) -> None:
-    tree = ast.parse(expression, mode="eval")
-    allowed_nodes = (
-        ast.Expression, ast.Constant, ast.Name, ast.Load, ast.BinOp, ast.UnaryOp,
-        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod, ast.USub, ast.UAdd,
-        ast.Call,
-    )
-    for node in ast.walk(tree):
-        if not isinstance(node, allowed_nodes):
-            raise ValueError(f"unsupported expression syntax: {type(node).__name__}")
-        if isinstance(node, ast.Name) and node.id not in allowed_names and node.id not in _ALLOWED_FUNCTIONS:
-            raise ValueError(f"unknown symbol in expression: {node.id}")
-        if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name) or node.func.id not in _ALLOWED_FUNCTIONS:
-                raise ValueError("only approved mathematical functions may be called")
+    """Use the shared bounded AST validator, even for direct core callers."""
+    from axiomize.safe_expression import validate_expression
+
+    validate_expression(expression, allowed_names=allowed_names)
 
 
 def _sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:
-    import sympy as sp
+    """The canonical SymPy AST parser; no direct sympify fallback."""
+    from axiomize.safe_expression import sympy_expression
 
-    _validate_expression_syntax(expression, set(symbols))
-    local_dict = dict(symbols)
-    for name in _ALLOWED_FUNCTIONS:
-        if hasattr(sp, name):
-            local_dict[name] = getattr(sp, name)
-    return sp.sympify(expression, locals=local_dict)
+    return sympy_expression(expression, symbols)
 
 
 def _parameter_values(model: ModelIR, overrides: dict[str, float] | None = None) -> dict[str, float]:
