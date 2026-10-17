@@ -8,8 +8,10 @@ producing a meaningless number.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
 from axiomize.validation.status import ValidationStatus
 
@@ -99,6 +101,15 @@ class DimensionalMismatch(ValueError):
     """Raised when an operation combines dimensionally incompatible quantities."""
 
 
+def _finite_numeric_scalar(value: object) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 @dataclass(frozen=True)
 class Dimension:
     """Sparse dimension vector over SI base dimensions."""
@@ -106,16 +117,25 @@ class Dimension:
     exponents: Mapping[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        cleaned = {k: v for k, v in self.exponents.items() if v != 0}
-        object.__setattr__(self, "exponents", cleaned)
+        cleaned: dict[str, int] = {}
+        for key, value in self.exponents.items():
+            if key not in _BASES:
+                raise DimensionalMismatch(f"unknown SI base dimension: {key!r}")
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise DimensionalMismatch("dimension exponents must be integers")
+            if value != 0:
+                cleaned[key] = value
+        # Frozen dataclasses do not freeze a mutable mapping in their fields.
+        # Copy before wrapping to prevent both external and reference aliasing.
+        object.__setattr__(self, "exponents", MappingProxyType(cleaned))
 
-    def __mul__(self, other: "Dimension") -> "Dimension":
+    def __mul__(self, other: Dimension) -> Dimension:
         merged = dict(self.exponents)
         for key, value in other.exponents.items():
             merged[key] = merged.get(key, 0) + value
         return Dimension(merged)
 
-    def __truediv__(self, other: "Dimension") -> "Dimension":
+    def __truediv__(self, other: Dimension) -> Dimension:
         merged = dict(self.exponents)
         for key, value in other.exponents.items():
             merged[key] = merged.get(key, 0) - value
@@ -159,6 +179,18 @@ class Quantity:
 
     def __post_init__(self) -> None:
         self.dimension = dimension_of(self.unit)
+        if self.value is not None and not _finite_numeric_scalar(self.value):
+            raise ValueError("quantity value must be a finite number")
+        if self.uncertainty is not None and (
+            not _finite_numeric_scalar(self.uncertainty) or self.uncertainty < 0
+        ):
+            raise ValueError("quantity uncertainty must be finite and non-negative")
+        if self.valid_range is not None:
+            if not isinstance(self.valid_range, tuple) or len(self.valid_range) != 2:
+                raise ValueError("quantity valid_range must be a pair of bounds")
+            low, high = self.valid_range
+            if not all(_finite_numeric_scalar(bound) for bound in (low, high)) or low > high:
+                raise ValueError("quantity valid_range must contain ordered finite bounds")
 
     @dataclass
     class _Check:
