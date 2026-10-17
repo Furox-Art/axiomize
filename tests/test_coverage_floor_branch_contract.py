@@ -13,7 +13,7 @@ def test_default_coverage_includes_branch_paths_and_enforces_ratchet_floor():
     assert "branch = true" in run_section
     floor_lines = [line for line in report_section.splitlines() if line.startswith("fail_under = ")]
     assert len(floor_lines) == 1
-    assert float(floor_lines[0].split("=", 1)[1]) >= 75.0
+    assert float(floor_lines[0].split("=", 1)[1]) >= 76.0
 
 
 def test_ci_does_not_drop_branch_coverage_or_real_backend_gates():
