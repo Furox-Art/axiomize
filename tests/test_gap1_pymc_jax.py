@@ -8,6 +8,9 @@ still checked independently of backend availability.
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
+import sys
 
 import pytest
 
@@ -35,8 +38,7 @@ def test_pymc_execute_never_fakes():
     with pytest.raises(ValueError):
         tool.execute({})
 
-    valid_payload = {"model": "normal-mean", "y": [1.0, 2.0, 3.0],
-                     "draws": 200, "tune": 200, "seed": 0}
+    valid_payload = {"model": "normal-mean", "y": [1.0, 2.0, 3.0], "draws": 200, "tune": 200, "seed": 0}
     if not _spec_present("pymc"):
         # Use a structurally valid payload so this assertion tests backend
         # availability rather than the unrelated missing-input guard.
@@ -52,26 +54,51 @@ def test_pymc_execute_never_fakes():
 
 
 def test_pymc_real_fit_when_installed():
-    if not _spec_present("pymc"):
-        pytest.skip("pymc not installed; TOOL_UNAVAILABLE path is valid")
-    import numpy as np
     from axiomize.bayesian.pymc_tool import PyMCTool
+
+    if not _spec_present("pymc"):
+        # An absent optional scientific backend is an explicit negative result,
+        # not a fake posterior and not an unexecuted test.
+        with pytest.raises(RuntimeError, match="TOOL_UNAVAILABLE"):
+            PyMCTool().execute({"model": "normal-mean", "y": [4.0, 5.0], "draws": 20, "tune": 20, "seed": 1})
+        return
+
+    import numpy as np
 
     rng = np.random.default_rng(7)
     y = rng.normal(4.0, 1.0, size=30)
-    out = PyMCTool().execute({"model": "normal-mean", "y": y.tolist(),
-                              "draws": 300, "tune": 300, "seed": 1})
+    out = PyMCTool().execute({"model": "normal-mean", "y": y.tolist(), "draws": 300, "tune": 300, "seed": 1})
     assert abs(out["posterior_mean"] - 4.0) < 1.0
 
 
-@pytest.mark.skip(reason="JAX module isolation issue when running full test suite")
 def test_jax_real_grad_when_installed():
-    if not _spec_present("jax"):
-        pytest.skip("jax not installed")
-    from axiomize.tools.autodiff.jax_tool import JAXTool
+    from axiomize.capabilities import get_capabilities
 
-    out = JAXTool().execute({"operation": "grad", "x": 3.0})
-    assert isinstance(out, dict)
+    if not _spec_present("jax"):
+        assert get_capabilities()["automatic_differentiation"]["available"] is False
+        return
+
+    # Import/execute JAX in its own interpreter to isolate XLA from other
+    # scientific runtimes; test the actual advertised backend (no JAXTool
+    # adapter exists in the shipped package).
+    source = (
+        "import jax; "
+        "gradient = float(jax.grad(lambda x: x*x + 2*x)(3.0)); "
+        "assert abs(gradient - 8.0) < 1e-6, gradient; "
+        "print('real_jax_grad=8')"
+    )
+    env = dict(os.environ)
+    env.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
+    result = subprocess.run(
+        [sys.executable, "-c", source],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "real_jax_grad=8" in result.stdout
 
 
 def test_jax_capabilities_honest():
@@ -92,6 +119,5 @@ def test_router_no_fake_success_without_pymc_jax():
 def test_builtin_mh_fallback_works():
     from axiomize.bayesian.mh import normal_mean_posterior
 
-    out = normal_mean_posterior([1.0, 2.0, 3.0], sigma=1.0,
-                                n_samples=1000, burn=200, seed=0)
+    out = normal_mean_posterior([1.0, 2.0, 3.0], sigma=1.0, n_samples=1000, burn=200, seed=0)
     assert "mean" in out or "posterior_mean" in out

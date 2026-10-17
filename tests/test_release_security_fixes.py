@@ -73,8 +73,9 @@ def test_npm_entrypoint_is_syntactically_valid() -> None:
     # The truncated arrow body that shipped to npm, as a cheap non-parser guard.
     assert "=;" not in source, "index.js still contains the truncated '=> ;' arrow body"
     assert "=>" in source, "index.js must contain a complete arrow function"
-    assert "proc.on('close'" in source or 'proc.on("close"' in source, \
+    assert "proc.on('close'" in source or 'proc.on("close"' in source, (
         "index.js must handle the child's close event and forward its exit code"
+    )
 
 
 def test_npm_bin_wrapper_delegates_to_the_entrypoint() -> None:
@@ -87,8 +88,7 @@ def test_npm_bin_wrapper_delegates_to_the_entrypoint() -> None:
 
 def test_npm_entrypoint_forwards_the_cli_module() -> None:
     source = (REPO_ROOT / "index.js").read_text(encoding="utf-8")
-    assert "axiomize.cli" in source, \
-        "index.js must invoke the module that owns main() (axiomize.cli)"
+    assert "axiomize.cli" in source, "index.js must invoke the module that owns main() (axiomize.cli)"
 
 
 def test_npm_entrypoint_spawns_without_a_shell() -> None:
@@ -98,16 +98,18 @@ def test_npm_entrypoint_spawns_without_a_shell() -> None:
     assert "shell: true" not in source
 
 
-@pytest.mark.skipif(not _node_available(), reason="node is not installed")
 def test_npm_entrypoint_passes_node_syntax_check(tmp_path: Path) -> None:
+    assert _node_available(), "Node.js is required for npm launcher contract tests"
     for name in ("index.js", "bin/axiomize.js"):
         result = subprocess.run(
             ["node", "--check", str(REPO_ROOT / name)],
-            capture_output=True, text=True, timeout=60, shell=False, check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            shell=False,
+            check=False,
         )
-        assert result.returncode == 0, (
-            f"node --check {name} failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"node --check {name} failed:\n{result.stdout}\n{result.stderr}"
 
 
 def _stub_interpreter(directory: Path, exit_code: int) -> Path:
@@ -175,7 +177,6 @@ setTimeout(() => {
 """
 
 
-@pytest.mark.skipif(not _node_available(), reason="node is not installed")
 @pytest.mark.parametrize(
     "case,expected",
     [
@@ -193,9 +194,7 @@ setTimeout(() => {
         ("error-then-close-bare", 127),
     ],
 )
-def test_npm_entrypoint_propagates_the_cli_exit_code(
-    tmp_path: Path, case: str, expected: int
-) -> None:
+def test_npm_entrypoint_propagates_the_cli_exit_code(tmp_path: Path, case: str, expected: int) -> None:
     """The child's exit status must reach the caller.
 
     Hermetic: a fake child process replaces ``spawn``, so this needs neither a
@@ -207,7 +206,11 @@ def test_npm_entrypoint_propagates_the_cli_exit_code(
     harness.write_text(_EXIT_PROPAGATION_HARNESS, encoding="utf-8")
     result = subprocess.run(
         ["node", str(harness), case, str(REPO_ROOT / "index.js")],
-        capture_output=True, text=True, timeout=60, shell=False, check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        shell=False,
+        check=False,
     )
     assert result.returncode == 0, f"harness failed:\n{result.stderr}"
     reported = [line for line in result.stdout.splitlines() if line.startswith("EXITCODE=")]
@@ -217,7 +220,6 @@ def test_npm_entrypoint_propagates_the_cli_exit_code(
     )
 
 
-@pytest.mark.skipif(not _node_available(), reason="node is not installed")
 def test_npm_entrypoint_reports_a_missing_interpreter(tmp_path: Path) -> None:
     """With no interpreter reachable the wrapper must fail loudly, not silently.
 
@@ -227,15 +229,22 @@ def test_npm_entrypoint_reports_a_missing_interpreter(tmp_path: Path) -> None:
     """
     node = shutil.which("node")
     assert node is not None
-    node_dir = str(Path(node).resolve().parent)
     env = dict(os.environ)
-    env["PATH"] = node_dir
-    if shutil.which("python", path=node_dir) or shutil.which("python3", path=node_dir):
-        pytest.skip("node's directory also provides a Python interpreter")
+    # Invoke the verified absolute Node binary, while giving the spawned
+    # Python launcher an empty PATH. This is portable even if the same
+    # directory normally contains both Node and Python.
+    empty_path = tmp_path / "empty-path"
+    empty_path.mkdir()
+    env["PATH"] = str(empty_path)
 
     result = subprocess.run(
-        ["node", str(REPO_ROOT / "index.js"), "--help"],
-        capture_output=True, text=True, timeout=60, shell=False, check=False, env=env,
+        [node, str(REPO_ROOT / "index.js"), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        shell=False,
+        check=False,
+        env=env,
     )
     assert result.returncode != 0, "a missing interpreter must not exit 0"
     assert result.returncode == 127, f"expected exit 127, got {result.returncode}"
@@ -319,16 +328,12 @@ def test_constant_folder_folds_allowlisted_integers(expression: str, expected: i
 def test_factorial_argument_is_allowlisted() -> None:
     assert _fold_integer_constant(ast.parse(f"factorial({MAX_FACTORIAL_ARGUMENT})", mode="eval").body) is not None
     with pytest.raises(ValueError, match="factorial argument"):
-        _fold_integer_constant(
-            ast.parse(f"factorial({MAX_FACTORIAL_ARGUMENT + 1})", mode="eval").body
-        )
+        _fold_integer_constant(ast.parse(f"factorial({MAX_FACTORIAL_ARGUMENT + 1})", mode="eval").body)
 
 
 def test_binomial_arguments_are_allowlisted() -> None:
     with pytest.raises(ValueError, match="binomial arguments"):
-        _fold_integer_constant(
-            ast.parse(f"binomial({MAX_BINOMIAL_ARGUMENT + 1}, 5)", mode="eval").body
-        )
+        _fold_integer_constant(ast.parse(f"binomial({MAX_BINOMIAL_ARGUMENT + 1}, 5)", mode="eval").body)
 
 
 def test_product_range_is_allowlisted() -> None:
@@ -356,8 +361,7 @@ def test_nested_pow_is_rejected_before_reaching_sympy() -> None:
         sympy_expression("9**(10**9)", {"x": sp.Symbol("x", real=True)})
     elapsed = time.perf_counter() - started
     assert elapsed < HOSTILE_TIME_BUDGET_S, (
-        f"sympy_expression must fail fast, took {elapsed:.2f}s "
-        f"(ceiling {HOSTILE_TIME_BUDGET_S}s)"
+        f"sympy_expression must fail fast, took {elapsed:.2f}s (ceiling {HOSTILE_TIME_BUDGET_S}s)"
     )
 
 
@@ -506,11 +510,14 @@ def test_zip_symlink_member_is_rejected(tmp_path: Path) -> None:
 def test_rejection_does_not_partially_extract(tmp_path: Path) -> None:
     """A hostile member anywhere in the manifest must abort the whole import."""
     bundle = tmp_path / "mixed.tar"
-    _tar(bundle, [
-        ("good1.json", b"{}"),
-        ("good2.json", b"{}"),
-        ("../../escape.txt", b"pwned"),
-    ])
+    _tar(
+        bundle,
+        [
+            ("good1.json", b"{}"),
+            ("good2.json", b"{}"),
+            ("../../escape.txt", b"pwned"),
+        ],
+    )
     destination = tmp_path / "dest"
     with pytest.raises(ValueError, match="unsafe archive member"):
         import_run(bundle, destination)
@@ -592,14 +599,26 @@ def test_missing_bundle_is_rejected(tmp_path: Path) -> None:
         import_run(tmp_path / "nope.zip", tmp_path / "dest")
 
 
-@pytest.mark.skipif(os.name == "nt", reason="POSIX symlink creation needs privileges on Windows")
 def test_nested_symlink_escape_is_rejected(tmp_path: Path) -> None:
-    """A pre-existing symlink inside the destination must not be followed out."""
+    """A symlink or Windows junction cannot redirect archive writes outside."""
     destination = tmp_path / "dest"
     destination.mkdir()
     outside = tmp_path / "outside"
     outside.mkdir()
-    (destination / "link").symlink_to(outside, target_is_directory=True)
+    link = destination / "link"
+    if os.name == "nt":
+        # Junctions work without Developer Mode or symlink privileges and
+        # have the same reparse-point escape semantics for Path.resolve().
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        link.symlink_to(outside, target_is_directory=True)
 
     bundle = tmp_path / "evil.zip"
     _zip(bundle, [("link/escape.txt", b"pwned")])

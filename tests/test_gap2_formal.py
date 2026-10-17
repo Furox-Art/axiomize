@@ -33,7 +33,11 @@ def test_availability_matches_reality():
         return
     probe = subprocess.run(
         ["elan", "run", LeanAdapter.TOOLCHAIN, "lean", "--version"],
-        capture_output=True, text=True, timeout=60, shell=False)
+        capture_output=True,
+        text=True,
+        timeout=60,
+        shell=False,
+    )
     assert meta.available is (probe.returncode == 0)
     if meta.available:
         assert "4.30.0" in meta.version
@@ -42,30 +46,32 @@ def test_availability_matches_reality():
 def test_true_theorem_proved_by_real_lean():
     adapter = LeanAdapter()
     if not LeanAdapter.availability().available:
-        pytest.skip("lean toolchain yok; TOOL_UNAVAILABLE yolu gecerli")
-    result = adapter.execute({"theorem": TRUE_THEOREM})
-    # Lean may return INCONCLUSIVE in some environments (e.g., missing mathlib)
-    assert result["status"] in (ValidationStatus.PASS.value, "INCONCLUSIVE")
-    if result["status"] == ValidationStatus.PASS.value:
-        assert result["proved"] is True
+        result = adapter.execute({"theorem": TRUE_THEOREM})
+        assert result["status"] == ValidationStatus.TOOL_UNAVAILABLE.value
+        assert result["proved"] is False and result["proof"] is None
+        return
+    # Fixed, audited theorem text is trusted input for real Lean elaboration.
+    result = adapter.execute({"theorem": TRUE_THEOREM, "allow_unsafe_execution": True})
+    assert result["status"] == ValidationStatus.PASS.value, result
+    assert result["proved"] is True
 
 
 def test_false_theorem_rejected_by_real_lean():
     adapter = LeanAdapter()
     if not LeanAdapter.availability().available:
-        pytest.skip("lean toolchain yok; TOOL_UNAVAILABLE yolu gecerli")
-    result = adapter.execute({"theorem": FALSE_THEOREM})
-    # Lean may return INCONCLUSIVE in some environments
-    assert result["status"] in (ValidationStatus.FAIL.value, "INCONCLUSIVE")
-    if result["status"] == ValidationStatus.FAIL.value:
-        assert result["proved"] is False
-        assert result.get("lean_output")
+        result = adapter.execute({"theorem": FALSE_THEOREM})
+        assert result["status"] == ValidationStatus.TOOL_UNAVAILABLE.value
+        assert result["proved"] is False and result["proof"] is None
+        return
+    result = adapter.execute({"theorem": FALSE_THEOREM, "allow_unsafe_execution": True})
+    assert result["status"] == ValidationStatus.FAIL.value, result
+    assert result["proved"] is False
+    assert result.get("lean_output")
 
 
 def test_missing_toolchain_reports_unavailable_honestly(monkeypatch):
     adapter = LeanAdapter()
-    monkeypatch.setattr(
-        LeanAdapter, "TOOLCHAIN", "leanprover/lean4:v0.0.0-yok")
+    monkeypatch.setattr(LeanAdapter, "TOOLCHAIN", "leanprover/lean4:v0.0.0-yok")
     meta = LeanAdapter.availability()
     assert meta.available is False
     result = adapter.execute({"theorem": TRUE_THEOREM})
@@ -78,8 +84,7 @@ def test_no_fake_pass_or_proof():
     adapter = LeanAdapter()
     result = adapter.execute({"theorem": FALSE_THEOREM})
     assert result["status"] != ValidationStatus.PASS.value
-    assert not (result["status"] == ValidationStatus.PASS.value
-                and result.get("proved") is not True)
+    assert not (result["status"] == ValidationStatus.PASS.value and result.get("proved") is not True)
 
 
 def test_validate_input_rejects_bad_payload():

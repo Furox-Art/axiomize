@@ -34,3 +34,14 @@ for _source_root in (REPO_ROOT / "src", REPO_ROOT / "skills" / "axiomize" / "too
     _entry = str(_source_root)
     if _source_root.is_dir() and _entry not in sys.path:
         sys.path.insert(0, _entry)
+
+
+def pytest_sessionfinish(session, exitstatus: int) -> None:
+    """An unavailable test is a failed quality gate, never a silent PASS."""
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is None:
+        return
+    skipped = reporter.stats.get("skipped", ())
+    if skipped:
+        reporter.write_sep("!", f"QUALITY GATE FAILED: {len(skipped)} skipped test(s)")
+        session.exitstatus = 1
