@@ -53,8 +53,14 @@ def test_pymc_execute_never_fakes():
 
 def test_pymc_real_fit_when_installed():
     if not _spec_present("pymc"):
-        pytest.skip("pymc not installed; TOOL_UNAVAILABLE path is valid")
+        from axiomize.bayesian.pymc_tool import PyMCTool
+
+        with pytest.raises(RuntimeError, match="TOOL_UNAVAILABLE"):
+            PyMCTool().execute({"model": "normal-mean", "y": [1.0, 2.0, 3.0],
+                                "draws": 300, "tune": 300, "seed": 1})
+        return
     import numpy as np
+
     from axiomize.bayesian.pymc_tool import PyMCTool
 
     rng = np.random.default_rng(7)
@@ -64,14 +70,41 @@ def test_pymc_real_fit_when_installed():
     assert abs(out["posterior_mean"] - 4.0) < 1.0
 
 
-@pytest.mark.skip(reason="JAX module isolation issue when running full test suite")
 def test_jax_real_grad_when_installed():
-    if not _spec_present("jax"):
-        pytest.skip("jax not installed")
+    # Run actual autodiff in a fresh child process: no JAX thread isolation risk.
+    import json
+    import os
+    import subprocess
+    import sys
+
     from axiomize.tools.autodiff.jax_tool import JAXTool
 
-    out = JAXTool().execute({"operation": "grad", "x": 3.0})
-    assert isinstance(out, dict)
+    if not _spec_present("jax"):
+        assert JAXTool.availability().available is False
+        with pytest.raises(RuntimeError, match="TOOL_UNAVAILABLE"):
+            JAXTool().execute({"operation": "grad", "x": 3.0})
+        return
+
+    child_code = (
+        "import json; "
+        "from axiomize.tools.autodiff.jax_tool import JAXTool; "
+        "print(json.dumps(JAXTool().execute(dict(x=3.0))))"
+    )
+    env = dict(os.environ)
+    env["JAX_PLATFORMS"] = "cpu"
+    result = subprocess.run(
+        [sys.executable, "-c", child_code],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+        timeout=50,
+    )
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout.splitlines()[-1])
+    assert output["status"] == "PASS"
+    assert output["gradient"] == pytest.approx(6.0, abs=1e-5)
+
 
 
 def test_jax_capabilities_honest():
