@@ -39,5 +39,9 @@ def evaluate_falsifiers(falsifiers: list[Falsifier],
     failed = [r for r in results if r["status"] == ValidationStatus.FAIL]
     missing = [f.observable for f in falsifiers if f.observable not in observations]
     return {"results": results,
-            "model_status": ValidationStatus.FAIL if failed else ValidationStatus.PASS,
+            "model_status": (
+                ValidationStatus.FAIL if failed else
+                ValidationStatus.UNVERIFIED if missing or not results else
+                ValidationStatus.PASS
+            ),
             "untested": missing}

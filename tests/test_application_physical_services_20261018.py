@@ -167,3 +167,118 @@ def test_clean_data_refuses_missing_pairs_and_preserves_audit():
 def test_run_comparison_requires_two_reproducible_run_ids(record):
     with pytest.raises(ValueError, match="before_dir and after_dir"):
         service.compare_runs_service(record)
+
+
+def test_observed_falsifier_is_an_actual_failure_not_an_unsupported_inference():
+    outcome = service.falsify_service({
+        "falsifiers": [{
+            "name": "peak infection", "observable": "I",
+            "threshold": 10.0, "direction": "above",
+        }],
+        "observations": {"I": 11.0},
+    })
+    assert outcome["model_status"] == "FAIL"
+    assert len(outcome["results"]) == 1
+    assert outcome["results"][0]["triggered"] is True
+    assert outcome["untested"] == []
+
+
+def test_absent_falsification_measurement_is_kept_untested():
+    outcome = service.falsify_service({
+        "falsifiers": [{
+            "name": "required measurement", "observable": "missing",
+            "threshold": 1.0, "direction": "below",
+        }], "observations": {},
+    })
+    assert outcome["untested"]
+    assert outcome["model_status"] != "PASS"
+
+
+@pytest.mark.parametrize("falsifiers", [
+    None, "untrusted", {"f": 1}, [None] * 10001,
+])
+def test_falsifier_list_cannot_be_guessed_or_unbounded(falsifiers):
+    with pytest.raises(ValueError, match="falsifiers"):
+        service.falsify_service({"falsifiers": falsifiers})
+
+
+def test_nonfinite_falsification_threshold_is_explicitly_rejected():
+    with pytest.raises(ValueError, match="finite"):
+        service.falsify_service({"falsifiers": [{
+            "name": "bad", "observable": "y",
+            "threshold": float("nan"),
+        }]})
+
+
+def test_scientific_tool_inventory_reports_actual_availability():
+    inventory = service.tools_service()
+    assert "tools" in inventory
+    assert "scipy" in inventory["tools"]
+    assert inventory["tools"]["scipy"]["available"] is True
+
+
+def test_capabilities_disclose_true_approval_gates_and_ir_families():
+    meta = service.capabilities_service()
+    assert meta["model_ir"]["migration_requires_approval"] is True
+    assert "ir_migration" in meta["consumption_guard"]["guarded_actions"]
+
+
+def test_intake_requires_actual_scientific_model_scope():
+    result = service.intake_service({"idea": "physical decay of a molecule"})
+    assert result["status"] == "NEEDS_INPUT"
+    assert result["questions"]
+    assert result["policy"]["permissions"]["allow_heavy_compute"] is False
+
+
+def test_nested_fit_uncertainty_is_recognized_without_fabricated_parameters():
+    result = service.uncertainty_service({"fit": {
+        "params": {"beta": {"value": 0.3, "stderr": 0.02}},
+    }})
+    assert result["status"] == "PASS"
+    assert result["uncertainty"]["n_params"] == 1
+
+
+def test_empty_observations_do_not_generate_falsification_pass():
+    outcome = service.falsify_service({"falsifiers": [], "observations": {}})
+    assert outcome["results"] == []
+    assert outcome["model_status"] != "PASS"
+
+
+def test_reproducible_saved_run_comparison_surfaces_input_change(tmp_path):
+    from axiomize.runs.state import RunState
+
+    before = tmp_path / "before"
+    after = tmp_path / "after"
+    RunState(parameters={"beta": 0.3}, results={"peak": 1.0}).save(before)
+    RunState(parameters={"beta": 0.4}, results={"peak": 2.0}).save(after)
+    actual = service.compare_runs_service({
+        "before_dir": str(before), "after_dir": str(after),
+    })
+    assert actual["same_input_hash"] is False
+    assert actual["differences"]["parameters"]["beta"] == {
+        "before": 0.3, "after": 0.4,
+    }
+
+
+@pytest.mark.parametrize("sample,fragment", [
+    ({"params": {"beta": {"value": float("nan"), "stderr": 1}}}, "UNVERIFIED"),
+    ({"params": {"beta": [1.0, -1.0]}}, "UNVERIFIED"),
+])
+def test_unreliable_fit_confidence_never_becomes_pass(sample, fragment):
+    assert service.uncertainty_service(sample)["status"] == fragment
+
+
+@pytest.mark.parametrize("target", ["final_size", "peak_infected"])
+def test_real_bounded_parameter_sensitivity_runs_local_and_monte_carlo(target):
+    # 1,000 seeded evaluations are executed by the production scientific
+    # engines. Verify the result numerically; no proxy-only fit is accepted.
+    result = service.sensitivity_service({
+        "params": {"beta": 0.3, "gamma": 0.1},
+        "I0": 1.0, "N": 2000.0,
+        "target": target,
+    })
+    assert set(result["local"]) == {"beta", "gamma"}
+    assert set(result["mc_screening"]) == {"beta", "gamma"}
+    assert all(math.isfinite(v) for v in result["local"].values())
+    assert all(0.0 <= v <= 1.0 for v in result["mc_screening"].values())
+    assert sum(result["mc_screening"].values()) == pytest.approx(1.0, abs=1e-12)
