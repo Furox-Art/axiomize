@@ -9,11 +9,10 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
-import pytest
-
 import benchmark_runner
 import csv_check
+import numpy as np
+import pytest
 
 
 def _cases_file(root: Path, records):
