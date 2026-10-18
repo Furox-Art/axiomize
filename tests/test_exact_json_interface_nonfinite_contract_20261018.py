@@ -28,7 +28,7 @@ class ScientificRecord:
     (None, None), ("raw", "raw"), (True, True), (False, False), (17, 17),
     (0.5, 0.5), (float("nan"), "NaN"),
     (float("inf"), "Infinity"), (-float("inf"), "-Infinity"),
-    (Verdict.PROVED, "PASS"), (Path("/tmp/model.json"), "/tmp/model.json"),
+    (Verdict.PROVED, "PASS"), (Path("/tmp/model.json"), str(Path("/tmp/model.json"))),
     (np.float64(2.0), 2.0), (np.float32(float("nan")), "NaN"),
     (np.int32(3), 3), (np.array([1.0, float("inf")]), [1.0, "Infinity"]),
 ])

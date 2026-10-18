@@ -173,3 +173,29 @@ def test_mapping_comparison_does_not_drop_additions_or_removals():
         "a": {"before": 1, "after": None},
         "c": {"before": None, "after": 3},
     }
+
+
+class LazyNumericIterable:
+    def __iter__(self):
+        yield 0.0
+        yield 1.0
+
+
+class DeclaredHugeArray:
+    def __len__(self):
+        return quality.MAX_ARRAY_ITEMS + 1
+
+
+def test_lenless_measurement_iterable_is_accepted_by_precheck():
+    quality._precheck_length(LazyNumericIterable(), name="time")
+
+
+def test_oversized_declared_observation_is_rejected_before_allocation():
+    with pytest.raises(ValueError, match="exceeds hard observation limit"):
+        quality._precheck_length(DeclaredHugeArray(), name="time")
+
+
+def test_zero_mean_signal_does_not_create_unjustified_relative_shift():
+    result = quality.clean_numeric_xy([0.0, 1.0], [-1.0, 1.0])
+    assert result.material_change is False
+    assert result.audit[-1]["relative_mean_shift"] == 0.0
