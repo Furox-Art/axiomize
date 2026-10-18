@@ -8,7 +8,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from axiomize import dimensional_engine as dimension, limits
+from axiomize import limits
+from axiomize import dimensional_engine as dimension
 from axiomize.tools.symbolic.sympy_tool import (
     SymPyTool, check_equivalence, differentiate, final_size_symbolic,
     find_singularities, jacobian_matrix, simplify_expr,
