@@ -26,17 +26,31 @@ matplotlib>=3.7
 # dropped the whole pip update job for this repository, so no dependency
 # update could ever be proposed here.
 #
-# The darwin cap at `<5` was also based on a false premise: z3-solver shipped
-# no macOS wheel for 5.x. It does. Every 5.x release from 5.0.0.0 onwards
-# publishes macosx_13_0 wheels for both arm64 and x86_64. The 4.15.5.0
-# through 4.16.0.0 releases are the ones that raised their floor to macOS
-# 15, and pip excludes those on wheel tags for an older macOS anyway.
+# The `<5` cap stays, but it is now stated once and applies everywhere rather
+# than only on Darwin. The reason is a packaging defect in z3-solver 5.x, not
+# a missing wheel: the 5.3.1.0 macOS wheel is *named* macosx_13_0_arm64 but
+# its WHEEL metadata declares "Tag: py3-none-macosx_13_3_arm64". pip's
+# `check` compares that declared tag against the tags the platform supports,
+# and macOS 11+ only ever reports minor version 0 for a major version
+# (macosx_13_0, never macosx_13_3), so the tag never matches:
+#
+#   z3-solver 5.3.1.0 is not supported on this platform
+#
+# That is a `pip check` failure in the macOS job of the wheel CLI matrix.
+# Every 4.x release ships a macosx_13_0 wheel whose WHEEL tag agrees with
+# its filename, so capping below 5 is what keeps the macOS job green.
+#
+# Keeping the cap unconditional is what makes a single declaration possible.
+# The old darwin-only split was not a valid way to express this anyway, since
+# the two branches disagreed on the upper bound rather than on availability,
+# and it is what Dependabot could not rewrite.
 #
 # One requirement in both files also keeps `pip check` satisfied: the
 # installed distribution's own requirement and this manifest now state the
-# same thing. The engine is verified against 5.3.1.0, the version this range
-# resolves to.
-z3-solver>=4.12
+# same thing. The engine is verified against 4.15.4.0, the version this range
+# resolves to on CI, and against 5.3.1.0 on the platforms where 5.x installs
+# cleanly.
+z3-solver>=4.12,<5
 control>=0.10
 cvxpy>=1.5
 casadi>=3.6
