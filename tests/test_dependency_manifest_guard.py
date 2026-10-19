@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -62,9 +61,26 @@ def _requirement_name(requirement: str) -> str | None:
 
 
 def pyproject_requirements(pyproject: Path = PYPROJECT) -> list[str]:
-    """Return the raw requirement strings from ``[project] dependencies``."""
-    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    return list(data.get("project", {}).get("dependencies", []))
+    """Return the raw requirement strings from ``[project] dependencies``.
+
+    The ``[project]`` table is extracted textually rather than with
+    ``tomllib``, which is stdlib only on 3.11+ while the CI matrix still
+    runs 3.10. This mirrors how ``.github/scripts/version_lockstep.py``
+    reads the same file for the same reason.
+    """
+    text = pyproject.read_text(encoding="utf-8")
+    try:
+        project = text.split("[project]", 1)[1].split("\n[", 1)[0]
+    except IndexError as exc:
+        raise AssertionError(f"pyproject.toml has no [project] section: {pyproject}") from exc
+    match = re.search(r"^\s*dependencies\s*=\s*\[(.*?)\]", project, re.MULTILINE | re.DOTALL)
+    if not match:
+        raise AssertionError(f"pyproject.toml [project] has no dependencies list: {pyproject}")
+    return [
+        line.strip().strip(",").strip('"').strip("'")
+        for line in match.group(1).splitlines()
+        if line.strip().strip(",").strip('"').strip("'")
+    ]
 
 
 def requirements_file_requirements(requirements: Path = REQUIREMENTS) -> list[str]:
