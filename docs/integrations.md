@@ -74,7 +74,7 @@ Approval authorizes compute. It never disables a resource ceiling.
 {"command": "axiomize", "args": ["mcp"]}
 ```
 
-34 tools, named `axiomize.<verb>`. `axiomize.model_*` mirrors the `model --action`
+35 tools, named `axiomize.<verb>`. `axiomize.model_*` mirrors the `model --action`
 values above. The unprefixed tools cover the surrounding workflow: `solve`, `fit_model`,
 `validate`, `cross_validate`, `sensitivity_analysis`, `uncertainty_analysis`, `falsify`,
 `compare_models`, `intake`, `workflow_policy`, `clean_data`, `compare_runs`,
