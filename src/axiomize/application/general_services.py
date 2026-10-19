@@ -209,6 +209,8 @@ def model_compare_service(payload: dict[str, Any]) -> dict[str, Any]:
     fits = payload.get("fits")
     if not isinstance(fits, dict) or not fits or len(fits) > 1000:
         raise ValueError("compare requires a non-empty fits object with at most 1000 candidates")
+    if any(not isinstance(candidate, dict) for candidate in fits.values()):
+        raise ValueError("every fit must be a results object")
     return rank_model_fits(fits, criterion=str(payload.get("criterion", "bic")))
 
 

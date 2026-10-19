@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from axiomize.application.general_services import model_export_service
 
-
 MODEL = {
     "schema_version": "1.0",
     "name": "service-decay",

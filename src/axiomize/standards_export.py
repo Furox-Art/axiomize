@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import xml.etree.ElementTree as ET
+from contextlib import suppress
 from typing import Any
 
 import sympy as sp
@@ -47,10 +48,8 @@ def _math_element(expression: str, symbols: dict[str, Any]) -> ET.Element:
 
 
 def _xml_text(root: ET.Element) -> str:
-    try:
+    with suppress(AttributeError):  # Python >=3.10 in supported CI
         ET.indent(root, space="  ")
-    except AttributeError:  # pragma: no cover - Python >=3.10 in supported CI
-        pass
     text = ET.tostring(root, encoding="unicode", xml_declaration=False)
     ET.fromstring(text)
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + text
@@ -247,12 +246,30 @@ def export_cellml_2(model: ModelIR) -> dict[str, Any]:
             for child in list(rhs):
                 apply_eq.append(child)
         else:
-            ci = ET.SubElement(apply_eq, f"{{{_MATHML_NS}}}ci"); ci.text = _sid(equation.target)
+            # The algebraic residual is f(x) = 0, not a fabricated target CI.
+            if model.family == ModelFamily.ALGEBRAIC and equation.kind == "residual":
+                zero = ET.SubElement(apply_eq, f"{{{_MATHML_NS}}}cn")
+                zero.text = "0"
+            else:
+                ci = ET.SubElement(apply_eq, f"{{{_MATHML_NS}}}ci")
+                ci.text = _sid(equation.target)
             rhs = _math_element(equation.expression, symbols)
             for child in list(rhs):
                 apply_eq.append(child)
 
+    # Numeric literals are explicitly dimensionless in this conservative IR
+    # subset; undeclared physical units are never silently inferred.
+    for number in math.iter(f"{{{_MATHML_NS}}}cn"):
+        number.set(f"{{{_CELLML_NS}}}units", "dimensionless")
+
     content = _xml_text(root)
+    # The MathML fragment must remain valid when parsed separately by the
+    # CellML validator; inherited prefixed namespace bindings are insufficient.
+    content = content.replace(
+        "<m:math>", f"<math xmlns=\"{_MATHML_NS}\" xmlns:cellml=\"{_CELLML_NS}\">"
+    ).replace("</m:math>", "</math>").replace("<m:", "<").replace("</m:", "</")
+    content = content.replace("<cn units=", "<cn cellml:units=")
+    ET.fromstring(content)
     return {"status": "PASS", "format": "cellml-2.0", "standard": "CellML 2.0", "content": content,
             "validation": {"xml_well_formed": True, "schema_validation": "NOT_RUN",
                            "detail": "export is restricted to a conservative CellML 2.0 ODE/algebraic subset; full libCellML validation is not bundled"}}

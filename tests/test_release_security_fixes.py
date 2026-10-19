@@ -231,7 +231,24 @@ def test_npm_entrypoint_reports_a_missing_interpreter(tmp_path: Path) -> None:
     env = dict(os.environ)
     env["PATH"] = node_dir
     if shutil.which("python", path=node_dir) or shutil.which("python3", path=node_dir):
-        pytest.skip("node's directory also provides a Python interpreter")
+        # The host can install node and python together (for example /usr/bin).
+        # Isolate only the child PATH, without changing the system interpreter.
+        isolated_dir = tmp_path / "node-only"
+        isolated_dir.mkdir()
+        if os.name == "nt":
+            isolated_node = isolated_dir / Path(node).name
+            shutil.copy2(node, isolated_node)
+        else:
+            import shlex
+
+            isolated_node = isolated_dir / "node"
+            wrapper = "#!/bin/sh\nexec " + shlex.quote(node) + " " + chr(34) + "$@" + chr(34) + "\n"
+            isolated_node.write_text(wrapper, encoding="utf-8")
+            isolated_node.chmod(0o700)
+        node_dir = str(isolated_dir)
+    env["PATH"] = node_dir
+    assert not shutil.which("python", path=node_dir)
+    assert not shutil.which("python3", path=node_dir)
 
     result = subprocess.run(
         ["node", str(REPO_ROOT / "index.js"), "--help"],

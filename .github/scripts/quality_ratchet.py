@@ -147,6 +147,14 @@ def _ruff_json_count(select: list[str], ignore: list[str]) -> int:
         findings = json.loads(stdout)
     except json.JSONDecodeError as exc:
         raise RatchetError(f"ruff emitted output that is not JSON: {exc}") from exc
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for finding in findings:
+            filename = str(finding.get("filename", ""))
+            if "20261018" in filename:
+                print(
+                    f"new-test Ruff: {Path(filename).name} "
+                    f"{finding.get('code', '')} {finding.get('message', '')}"
+                )
     return len(findings)
 
 
