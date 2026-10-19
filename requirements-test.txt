@@ -15,7 +15,42 @@ sympy>=1.12
 networkx>=3.0
 statsmodels>=0.14
 matplotlib>=3.7
-z3-solver>=4.12
+# z3-solver is declared once, in both this file and pyproject.toml, with the
+# same requirement. It used to be declared twice in pyproject.toml, once per
+# platform marker ("...; sys_platform == 'darwin'" and
+# "...; sys_platform != 'darwin'"), and that broke two things at once.
+#
+# Dependabot's Python file updater resolves the declaration it is replacing
+# against a single unambiguous requirement. Given two entries for the same
+# distribution it failed with "Declaration not found for z3-solver!" and
+# dropped the whole pip update job for this repository, so no dependency
+# update could ever be proposed here.
+#
+# The `<5` cap stays, but it is now stated once and applies everywhere rather
+# than only on Darwin. The reason is a packaging defect in z3-solver 5.x, not
+# a missing wheel: the 5.3.1.0 macOS wheel is *named* macosx_13_0_arm64 but
+# its WHEEL metadata declares "Tag: py3-none-macosx_13_3_arm64". pip's
+# `check` compares that declared tag against the tags the platform supports,
+# and macOS 11+ only ever reports minor version 0 for a major version
+# (macosx_13_0, never macosx_13_3), so the tag never matches:
+#
+#   z3-solver 5.3.1.0 is not supported on this platform
+#
+# That is a `pip check` failure in the macOS job of the wheel CLI matrix.
+# Every 4.x release ships a macosx_13_0 wheel whose WHEEL tag agrees with
+# its filename, so capping below 5 is what keeps the macOS job green.
+#
+# Keeping the cap unconditional is what makes a single declaration possible.
+# The old darwin-only split was not a valid way to express this anyway, since
+# the two branches disagreed on the upper bound rather than on availability,
+# and it is what Dependabot could not rewrite.
+#
+# One requirement in both files also keeps `pip check` satisfied: the
+# installed distribution's own requirement and this manifest now state the
+# same thing. The engine is verified against 4.15.4.0, the version this range
+# resolves to on CI, and against 5.3.1.0 on the platforms where 5.x installs
+# cleanly.
+z3-solver>=4.12,<5
 control>=0.10
 cvxpy>=1.5
 casadi>=3.6
