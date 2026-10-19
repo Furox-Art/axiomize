@@ -227,7 +227,7 @@ visualization backend.
 python -m pytest tests/test_canvasxpress_export.py -q
 ```
 
-26 tests pass. The module is additionally mypy-clean and adds no ruff findings.
+27 tests pass. The module is additionally mypy-clean and adds no ruff findings.
 
 ## MCP sensitivity chart from a recorded run
 

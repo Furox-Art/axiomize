@@ -7,13 +7,13 @@
     "url": "https://github.com/Furox-Art/axiomize",
     "source": "github"
   },
-  "version": "1.14.0",
+  "version": "1.14.1",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "axiomize",
-      "version": "1.14.0",
+      "version": "1.14.1",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {
