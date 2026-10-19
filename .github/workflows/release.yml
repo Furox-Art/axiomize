@@ -78,8 +78,10 @@ jobs:
         run: python -m pip_audit -r requirements-test.txt
       - name: Source import graph contract
         run: python .github/scripts/import_contract_smoke.py --source
-      - name: Run tests
-        run: pytest tests/ -q
+      - name: Run tests with zero skipped cases
+        run: |
+          python -m pytest tests/ -q --junitxml=pytest-release.xml
+          python .github/scripts/assert_no_skips.py pytest-release.xml
       - name: Build distributions
         run: python -m build
       - name: Validate distributions
