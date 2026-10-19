@@ -325,7 +325,21 @@ def test_sbml_export_round_trips_values_and_units_losslessly() -> None:
     """
     model = _precision_model()
     out = export_model(model, format="sbml-l3v2")
-    assert out["status"] == "PASS"
+    # This fixture includes the smallest positive IEEE-754 subnormal.  The
+    # libSBML numeric lexer can reject its initialConcentration as outside the
+    # normal double range.  Keep the exact literal and never call an invalid
+    # native export PASS; an unvalidated XML-only export is NOT_RUN instead.
+    try:
+        import libsbml
+    except ImportError:
+        assert out["status"] == "PASS"
+        assert out["validation"]["schema_validation"] == "NOT_RUN"
+    else:
+        parsed = libsbml.readSBMLFromString(out["content"])
+        native_errors = int(parsed.getNumErrors())
+        assert out["validation"]["libsbml_errors"] == native_errors
+        assert out["status"] == ("FAIL" if native_errors else "PASS")
+        assert out["validation"]["schema_validation"] == out["status"]
     root = ET.fromstring(out["content"].split("\n", 1)[1])
     sbml_ns = "{http://www.sbml.org/sbml/level3/version2/core}"
     axiomize_ns = "{https://github.com/Furox-Art/axiomize/model-ir}"
@@ -348,6 +362,26 @@ def test_sbml_export_round_trips_values_and_units_losslessly() -> None:
     assert annotation["independent_unit"] == model.independent_unit
     assert annotation["variable_units"] == {v.name: v.unit for v in model.variables}
     assert annotation["parameter_units"] == {p.name: p.unit for p in model.parameters}
+
+
+def test_normal_range_sbml_numbers_validate_natively_without_loss() -> None:
+    # A boundary value inside IEEE normal range must be accepted by the native
+    # SBML parser and preserve its exact binary64 value in an XML attribute.
+    payload = _precision_model().to_dict()
+    smallest_normal = float.fromhex("0x1.0p-1022")
+    for variable in payload["variables"]:
+        if variable["name"] == "tiny":
+            variable["initial"] = smallest_normal
+    model = ModelIR.from_dict(payload)
+    out = export_model(model, format="sbml-l3v2")
+    assert out["status"] == "PASS", out["validation"]
+    root = ET.fromstring(out["content"].split("\n", 1)[1])
+    species_ns = "{http://www.sbml.org/sbml/level3/version2/core}species"
+    values = {item.get("id"): item.get("initialConcentration") for item in root.iter(species_ns)}
+    assert float(values["tiny"]) == smallest_normal
+    if out["validation"]["schema_validation"] != "NOT_RUN":
+        assert out["validation"]["schema_validation"] == "PASS"
+        assert out["validation"]["libsbml_errors"] == 0
 
 
 def test_cellml_and_modelica_export_round_trip_values_losslessly() -> None:
