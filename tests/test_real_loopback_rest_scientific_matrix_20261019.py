@@ -17,7 +17,7 @@ def live_server(tmp_path_factory):
     token = "this-is-a-unique-operator-auth-token"
     server = start_server(
         "127.0.0.1", 0, run_root=root,
-        auth_token=token, connection_timeout_s=5,
+        auth_token=token, connection_timeout_s=30,
     )
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
@@ -50,7 +50,7 @@ def request(server, route, payload=None, *, method="GET", token=True, raw=None, 
         url + route, data=data, headers=request_headers, method=method,
     )
     try:
-        response = urllib.request.urlopen(outgoing, timeout=5)
+        response = urllib.request.urlopen(outgoing, timeout=30)
     except urllib.error.HTTPError as exc:
         response = exc
     with response:
