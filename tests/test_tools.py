@@ -4,12 +4,10 @@ Run with: pytest tests/ -v
 """
 
 import json
-import math
 from pathlib import Path
 
 import numpy as np
 import pytest
-
 from csv_check import load
 from fit import fit_logistic, fit_sir
 from report_to_latex import convert, neutralize_dangerous_macros

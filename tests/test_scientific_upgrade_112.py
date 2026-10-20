@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from axiomize.general_engine import export_model, numerical_refinement, simulate_model

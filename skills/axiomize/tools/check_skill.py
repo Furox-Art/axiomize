@@ -85,7 +85,6 @@ def main():
     )
     md_files = list(dict.fromkeys(md_files))
     broken = check_links([p for p in md_files if p.exists()])
-    n_links = "ok"
     if broken:
         for f, t in broken:
             print(f"broken link: {f.relative_to(skill_dir)} -> {t}")

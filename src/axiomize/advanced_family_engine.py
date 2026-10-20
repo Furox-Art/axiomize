@@ -1139,7 +1139,6 @@ def _simulate_discrete_event(model: ModelIR, *, t_span: tuple[float, float], poi
             history[sample_index] = state
             sample_index += 1
         if next_time > t1:
-            current_time = t1
             break
         choice = int(rng.choice(len(compiled_events), p=rates / total_rate))
         event_name, _, delta_fns = compiled_events[choice]
@@ -1258,7 +1257,6 @@ def _simulate_hybrid(model: ModelIR, *, t_span: tuple[float, float], points: int
                             hit_time = candidate_time
                             hit_index = event_i
             if hit_index is None or hit_time is None:
-                current = target
                 break
             item = compiled[hit_index]
             event_state = np.asarray(solution.y_events[hit_index][0], dtype=float)

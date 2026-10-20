@@ -57,7 +57,7 @@ def _read_manifest() -> dict:
     try:
         manifest = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        _fail(f"package.json is not valid JSON: {exc}")
+        raise ContractFailure(f"package.json is not valid JSON: {exc}") from exc
     if not isinstance(manifest, dict):
         _fail("package.json must contain a JSON object")
     return manifest

@@ -9,6 +9,7 @@ and applies best-effort local resource ceilings.
 
 from __future__ import annotations
 
+import contextlib
 import math
 import os
 import subprocess
@@ -89,26 +90,18 @@ def _resource_limiter(timeout_s: float):
 
     def limit() -> None:
         cpu = max(1, int(math.ceil(timeout_s)) + 1)
-        try:
+        with contextlib.suppress(ValueError, OSError):
             resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu))
-        except (ValueError, OSError):
-            pass
         # 2 GiB is high enough for normal numerical smoke work but prevents an
         # accidental child from consuming the whole host.
-        try:
+        with contextlib.suppress(ValueError, OSError):
             two_gib = 2 * 1024 * 1024 * 1024
             resource.setrlimit(resource.RLIMIT_AS, (two_gib, two_gib))
-        except (ValueError, OSError):
-            pass
-        try:
+        with contextlib.suppress(ValueError, OSError):
             resource.setrlimit(resource.RLIMIT_FSIZE, (_MAX_CAPTURE_BYTES, _MAX_CAPTURE_BYTES))
-        except (ValueError, OSError):
-            pass
         if hasattr(resource, "RLIMIT_NPROC"):
-            try:
+            with contextlib.suppress(ValueError, OSError):
                 resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-            except (ValueError, OSError):
-                pass
 
     return limit
 
@@ -150,7 +143,6 @@ def run_python(
 
     start = time.perf_counter()
     timed_out = False
-    exit_code = 1
     stdout = ""
     stderr = ""
     output_truncated = False

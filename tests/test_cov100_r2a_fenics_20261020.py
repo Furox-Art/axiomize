@@ -69,7 +69,7 @@ def _install_fake_dolfinx(
     mpi4py.MPI = SimpleNamespace(COMM_WORLD=SimpleNamespace(size=comm_size))
 
     petsc4py = types.ModuleType("petsc4py")
-    petsc4py.PETSc = SimpleNamespace(ScalarType=lambda value: float(value))
+    petsc4py.PETSc = SimpleNamespace(ScalarType=float)
 
     ufl = types.ModuleType("ufl")
     ufl.dx = "dx"

@@ -10,13 +10,13 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+from axiomize import standards_export
 from axiomize.model_ir import ModelFamily, ModelIR
 from axiomize.scientific_stress import _models
 from axiomize.standards_export import (
     _cellml_unit_name,
     _sid,
     export_cellml_2,
-    export_notebook,
     export_sbml_l3v2,
     export_versioned_standard,
 )
@@ -117,7 +117,7 @@ def test_unknown_units_are_not_reinterpreted_as_dimensionless():
 
 def test_real_notebook_reconstructs_the_same_versioned_model_ir():
     model = native_model()
-    result = export_notebook(model)
+    result = standards_export.export_notebook(model)
     assert result["status"] == "PASS"
     artifact = json.loads(result["content"])
     assert artifact["nbformat"] == 4

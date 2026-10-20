@@ -13,8 +13,6 @@ from dataclasses import dataclass, field
 
 from axiomize.validation.status import ValidationStatus
 
-_BASES = ("L", "M", "T", "I", "Theta", "N", "J")
-
 # unit name -> dimension vector (scale factors are irrelevant for dimensional checks)
 _UNIT_TABLE: dict[str, dict[str, int]] = {
     "metre": {"L": 1},

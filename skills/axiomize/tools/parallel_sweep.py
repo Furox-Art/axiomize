@@ -193,6 +193,7 @@ def main():
     # Worker bounds are enforced once, at config load, before any job runs. The
     # resolved default is validated too, so the exit reason is the bound and not
     # a later pool failure.
+    workers = 0
     try:
         workers = _bounded_workers(args.workers if args.workers is not None else _default_workers())
     except ValueError as exc:

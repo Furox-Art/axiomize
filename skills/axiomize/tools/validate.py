@@ -11,7 +11,6 @@ Models:
 
 import argparse
 import math
-import sys
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -113,7 +112,8 @@ def report_sir(args):
     beta, gamma, I0, N, days = _validate_sir(args.beta, args.gamma, args.I0, args.N, args.days)
     r0 = beta / gamma
     sol = run_sir(beta, gamma, I0, N, days)
-    t, S, I, R = sol.t, *sol.y
+    t = sol.t
+    S, I, R = sol.y
     peak_idx = int(np.argmax(I))
     sim_final_size = R[-1] / N
     theory_final_size = final_size_theory(beta, gamma)
@@ -409,6 +409,7 @@ def main():
     p.add_argument("--sweep", action="store_true")
     p.add_argument("--plot", metavar="PNG", default=None)
     args = p.parse_args()
+    code = 2
     try:
         code = MODELS[args.model](args)
     except (ValueError, RuntimeError, OverflowError) as exc:

@@ -34,7 +34,9 @@ from axiomize.safe_expression import sympy_expression as _safe_sympy_expression
 # advanced diagnostics module. Star imports omit underscore names, so preserve
 # those compatibility symbols explicitly while the core is split behind this
 # facade.
-_parameter_values = _core._parameter_values
+def _parameter_values(model, overrides=None):
+    """Compatibility symbol delegating to the current core implementation."""
+    return _core._parameter_values(model, overrides)
 
 
 def _sympy_expression(expression: str, symbols: dict[str, Any]) -> Any:

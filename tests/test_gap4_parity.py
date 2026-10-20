@@ -88,10 +88,9 @@ def _rest_post(port: int, path: str, payload: dict) -> tuple[int, dict]:
 # --- smoke: uc katman da import edilebiliyor ve ayni core modulu goruyor ---
 
 def test_adapter_import_smoke():
-    import axiomize.cli  # noqa: F401
-    import axiomize.server.mcp_server  # noqa: F401
-    import axiomize.server.rest_server  # noqa: F401
+    from axiomize import cli  # noqa: F401
     from axiomize.application import services  # noqa: F401
+    from axiomize.server import mcp_server, rest_server  # noqa: F401
 
     assert hasattr(services, "solve_sir_service")
     assert hasattr(services, "validate_sir_service")

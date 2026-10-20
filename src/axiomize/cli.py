@@ -212,6 +212,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        # Ctrl-C is the documented way to stop the foreground server.
         pass
     finally:
         server.server_close()
