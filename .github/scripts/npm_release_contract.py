@@ -78,7 +78,7 @@ def _python_version() -> str:
         value = value.strip()
         if value.startswith('"') and value.endswith('"') and len(value) >= 2:
             return value[1:-1]
-    _fail("pyproject.toml has no literal [project] version")
+    raise ContractFailure("pyproject.toml has no literal [project] version")
 
 
 def _major(version: str) -> str:
