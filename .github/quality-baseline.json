@@ -35,6 +35,6 @@
     "max_errors": 35
   },
   "coverage": {
-    "min_percent": 69.4
+    "min_percent": 100
   }
 }
