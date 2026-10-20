@@ -7,7 +7,6 @@ return structured evidence instead of silently deciding that a model is good.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import numpy as np

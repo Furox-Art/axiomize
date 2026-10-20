@@ -8,6 +8,7 @@ passing an untrusted filesystem path directly to :meth:`load`.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -57,10 +58,8 @@ def _atomic_write_text(path: Path, text: str) -> None:
             os.fsync(handle.fileno())
         os.replace(temp_path, path)
     finally:
-        try:
+        with contextlib.suppress(OSError):
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 def resolve_run_directory(root: str | Path, run_id: str) -> Path:

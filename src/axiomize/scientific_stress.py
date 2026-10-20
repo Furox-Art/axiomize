@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -76,7 +76,7 @@ def run_stress_matrix()->dict[str,Any]:
     models=_models(); missing=set(ModelFamily)-set(models)
     if missing:return {"status":"FAIL","detail":f"families missing from matrix: {sorted(x.value for x in missing)}"}
     results=[]; start_all=time.monotonic()
-    for family in ModelFamily:
+    for family in list(ModelFamily):
         start=time.monotonic()
         try:_execute_family(family,models[family])
         except Exception as exc:status="FAIL"; error=f"{type(exc).__name__}: {exc}"

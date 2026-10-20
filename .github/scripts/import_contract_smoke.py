@@ -50,10 +50,11 @@ def _configure_import_path(mode: str) -> None:
     cleaned: list[str] = []
     for entry in sys.path:
         try:
-            if Path(entry).resolve() == src_resolved:
-                continue
+            resolved_entry = Path(entry).resolve()
         except (OSError, RuntimeError):
-            pass
+            resolved_entry = None
+        if resolved_entry == src_resolved:
+            continue
         cleaned.append(entry)
     sys.path[:] = cleaned
 

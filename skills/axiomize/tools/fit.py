@@ -9,7 +9,6 @@ import argparse
 import csv
 import math
 import os
-import sys
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -353,6 +352,7 @@ def main():
     header, t, y = load_csv(args.data)
     if args.compare:
         raise SystemExit(compare(t, y, args))
+    result = {}
     try:
         result = fit_sir(t, y, args.N) if args.model == "sir" else fit_logistic(t, y)
     except (ValueError, RuntimeError, TypeError, FloatingPointError, OverflowError) as exc:

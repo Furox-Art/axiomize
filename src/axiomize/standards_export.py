@@ -142,6 +142,7 @@ def export_sbml_l3v2(model: ModelIR) -> dict[str, Any]:
         if errors:
             validation["messages"] = [str(document.getError(i).getMessage()) for i in range(min(errors, 20))]
     except ImportError:
+        # python-libsbml is optional; the structural checks above are the fallback.
         pass
 
     return {
