@@ -78,6 +78,10 @@ jobs:
         run: python -m pip_audit -r requirements-test.txt
       - name: Source import graph contract
         run: python .github/scripts/import_contract_smoke.py --source
+      - name: Install the project for subprocess tests
+        # Parts of the suite spawn fresh interpreters from temporary
+        # directories, where pytest's rootdir insertion does not apply.
+        run: python -m pip install --no-deps -e .
       - name: Run tests with zero skipped cases
         run: |
           python -m pytest tests/ -q --junitxml=pytest-release.xml
