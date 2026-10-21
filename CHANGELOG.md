@@ -2,6 +2,31 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.14.2] - 2026-10-21
+
+### Security
+
+- Added CodeQL code scanning for Python and JavaScript/TypeScript with the
+  `security-and-quality` query pack, on pushes and pull requests to `main` and a
+  weekly schedule (#71), and resolved the alerts it reported (#72, #73). The
+  fixes are refactors with no behavioural change: the sandbox resource limiter
+  and run-state cleanup suppress only the expected `OSError`/`ValueError` paths,
+  `general_engine_core` declares `__all__`, and the release-contract scripts
+  raise `ContractFailure` directly instead of relying on a helper call whose
+  result the analyser considered dead.
+
+### Tests — Windows portability
+
+- Removed the remaining platform-specific skip. The npm-entrypoint test used to
+  skip when node's directory also provided a Python interpreter, which is the
+  common layout on Linux; it now isolates a node-only directory on the child
+  `PATH` (copying the node binary on Windows) and asserts the entry point still
+  reports a missing interpreter (#66).
+- CI and release preflight now convert the pytest JUnit report with
+  `.github/scripts/assert_no_skips.py`, so a skipped test fails the build
+  instead of silently reducing coverage (#66). The coverage floor is 100%
+  (#70).
+
 ## [1.14.1] - 2026-10-13
 
 ### Correctness

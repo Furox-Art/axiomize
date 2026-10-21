@@ -4,12 +4,36 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
+from pathlib import Path
 
 import pytest
 
 from axiomize.runs.state import RunState
 from axiomize.server.mcp_server import _call_tool, handle_message, list_tools
 from axiomize.visualization.mcp_charts import visualize_recorded_run
+
+
+def _can_create_symlinks() -> bool:
+    """Probe once whether this interpreter may create symbolic links.
+
+    Unprivileged Windows refuses ``os.symlink`` with ``WinError 1314`` unless
+    Developer Mode or SeCreateSymbolicLinkPrivilege is available. The escape
+    test below needs a real link, so the capability is measured rather than
+    assumed; the probe is contained in a throwaway directory.
+    """
+    with tempfile.TemporaryDirectory() as scratch:
+        target = Path(scratch) / "target.txt"
+        target.write_text("probe", encoding="utf-8")
+        link = Path(scratch) / "link.txt"
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError):
+            return False
+        return True
+
+
+SYMLINKS_AVAILABLE = _can_create_symlinks()
 
 
 def _record(root, scores=None):
@@ -110,6 +134,13 @@ def test_rejects_missing_manifest(tmp_path):
         visualize_recorded_run(tmp_path, "case")
 
 
+@pytest.mark.skipif(
+    not SYMLINKS_AVAILABLE,
+    reason=(
+        "symlink creation is unavailable (unprivileged Windows returns "
+        "WinError 1314); this escape test needs a real symbolic link"
+    ),
+)
 def test_rejects_symlink_to_external_manifest(tmp_path):
     folder = _record(tmp_path)
     external = tmp_path / "manifest-outside.json"
