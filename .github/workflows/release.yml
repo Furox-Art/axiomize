@@ -162,17 +162,13 @@ jobs:
           retention-days: 30
 
   npm-package:
-    # The npm shim is still part of the release contract, but it must not gate
-    # the Python distribution: npmjs.com has no trusted publisher registered
-    # for this repository and the token attempt is rejected, so blocking PyPI
-    # on npm published nothing at all. This job runs after `publish` (PyPI
-    # success first, which preserves the ordering that keeps npm from getting
-    # ahead) and `continue-on-error` keeps an external npm credential failure
-    # from failing the whole release. The job itself still fails loudly, with
-    # a warning step that points at the credential setup.
+    # The npm shim is part of the release contract. It runs after `publish`, so
+    # PyPI is already released before npm is attempted; a failure here marks the
+    # release failed (honestly: one channel is missing) without undoing or
+    # blocking the PyPI upload. A job-level `continue-on-error` used to hide
+    # test, tarball-allowlist and credential failures from the run result.
     name: release npm-package
     needs: [preflight, publish]
-    continue-on-error: true
     runs-on: ubuntu-latest
     environment:
       name: npm
@@ -314,25 +310,39 @@ jobs:
               raise SystemExit(f'FAIL: npm tarball has unexpected files {sorted(extra)}')
           print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
           "
+      - name: Choose the npm dist-tag
+        id: disttag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.preflight.outputs.package_version }}"
+          if [[ "$version" == *-* ]]; then
+            tag=next
+          else
+            tag=latest
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "::notice::Publishing ${version} under the '${tag}' dist-tag."
       - name: Publish to npm (OIDC trusted publishing)
         if: steps.select-mode.outputs.mode == 'oidc' && steps.registry.outputs.exists != 'true'
         # No NODE_AUTH_TOKEN: npm's CLI authenticates from the job's OIDC
         # identity. Provenance is generated automatically for OIDC publishes
         # from a public repository; --provenance is explicit so the attestation
-        # survives any future change to that default.
-        run: npm publish --provenance --access public
+        # survives any future change to that default. The dist-tag is explicit:
+        # a prerelease must not move `latest`.
+        run: npm publish --provenance --access public --tag "${{ steps.disttag.outputs.tag }}"
       - name: Publish to npm (NPM_TOKEN fallback)
         if: steps.select-mode.outputs.mode == 'token' && steps.registry.outputs.exists != 'true'
         # --provenance is deliberately absent: provenance is backed by a Sigstore
         # attestation derived from the OIDC identity, and a long-lived token
         # cannot mint one. Passing the flag here would fail the publish.
-        run: npm publish --access public
+        run: npm publish --access public --tag "${{ steps.disttag.outputs.tag }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Report an npm publish failure without failing the PyPI release
+      - name: Report an npm leg failure after PyPI published
         if: failure()
         run: |
-          echo "::warning::npm did not publish; the PyPI release is unaffected."
+          echo "::warning::The npm leg failed; inspect the failed step. PyPI is already published and unaffected."
           echo "::warning::Register the npm trusted publisher (docs/documentation.md) or set NPM_TOKEN, then use the npm Publish workflow to recover."
 
   platform-smoke:
@@ -418,7 +428,7 @@ jobs:
           mkdir -p release-assets
           mv dist/*.sbom.spdx.json release-assets/
           find dist -type f ! -name '*.whl' ! -name '*.tar.gz' -delete
-      - name: Check whether version already exists on PyPI
+      - name: Check whether this version is complete on PyPI
         id: gate
         shell: bash
         run: |
@@ -427,96 +437,126 @@ jobs:
           version="${{ needs.preflight.outputs.package_version }}"
           json_url="https://pypi.org/pypi/${name}/${version}/json"
           simple_url="https://pypi.org/simple/${name}/"
-          normalized_name="$(python -c 'import re,sys; print(re.sub(r"[-_.]+", "_", sys.argv[1]))' "$name")"
-          found=false
-          if curl --retry 2 --retry-delay 2 -sfL "$json_url" > /dev/null; then
-            found=true
-            echo "Existing PyPI release found through JSON API: $json_url"
+          complete=false
+          state="$(mktemp)"
+          if curl --retry 2 --retry-delay 2 -sfL "$json_url" -o "$state"; then
+            if python - "$state" <<'PY'
+          import json, pathlib, sys
+
+          published = {
+              entry["filename"]
+              for entry in json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("urls", [])
+          }
+          expected = {
+              path.name
+              for path in pathlib.Path("dist").iterdir()
+              if path.suffix == ".whl" or path.name.endswith(".tar.gz")
+          }
+          missing = sorted(expected - published)
+          if missing:
+              print("missing from PyPI: " + ", ".join(missing))
+              sys.exit(1)
+          print("PyPI already serves every expected file: " + ", ".join(sorted(expected)))
+          PY
+            then
+              complete=true
+            fi
           else
+            # The JSON API answers 404 for a version the CDN has not caught up
+            # with; the Simple API lists the files. Match whole filenames, not
+            # a prefix: "axiomize-1.14.1" is a substring of "axiomize-1.14.10".
             listing="$(mktemp)"
             if curl --retry 2 --retry-delay 2 -sfL "$simple_url" -o "$listing"; then
-              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then
-                found=true
-                echo "Existing PyPI release found through Simple API: $simple_url"
-              fi
+              complete=true
+              for file in dist/*.whl dist/*.tar.gz; do
+                [ -e "$file" ] || continue
+                base="$(basename "$file")"
+                if ! grep -Fq "/${base}#" "$listing"; then
+                  complete=false
+                  echo "Simple API is missing ${base}."
+                  break
+                fi
+              done
             fi
             rm -f "$listing"
           fi
-          echo "skip=$found" >> "$GITHUB_OUTPUT"
-      - name: Detect API token fallback
-        id: auth
+          rm -f "$state"
+          echo "skip=$complete" >> "$GITHUB_OUTPUT"
+      - name: Publish to PyPI with Trusted Publishing and provenance
         if: steps.gate.outputs.skip != 'true'
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        shell: bash
-        run: |
-          if [ -n "$PYPI_TOKEN" ]; then
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Publish to PyPI with Trusted Publishing
-        id: trusted_publish
-        if: steps.gate.outputs.skip != 'true'
+        # No token fallback and no continue-on-error: a long-lived token cannot
+        # mint a PEP 740 attestation, and the README promises one for every
+        # release. An unconfigured trusted publisher must fail the run.
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
+          attestations: true
+          # Only reachable when the gate found a missing file, so this uploads
+          # the missing half of a partial release rather than re-uploading an
+          # existing file.
           skip-existing: true
-        continue-on-error: true
-      - name: Publish to PyPI with API token fallback
-        id: token_publish
-        if: steps.gate.outputs.skip != 'true' && steps.trusted_publish.outcome != 'success' && steps.auth.outputs.has_token == 'true'
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          skip-existing: true
-        continue-on-error: true
-      - name: Fail clearly when PyPI authentication is not configured
-        if: steps.gate.outputs.skip != 'true' && steps.trusted_publish.outcome != 'success' && steps.auth.outputs.has_token != 'true'
-        shell: bash
-        run: |
-          echo "::error::PyPI authentication is not configured for this release."
-          echo "::error::Configure a PyPI Trusted Publisher with owner=Furox-Art, repository=axiomize, workflow=release.yml, environment=pypi; or define the PYPI_API_TOKEN secret in the pypi environment."
-          exit 1
-      - name: Verify PyPI publication
+      - name: Wait until every published file is served by PyPI
         shell: bash
         run: |
           set -euo pipefail
           name="${{ needs.preflight.outputs.package_name }}"
           version="${{ needs.preflight.outputs.package_version }}"
           json_url="https://pypi.org/pypi/${name}/${version}/json"
-          simple_url="https://pypi.org/simple/${name}/"
-          normalized_name="$(python -c 'import re,sys; print(re.sub(r"[-_.]+", "_", sys.argv[1]))' "$name")"
-          if [ "${{ steps.gate.outputs.skip }}" = "true" ]; then
-            echo "PyPI publication verified before upload gate."
-            exit 0
-          fi
           for attempt in 1 2 3 4 5 6; do
-            if curl -sfL "$json_url" > /dev/null; then
-              echo "PyPI publication verified through JSON API: $json_url"
-              exit 0
-            fi
-            listing="$(mktemp)"
-            if curl -sfL "$simple_url" -o "$listing"; then
-              if grep -Fqi "${normalized_name}-${version}" "$listing" || grep -Fqi "${name}-${version}" "$listing"; then
-                rm -f "$listing"
-                echo "PyPI publication verified through Simple API: $simple_url"
+            state="$(mktemp)"
+            if curl -sfL "$json_url" -o "$state"; then
+              if python - "$state" <<'PY'
+          import json, pathlib, sys
+
+          published = {
+              entry["filename"]
+              for entry in json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("urls", [])
+          }
+          expected = {
+              path.name
+              for path in pathlib.Path("dist").iterdir()
+              if path.suffix == ".whl" or path.name.endswith(".tar.gz")
+          }
+          missing = sorted(expected - published)
+          if missing:
+              print("still missing: " + ", ".join(missing))
+              sys.exit(1)
+          print("PyPI serves every expected file: " + ", ".join(sorted(expected)))
+          PY
+              then
+                rm -f "$state"
                 exit 0
               fi
             fi
-            rm -f "$listing"
+            rm -f "$state"
             sleep 10
           done
-          if [ "${{ steps.trusted_publish.outcome }}" = "success" ] || [ "${{ steps.token_publish.outcome }}" = "success" ]; then
-            echo "::warning::PyPI public index/API propagation is delayed; upload action was accepted by PyPI and completed successfully."
-            exit 0
-          fi
-          echo "::error::Neither an existing PyPI release nor a successful PyPI upload could be verified."
+          echo "::error::PyPI accepted the upload, but ${name} ${version} or one of its files is not visible after 60 seconds."
+          echo "::error::Re-run the workflow: the existence gate is idempotent and will verify the published files."
           exit 1
+
+      - name: Require a PEP 740 attestation for every published file
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="${{ needs.preflight.outputs.package_name }}"
+          version="${{ needs.preflight.outputs.package_version }}"
+          for file in dist/*.whl dist/*.tar.gz; do
+            [ -e "$file" ] || continue
+            base="$(basename "$file")"
+            url="https://pypi.org/integrity/${project}/${version}/${base}/provenance"
+            code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+            if [ "$code" != "200" ]; then
+              echo "::error::No PEP 740 attestation for ${base} (HTTP ${code}): ${url}"
+              exit 1
+            fi
+            echo "attested: ${base}"
+          done
       - name: Create GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: v${{ needs.preflight.outputs.package_version }}
           target_commitish: ${{ github.sha }}
+          prerelease: ${{ contains(needs.preflight.outputs.package_version, '-') }}
           generate_release_notes: true
           files: |
             dist/*.whl
