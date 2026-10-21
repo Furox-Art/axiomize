@@ -1,2 +1,2 @@
-axiomize 1.14.1
-attempt 2
+axiomize 1.14.2
+patch release: Windows symlink test skip, version and docs alignment
