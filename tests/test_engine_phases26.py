@@ -97,7 +97,10 @@ class TestFitting:
                         p0=[5.0, 0.5], param_names=["a", "r"])
         assert res.success is True
         assert abs(res.params["r"][0] - 0.7) / 0.7 < 0.10
-        assert res.bic < res.aic or res.bic >= 0
+        # With n=30 and k=2, BIC's heavier penalty must exceed AIC. The old
+        # "bic < aic or bic >= 0" was satisfied by any positive BIC, including
+        # an implementation that never applied the penalty at all.
+        assert res.bic > res.aic > 0
 
     def test_compare_picks_sir_over_logistic_on_sir_data(self):
         from axiomize.tools.numerical.scipy_tool import solve_sir

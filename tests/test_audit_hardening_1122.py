@@ -71,3 +71,25 @@ def test_release_workflow_ref_guard_allows_main(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("GITHUB_WORKFLOW", "Release")
     monkeypatch.setenv("GITHUB_REF", "refs/heads/main")
     assert module.main() == 0
+
+
+@pytest.mark.parametrize("workflow", ["Release", "npm Publish"])
+def test_publishing_workflows_reject_feature_branch_dispatch(
+    monkeypatch: pytest.MonkeyPatch, workflow: str
+) -> None:
+    """The manual npm recovery path must enforce the same main-only rule."""
+    module = _release_contract_module()
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_WORKFLOW", workflow)
+    monkeypatch.setenv("GITHUB_REF", "refs/heads/feature-x")
+    assert module.main() == 1
+
+
+def test_ci_on_a_pull_request_ref_is_not_blocked_by_the_release_guard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _release_contract_module()
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_WORKFLOW", "CI")
+    monkeypatch.setenv("GITHUB_REF", "refs/pull/1/merge")
+    assert module.main() == 0

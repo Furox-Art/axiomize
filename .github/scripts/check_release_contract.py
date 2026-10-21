@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -62,21 +63,55 @@ def _release_ref_is_allowed() -> bool:
 
     ``workflow_dispatch`` is useful for retrying a failed release, but without
     this guard GitHub allows a user to dispatch the workflow against an
-    arbitrary branch.  The release workflow must only ever publish content from
-    the repository's main branch.
+    arbitrary branch.  Both publishing workflows must only ever publish content
+    from the repository's main branch. Other workflows (CI) also run this
+    script on pull-request refs and must stay unaffected.
     """
     if os.environ.get("GITHUB_ACTIONS") != "true":
         return True
-    if os.environ.get("GITHUB_WORKFLOW") != "Release":
+    workflow = os.environ.get("GITHUB_WORKFLOW", "")
+    if workflow not in {"Release", "npm Publish"}:
         return True
     ref = os.environ.get("GITHUB_REF", "")
     if ref != "refs/heads/main":
         print(
-            f"FAIL: Release workflow may run only from refs/heads/main; got {ref or '<missing>'}",
+            f"FAIL: {workflow} workflow may run only from refs/heads/main; "
+            f"got {ref or '<missing>'}",
             file=sys.stderr,
         )
         return False
     return True
+
+
+def _json_version(path: Path, *, packages: bool = False) -> str:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"{path.name} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"{path.name} must contain a JSON object")
+    version = data.get("version")
+    if not isinstance(version, str):
+        raise RuntimeError(f"{path.name} has no string version")
+    if packages:
+        entries = data.get("packages")
+        if not isinstance(entries, list) or not entries:
+            raise RuntimeError(f"{path.name} has no packages array")
+        for entry in entries:
+            if not isinstance(entry, dict) or entry.get("version") != version:
+                found = entry.get("version") if isinstance(entry, dict) else entry
+                raise RuntimeError(
+                    f"{path.name} package entry version {found!r} disagrees with {version!r}"
+                )
+    return version
+
+
+def _citation_version() -> str:
+    text = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    match = re.search(r'^version:\s*"?([^"\s]+)"?\s*$', text, re.MULTILINE)
+    if not match:
+        raise RuntimeError("CITATION.cff has no literal version")
+    return match.group(1)
 
 
 def _npm_version() -> str:
@@ -103,6 +138,9 @@ def main() -> int:
         "readme": _readme_version(),
         "changelog": _changelog_version(),
         "npm": _npm_version(),
+        "codemeta": _json_version(ROOT / "codemeta.json"),
+        "citation": _citation_version(),
+        "server": _json_version(ROOT / "server.json", packages=True),
     }
     for name, value in versions.items():
         print(f"{name:12s} {value}")

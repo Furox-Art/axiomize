@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - ".github/pypi-release-trigger"
-  # Manual runs can still choose the npm credential mode explicitly. Automatic
-  # release-trigger pushes use the repository's verified NPM_TOKEN path so a
-  # missing npm Trusted Publisher cannot stall a cross-registry release.
+  # Manual runs can still choose the npm credential mode explicitly. OIDC is
+  # the default for every event; the token fallback is an explicit opt-in until
+  # the npm Trusted Publisher is registered. The npm job runs after the PyPI
+  # release and is non-blocking, so a missing npm credential can no longer
+  # prevent the Python distribution from being published.
   workflow_dispatch:
     inputs:
       use_token_fallback:
@@ -31,9 +33,23 @@ jobs:
       package_version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history so the release commit can be proven to sit on main.
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.11"
+      - name: Require the release commit to be the current main tip
+        # A workflow_dispatch can target a branch name; this refuses an older
+        # checkout even when the branch is spelled "main". Publishing an
+        # untested older commit is not recoverable on PyPI.
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" || {
+            echo "::error::release commit $(git rev-parse HEAD) is not the current origin/main tip $(git rev-parse FETCH_HEAD)"
+            exit 1
+          }
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
       - name: Verify documented provenance claims against the live registries
@@ -146,17 +162,17 @@ jobs:
           retention-days: 30
 
   npm-package:
-    # The npm shim is published from the same release trigger as the Python
-    # distributions, so it is part of the release contract rather than an
-    # independent workflow that can drift. It previously ran in a separate
-    # workflow keyed only on package.json changes, which is how package.json
-    # ended up a release behind pyproject.toml.
-    #
-    # `needs: preflight` so a red Python test suite blocks the npm publish too.
-    # Publishing npm green while PyPI is red would reintroduce exactly the
-    # cross-registry drift this job exists to prevent.
+    # The npm shim is still part of the release contract, but it must not gate
+    # the Python distribution: npmjs.com has no trusted publisher registered
+    # for this repository and the token attempt is rejected, so blocking PyPI
+    # on npm published nothing at all. This job runs after `publish` (PyPI
+    # success first, which preserves the ordering that keeps npm from getting
+    # ahead) and `continue-on-error` keeps an external npm credential failure
+    # from failing the whole release. The job itself still fails loudly, with
+    # a warning step that points at the credential setup.
     name: release npm-package
-    needs: [preflight]
+    needs: [preflight, publish]
+    continue-on-error: true
     runs-on: ubuntu-latest
     environment:
       name: npm
@@ -188,21 +204,17 @@ jobs:
           package-manager-cache: false
       - name: Select the publish credential mode
         id: select-mode
-        # OIDC is the default and the target state. The token path is an
-        # explicit fallback that exists only while the trusted publisher is
-        # unregistered. Both are fail-closed: each fails with a specific message
-        # rather than silently degrading to whichever credential happens to be
-        # present.
-        #
-        # Mode resolution: manual dispatch keeps the explicit checkbox.
-        # Automatic version-trigger pushes use the verified token path.
+        # OIDC is the default and the target state, for automatic release
+        # pushes and manual dispatches alike. The token path is an explicit
+        # opt-in that exists only while the trusted publisher is unregistered.
+        # Both are fail-closed: each fails with a specific message rather than
+        # silently degrading to whichever credential happens to be present.
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            requested="${{ inputs.use_token_fallback }}"
-            [ "$requested" = "true" ] && mode=token || mode=oidc
-          else
+          if [ "${{ inputs.use_token_fallback }}" = "true" ]; then
             mode=token
+          else
+            mode=oidc
           fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
 
@@ -271,13 +283,13 @@ jobs:
           node --check tests/npm/contract.test.js
       - name: npm package contract tests
         run: npm test
-      - name: npm/Python version lockstep and registry contract
-        # Fails closed on version disagreement between package.json,
-        # pyproject.toml, CHANGELOG and __init__, and --check-registry fails
-        # closed if this exact version is already on npm. npm versions are
-        # immutable, so a republish attempt can never succeed and would leave
-        # the two registries permanently out of step.
-        run: python .github/scripts/npm_release_contract.py --check-registry
+      - name: npm/Python version lockstep and registry state
+        id: registry
+        # Fails closed on version disagreement and records whether this exact
+        # version is already on npm. An existing version is not an error here:
+        # the publish steps below are skipped, which makes a re-run of the
+        # release workflow idempotent instead of failing before PyPI.
+        run: python .github/scripts/npm_release_contract.py --registry-state
       - name: Assert the tarball contains only the allowlisted files
         # `files` in package.json is the allowlist. Without this assertion npm
         # would silently fall back to .gitignore and pack the entire checkout.
@@ -303,21 +315,25 @@ jobs:
           print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
           "
       - name: Publish to npm (OIDC trusted publishing)
-        if: steps.select-mode.outputs.mode == 'oidc'
+        if: steps.select-mode.outputs.mode == 'oidc' && steps.registry.outputs.exists != 'true'
         # No NODE_AUTH_TOKEN: npm's CLI authenticates from the job's OIDC
         # identity. Provenance is generated automatically for OIDC publishes
         # from a public repository; --provenance is explicit so the attestation
         # survives any future change to that default.
-        # No continue-on-error: a failed publish must fail the release.
         run: npm publish --provenance --access public
       - name: Publish to npm (NPM_TOKEN fallback)
-        if: steps.select-mode.outputs.mode == 'token'
+        if: steps.select-mode.outputs.mode == 'token' && steps.registry.outputs.exists != 'true'
         # --provenance is deliberately absent: provenance is backed by a Sigstore
         # attestation derived from the OIDC identity, and a long-lived token
         # cannot mint one. Passing the flag here would fail the publish.
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Report an npm publish failure without failing the PyPI release
+        if: failure()
+        run: |
+          echo "::warning::npm did not publish; the PyPI release is unaffected."
+          echo "::warning::Register the npm trusted publisher (docs/documentation.md) or set NPM_TOKEN, then use the npm Publish workflow to recover."
 
   platform-smoke:
     name: release wheel-cli (${{ matrix.os }})
@@ -375,7 +391,10 @@ jobs:
           retention-days: 30
 
   publish:
-    needs: [preflight, platform-smoke, npm-package]
+    # npm-package deliberately does not appear here: the Python distribution
+    # must ship even while the npm credential is unavailable. The npm job
+    # depends on this job, which keeps npm from getting ahead of PyPI.
+    needs: [preflight, platform-smoke]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -389,8 +408,16 @@ jobs:
         with:
           name: python-package-distributions
           path: dist
-      - name: Leave only wheel and sdist for PyPI
-        run: find dist -type f ! -name '*.whl' ! -name '*.tar.gz' -delete
+      - name: Separate the SBOM from the PyPI distributions
+        # The SBOM is a GitHub-release asset, not a distribution: uploading it
+        # to PyPI would fail. The earlier version deleted it here and then
+        # attached dist/*.sbom.spdx.json to the release, so every release was
+        # missing the inventory it claimed to ship.
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          mv dist/*.sbom.spdx.json release-assets/
+          find dist -type f ! -name '*.whl' ! -name '*.tar.gz' -delete
       - name: Check whether version already exists on PyPI
         id: gate
         shell: bash
@@ -494,4 +521,4 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
-            dist/*.sbom.spdx.json
+            release-assets/*.sbom.spdx.json

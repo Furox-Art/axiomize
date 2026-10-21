@@ -275,20 +275,63 @@ function testPublishModes() {
   );
   process.stdout.write('PASS npm-publish.yml: use_token_fallback input defaults to false (OIDC preferred)\n');
 
-  // Automatic version-trigger pushes must use the repository's verified
-  // token path directly; manual dispatches keep the explicit OIDC/token choice.
+  // OIDC is the default for every event; only the explicit dispatch input can
+  // select the token fallback. The token path is not "verified" (the registry
+  // rejects it today), so automatic releases must not force it.
   const release = readWorkflow('release.yml');
-  assert.match(
+  assert.doesNotMatch(
     release,
     /github\.event_name[\s\S]*workflow_dispatch[\s\S]*else[\s\S]*mode=token/,
-    'release.yml: automatic push releases must select token mode',
+    'release.yml: automatic pushes must not force token mode',
+  );
+  assert.match(
+    release,
+    /inputs\.use_token_fallback[\s\S]*mode=token[\s\S]*else[\s\S]*mode=oidc/,
+    'release.yml: OIDC must be the default with token only as an explicit opt-in',
   );
   assert.doesNotMatch(
     release,
     /vars\.npm_publish_mode/,
     'release.yml: automatic publishing must not depend on a repository variable',
   );
-  process.stdout.write('PASS release.yml: automatic pushes use the verified token path\n');
+  process.stdout.write('PASS release.yml: OIDC is the default; token is an explicit opt-in\n');
+
+  // PyPI must ship even when npm cannot: the npm job runs after the release and
+  // a credential failure is reported without failing the Python release.
+  const releaseJobs = jobBlocks(release);
+  const publishJob = releaseJobs.get('publish');
+  const npmJob = releaseJobs.get('npm-package');
+  assert.ok(publishJob && npmJob, 'release.yml: missing publish or npm-package job');
+  assert.ok(
+    !/needs:\s*\[[^\]]*npm-package/.test(publishJob),
+    'release.yml: PyPI publish must not depend on npm-package',
+  );
+  assert.match(
+    npmJob,
+    /needs:\s*\[preflight, publish\]/,
+    'release.yml: npm must run after the PyPI release',
+  );
+  assert.match(
+    npmJob,
+    /^    continue-on-error:\s*true/m,
+    'release.yml: an npm failure must not fail the release',
+  );
+  assert.match(
+    release,
+    /--registry-state/,
+    'release.yml: npm must skip an existing version instead of failing',
+  );
+  assert.match(
+    release,
+    /steps\.registry\.outputs\.exists != 'true'/,
+    'release.yml: publish steps must honour an existing npm version',
+  );
+  assert.match(
+    release,
+    /release-assets\/\*\.sbom\.spdx\.json/,
+    'release.yml: the SBOM must be attached to the GitHub release',
+  );
+  process.stdout.write('PASS release.yml: PyPI is independent of npm and the SBOM is preserved\n');
 
   // Both modes must fail closed with an actionable message.
   for (const name of workflows) {

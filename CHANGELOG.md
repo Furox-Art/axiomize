@@ -23,9 +23,20 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
   `PATH` (copying the node binary on Windows) and asserts the entry point still
   reports a missing interpreter (#66).
 - CI and release preflight now convert the pytest JUnit report with
-  `.github/scripts/assert_no_skips.py`, so a skipped test fails the build
-  instead of silently reducing coverage (#66). The coverage floor is 100%
-  (#70).
+  `.github/scripts/assert_no_skips.py`, so a skipped test fails the build on every
+  platform that runs pytest; Windows is covered by the exact-wheel CLI smoke job
+  instead. The coverage floor is 100% (#70).
+
+### Release engineering
+
+- PyPI publishing no longer depends on the npm job. npm publishes only after the
+  Python release succeeds and is non-blocking while the npm trusted publisher is
+  unregistered; an existing npm version is skipped instead of failing the release.
+- Release SBOMs are moved out of `dist/` before the PyPI upload and attached to
+  the GitHub release; the previous step deleted the file it then tried to attach.
+- The release contract now covers `codemeta.json`, `CITATION.cff` and
+  `server.json`, and the main-branch guard also covers the `npm Publish`
+  recovery workflow.
 
 ## [1.14.1] - 2026-10-13
 
