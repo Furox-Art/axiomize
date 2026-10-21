@@ -9,7 +9,8 @@ name: npm Publish
 # release.yml run failed between its gates and the npm publish, or to publish
 # while the npmjs.com trusted publisher is not yet registered. Every gate that
 # release.yml runs also runs here, so a manual publish is held to the same
-# standard as an automatic one.
+# standard as an automatic one. check_release_contract.py refuses this workflow
+# off refs/heads/main, even though workflow_dispatch can target any branch.
 on:
   workflow_dispatch:
     inputs:
@@ -62,7 +63,12 @@ jobs:
           # bytes this checkout did not produce.
           package-manager-cache: false
       - name: Report the manual publish reason
-        run: 'echo "manual npm publish requested: ${{ inputs.reason }}"'
+        # Passed through the environment, never interpolated into the script:
+        # a write-access dispatcher controls this string.
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          printf 'manual npm publish requested: %s\n' "$REASON"
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
       - name: Verify the toolchain supports the selected auth mode

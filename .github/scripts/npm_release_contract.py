@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -158,7 +159,15 @@ def _check_package_surfaces(manifest: dict) -> None:
     print(f"PASS files allowlist resolves ({len(files)} entries)")
 
 
-def _check_registry(manifest: dict) -> None:
+def _emit_registry_state(exists: bool) -> None:
+    """Expose the registry answer to the release workflow's publish gate."""
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a", encoding="utf-8") as handle:
+            handle.write(f"exists={'true' if exists else 'false'}\n")
+
+
+def _check_registry(manifest: dict, *, allow_existing: bool = False) -> None:
     name = manifest["name"]
     version = manifest["version"]
     url = REGISTRY_URL.format(name=name)
@@ -176,19 +185,33 @@ def _check_registry(manifest: dict) -> None:
     if not isinstance(versions, dict):
         _fail(f"npm registry response for {name} has no versions map")
     if version in versions:
+        if allow_existing:
+            print(f"PASS npm already has {name}@{version}; the publish step will be skipped")
+            _emit_registry_state(True)
+            return
         _fail(
             f"npm already has {name}@{version}; bump the version before "
             "releasing, the registry will not accept a duplicate"
         )
+    _emit_registry_state(False)
     print(f"PASS npm {version} is not yet published for {name}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+    registry = parser.add_mutually_exclusive_group()
+    registry.add_argument(
         "--check-registry",
         action="store_true",
         help="also assert the version is not already present on the public npm registry",
+    )
+    registry.add_argument(
+        "--registry-state",
+        action="store_true",
+        help=(
+            "record whether the version is already on npm in $GITHUB_OUTPUT; "
+            "an existing version skips the publish instead of failing"
+        ),
     )
     args = parser.parse_args()
 
@@ -200,6 +223,8 @@ def main() -> int:
     ]
     if args.check_registry:
         checks.append(lambda: _check_registry(manifest))
+    if args.registry_state:
+        checks.append(lambda: _check_registry(manifest, allow_existing=True))
 
     for check in checks:
         try:

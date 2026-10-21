@@ -16,7 +16,9 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.14.2** on PyPI and npm.
+Current package line: **1.14.2**. Per-registry availability is tracked in
+[docs/documentation.md](docs/documentation.md#trusted-publishers-one-satisfied-one-pending); the
+badges above are live and authoritative.
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
 Changelog: **[CHANGELOG.md](CHANGELOG.md)** · Roadmap: **[ROADMAP.md](ROADMAP.md)** ·
@@ -322,15 +324,15 @@ is repeated at the top of this README for clients that scrape it.
 
 ## Supply chain
 
-PyPI `1.12.5` is published with **PEP 740 attestations**: both the wheel and the sdist serve a
+PyPI releases are published with **PEP 740 attestations**: both the wheel and the sdist serve a
 Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi`, and each
 attested digest matches the file you download. You can confirm that before installing.
 
-npm `1.12.5` is **not** attested. It was published with a long-lived `NPM_TOKEN`, which cannot
-mint an attestation, so that tarball is digest-verifiable only:
+npm releases are **not** attested: no npm trusted publisher is registered, so npm tarballs are
+digest-verifiable only. The current `1.14.x` shims have no build attestation:
 
 ```bash
-npm view axiomize@1.12.5 dist.integrity   # pin this; npm ci enforces it from a lockfile
+npm view axiomize@1.14.1 dist.integrity   # pin this; npm ci enforces it from a lockfile
 ```
 
 Three different things are easy to confuse. A **PEP 740 attestation** says a build workflow signed
