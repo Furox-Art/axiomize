@@ -7,8 +7,8 @@ a vulnerability also affects the current line, in which case both are patched.
 
 | Version | Supported |
 |---|---|
-| 1.12.x | yes |
-| < 1.12 | no |
+| 1.14.x | yes |
+| < 1.14 | no |
 
 A fix affecting distributed runtime behavior ships as a patch version built and tested
 from the final merged commit on `main`. Unmerged branch artifacts are not release evidence
