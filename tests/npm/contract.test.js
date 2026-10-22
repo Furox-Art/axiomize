@@ -230,10 +230,8 @@ function testPublishModes() {
       `${name}: the OIDC publish must not set NODE_AUTH_TOKEN`,
     );
 
-    // Neither npm publish step may fail silently. Scoped to each step's own
-    // block: release.yml's PyPI publish steps legitimately use
-    // continue-on-error for the trusted-publish -> token-fallback chain, and
-    // those are guarded by an explicit "fail clearly" step instead.
+    // Neither npm publish step may fail silently, and every publish must carry
+    // an explicit dist-tag so a prerelease cannot move `latest`.
     for (const label of ['Publish to npm (OIDC trusted publishing)', 'Publish to npm (NPM_TOKEN fallback)']) {
       const step = stepBody(npmJob, label);
       assert.ok(step, `${name}: could not locate the "${label}" step`);
@@ -241,7 +239,17 @@ function testPublishModes() {
         !/continue-on-error/.test(step),
         `${name}: "${label}" must not use continue-on-error; a failed npm publish must fail the release`,
       );
+      assert.match(
+        step,
+        /--tag "\$\{\{ steps\.disttag\.outputs\.tag \}\}"/,
+        `${name}: "${label}" must publish under the computed dist-tag`,
+      );
     }
+    assert.match(
+      npmJob,
+      /tag=next/,
+      `${name}: a prerelease version must publish under the next dist-tag`,
+    );
 
     // Least privilege, scoped to the npm job. release.yml's separate `publish`
     // job does hold contents:write (it creates the GitHub release), so a
@@ -296,8 +304,9 @@ function testPublishModes() {
   );
   process.stdout.write('PASS release.yml: OIDC is the default; token is an explicit opt-in\n');
 
-  // PyPI must ship even when npm cannot: the npm job runs after the release and
-  // a credential failure is reported without failing the Python release.
+  // PyPI must ship even when npm cannot: the npm job runs after the release, so
+  // an npm failure cannot block or undo the PyPI upload -- but it must still be
+  // visible as a failed release rather than masked by continue-on-error.
   const releaseJobs = jobBlocks(release);
   const publishJob = releaseJobs.get('publish');
   const npmJob = releaseJobs.get('npm-package');
@@ -311,11 +320,14 @@ function testPublishModes() {
     /needs:\s*\[preflight, publish\]/,
     'release.yml: npm must run after the PyPI release',
   );
-  assert.match(
-    npmJob,
-    /^    continue-on-error:\s*true/m,
-    'release.yml: an npm failure must not fail the release',
+  assert.ok(
+    !/^    continue-on-error:\s*true/m.test(npmJob),
+    'release.yml: an npm contract or publish failure must fail the release, not be masked',
   );
+  // PyPI is fail-closed and attested: no long-lived token path, and the publish
+  // action must request PEP 740 attestations.
+  assert.match(release, /attestations:\s*true/, 'release.yml: PyPI publish must request attestations');
+  assert.ok(!/PYPI_API_TOKEN/.test(release), 'release.yml: no long-lived PyPI token fallback');
   assert.match(
     release,
     /--registry-state/,

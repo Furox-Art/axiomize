@@ -180,6 +180,19 @@ jobs:
               raise SystemExit(f'FAIL: npm tarball has unexpected files {sorted(extra)}')
           print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
           "
+      - name: Choose the npm dist-tag
+        id: disttag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$version" == *-* ]]; then
+            tag=next
+          else
+            tag=latest
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "::notice::Publishing ${version} under the '${tag}' dist-tag."
       - name: Publish to npm (OIDC trusted publishing)
         if: steps.select-mode.outputs.mode == 'oidc'
         # No NODE_AUTH_TOKEN: npm's CLI authenticates from this job's OIDC
@@ -187,12 +200,12 @@ jobs:
         # from a public repository; --provenance is explicit so the attestation
         # survives a future change to that default. No continue-on-error: a
         # failed publish must fail loudly rather than let the registries drift.
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "${{ steps.disttag.outputs.tag }}"
       - name: Publish to npm (NPM_TOKEN fallback)
         if: steps.select-mode.outputs.mode == 'token'
         # --provenance is deliberately absent: provenance is backed by a Sigstore
         # attestation derived from the OIDC identity, and a long-lived token
         # cannot mint one. Passing the flag here would fail the publish.
-        run: npm publish --access public
+        run: npm publish --access public --tag "${{ steps.disttag.outputs.tag }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

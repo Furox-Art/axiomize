@@ -221,8 +221,9 @@ so npm releases remain digest-only.
 For npm, register the trusted publisher at npmjs.com for `axiomize` with owner `Furox-Art`,
 repository `axiomize`, workflow filename `release.yml` and environment `npm`. Both release paths
 default to OIDC and fail loudly if `id-token:write` is not granted; the token path is an explicit
-`use_token_fallback` opt-in. The npm job runs only after the PyPI release succeeds and is
-non-blocking, so an unavailable npm credential cannot stop the Python distribution from shipping.
+`use_token_fallback` opt-in. The npm job runs only after the PyPI release succeeds, so an
+unavailable npm credential cannot block or undo the Python distribution; the run still fails so
+the missing channel is visible rather than masked.
 Once the publisher is registered, use the `npm Publish` recovery workflow to publish the pending
 shim version, then delete the `NPM_TOKEN` secret.
 
