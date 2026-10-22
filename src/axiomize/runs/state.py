@@ -213,24 +213,34 @@ class RunState:
             return run
 
         manifest_path = directory / "manifest.json"
-        if manifest_path.exists():
-            manifest = _read_json_bounded(manifest_path)
-            declared_version = manifest.get("run_format_version")
-            if declared_version is not None:
-                bounded_int(
-                    declared_version,
-                    name="run_format_version",
-                    minimum=RUN_FORMAT_VERSION,
-                    maximum=RUN_FORMAT_VERSION,
-                )
-            expected_run_hash = manifest.get("run_sha256")
-            if expected_run_hash is not None:
-                actual_run_hash = hashlib.sha256(run_path.read_bytes()).hexdigest()
-                if actual_run_hash != str(expected_run_hash):
-                    raise ValueError("run.json integrity check failed against manifest run_sha256")
-            expected_input_hash = manifest.get("input_hash")
-            if expected_input_hash is not None and run.input_hash() != str(expected_input_hash):
-                raise ValueError("run input_hash integrity check failed against manifest")
+        # Deleting or replacing the manifest must not disable verification:
+        # a run is only trustworthy when the sidecar it was saved with is
+        # present and itself a regular file.
+        if manifest_path.is_symlink() or not manifest_path.is_file():
+            raise ValueError(
+                "run directory must contain a regular manifest.json; "
+                "integrity cannot be verified"
+            )
+        manifest = _read_json_bounded(manifest_path)
+        missing = [
+            key for key in ("run_format_version", "run_sha256", "input_hash")
+            if key not in manifest
+        ]
+        if missing:
+            raise ValueError(
+                f"manifest.json is missing required integrity fields: {', '.join(missing)}"
+            )
+        bounded_int(
+            manifest["run_format_version"],
+            name="run_format_version",
+            minimum=RUN_FORMAT_VERSION,
+            maximum=RUN_FORMAT_VERSION,
+        )
+        actual_run_hash = hashlib.sha256(run_path.read_bytes()).hexdigest()
+        if actual_run_hash != str(manifest["run_sha256"]):
+            raise ValueError("run.json integrity check failed against manifest run_sha256")
+        if run.input_hash() != str(manifest["input_hash"]):
+            raise ValueError("run input_hash integrity check failed against manifest")
         return run
 
     @classmethod

@@ -906,8 +906,11 @@ def validity_scan(model: ModelIR, *, parameter: str, values: list[float],
             "validation": validation.get("status"),
         })
     valid = [r["value"] for r in rows if r["status"] == "PASS" and r["validation"] == "PASS"]
+    passed = bool(rows) and all(
+        r["status"] == "PASS" and r["validation"] == "PASS" for r in rows
+    )
     return {
-        "status": "PASS", "parameter": parameter, "evaluations": rows,
+        "status": "PASS" if passed else "FAIL", "parameter": parameter, "evaluations": rows,
         "valid_interval_observed": [min(valid), max(valid)] if valid else None,
         "cost": cost,
     }
