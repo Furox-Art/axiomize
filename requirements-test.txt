@@ -58,7 +58,9 @@ casadi>=3.6
 # Test runner , CI runs `pytest` to execute the test suite. Without this the
 # test job fails immediately with "pytest: command not found" before any test
 # is collected.
-pytest>=8.0
+# Floor is 9.0.3 because PYSEC-2026-1845 (tmpdir handling) affects all earlier
+# releases.
+pytest>=9.0.3
 
 # Playground only (playground/app.py):
 #   pip install pandas gradio

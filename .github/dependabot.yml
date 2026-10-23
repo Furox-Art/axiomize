@@ -35,6 +35,14 @@ updates:
       - "python"
     commit-message:
       prefix: "deps"
+    # Mirrors the `<5` cap in pyproject.toml: the z3-solver 5.3.1.0 macOS
+    # wheel's WHEEL tag disagrees with its filename, so `pip check` fails the
+    # macOS arm64 job. Drop this once an upstream 5.x wheel declares a tag pip
+    # accepts.
+    ignore:
+      - dependency-name: "z3-solver"
+        versions:
+          - ">=5.0.0"
     groups:
       # Keep lockstep tool pins (ruff, mypy) in their own PR: they are the
       # versions the quality ratchet baseline was measured with, so bumping
