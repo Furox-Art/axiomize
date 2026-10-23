@@ -72,3 +72,16 @@ def test_run_state_load_rejects_symlinked_manifest(tmp_path: Path) -> None:
         pytest.skip("symlink creation is unavailable on this host")
     with pytest.raises(ValueError, match="regular manifest.json"):
         RunState.load(tmp_path)
+
+
+def test_run_state_load_rejects_symlinked_run_payload(tmp_path: Path) -> None:
+    RunState(problem_definition="symlinked-run").save(tmp_path)
+    external = tmp_path / "run-outside.json"
+    external.write_text((tmp_path / "run.json").read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "run.json").unlink()
+    try:
+        (tmp_path / "run.json").symlink_to(external)
+    except OSError:
+        pytest.skip("symlink creation is unavailable on this host")
+    with pytest.raises(ValueError, match="regular run.json"):
+        RunState.load(tmp_path)

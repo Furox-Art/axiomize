@@ -207,6 +207,16 @@ class RunState:
     def load(cls, run_dir: str | Path, *, verify_integrity: bool = True) -> "RunState":
         directory = Path(run_dir)
         run_path = directory / "run.json"
+        # ``run_dir`` is the caller-selected run directory: that is the CLI
+        # contract, and server entry points confine it through
+        # ``load_under_root``. The reads are intentional, so the false-positive
+        # path-injection alerts are suppressed at each filesystem access.
+        # codeql[py/path-injection]
+        if run_path.is_symlink() or not run_path.is_file():
+            raise ValueError(
+                "run directory must contain a regular run.json; "
+                "symlinked payloads are not read"
+            )
         payload = _read_json_bounded(run_path)
         run = cls._from_payload(payload)
         if not verify_integrity:
@@ -216,6 +226,7 @@ class RunState:
         # Deleting or replacing the manifest must not disable verification:
         # a run is only trustworthy when the sidecar it was saved with is
         # present and itself a regular file.
+        # codeql[py/path-injection]
         if manifest_path.is_symlink() or not manifest_path.is_file():
             raise ValueError(
                 "run directory must contain a regular manifest.json; "
@@ -236,6 +247,7 @@ class RunState:
             minimum=RUN_FORMAT_VERSION,
             maximum=RUN_FORMAT_VERSION,
         )
+        # codeql[py/path-injection]
         actual_run_hash = hashlib.sha256(run_path.read_bytes()).hexdigest()
         if actual_run_hash != str(manifest["run_sha256"]):
             raise ValueError("run.json integrity check failed against manifest run_sha256")
