@@ -50,7 +50,7 @@ matplotlib>=3.7
 # same thing. The engine is verified against 4.15.4.0, the version this range
 # resolves to on CI, and against 5.3.1.0 on the platforms where 5.x installs
 # cleanly.
-z3-solver>=4.12,<5
+z3-solver>=4.12,<6
 control>=0.10
 cvxpy>=1.5
 casadi>=3.6
