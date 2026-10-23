@@ -46,6 +46,11 @@ def test_validity_scan_reports_fail_when_one_simulation_fails(monkeypatch):
     assert result["valid_interval_observed"] == [0.0, 0.0]
 
 
+def test_run_state_import_reports_unreadable_file(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="cannot read run-state file"):
+        RunState.import_file(tmp_path / "absent.json")
+
+
 def test_run_state_load_requires_manifest(tmp_path: Path) -> None:
     RunState(problem_definition="missing-manifest").save(tmp_path)
     (tmp_path / "manifest.json").unlink()
