@@ -487,7 +487,7 @@ jobs:
         # No token fallback and no continue-on-error: a long-lived token cannot
         # mint a PEP 740 attestation, and the README promises one for every
         # release. An unconfigured trusted publisher must fail the run.
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           attestations: true
           # Only reachable when the gate found a missing file, so this uploads
