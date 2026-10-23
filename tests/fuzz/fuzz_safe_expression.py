@@ -8,7 +8,7 @@ from axiomize.safe_expression import validate_expression
 
 
 def TestOneInput(data: bytes) -> None:
-    fdp = atheris.FuzzDataProvider(data)
+    fdp = atheris.FuzzedDataProvider(data)
     expression = fdp.ConsumeUnicodeNoSurrogates(4096)
     try:
         validate_expression(expression, allowed_names={"x", "y"})
