@@ -195,8 +195,7 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "distinct_digests": len(digests),
         "identical": len(digests) == 1,
         "digest_groups": [
-            {"comparison_sha256": digest, "variants": sorted(variants)}
-            for digest, variants in sorted(digests.items())
+            {"comparison_sha256": digest, "variants": sorted(variants)} for digest, variants in sorted(digests.items())
         ],
     }
 
@@ -246,23 +245,15 @@ def command_run(args: argparse.Namespace) -> int:
             "repeats": args.repeats,
             "thread_variables": list(THREAD_VARIABLES),
         },
-        "thread_probe": {
-            str(threads): probe_threads(threads, args.timeout)
-            for threads in sorted(set(args.threads))
-        },
+        "thread_probe": {str(threads): probe_threads(threads, args.timeout) for threads in sorted(set(args.threads))},
         "runs": runs,
         "summary": summary,
         "gate": {"mode": args.gate, "passed": summary["identical"] and not failures},
     }
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    print(
-        f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} "
-        f"manifest={output}"
-    )
+    output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} manifest={output}")
     if failures:
         print(f"{len(failures)} workload run(s) exited non-zero", file=sys.stderr)
         return EXIT_WORKLOAD_ERROR
@@ -283,12 +274,8 @@ def command_compare(args: argparse.Namespace) -> int:
     if workload_identity(baseline) != workload_identity(candidate):
         print("manifests describe different workloads", file=sys.stderr)
         return EXIT_USAGE
-    baseline_runs = {
-        variant_key(run): comparison_digest(run) for run in baseline["runs"]
-    }
-    candidate_runs = {
-        variant_key(run): comparison_digest(run) for run in candidate["runs"]
-    }
+    baseline_runs = {variant_key(run): comparison_digest(run) for run in baseline["runs"]}
+    candidate_runs = {variant_key(run): comparison_digest(run) for run in candidate["runs"]}
     shared = sorted(set(baseline_runs) & set(candidate_runs))
     mismatches = [
         {
