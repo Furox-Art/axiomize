@@ -104,17 +104,21 @@ matches; otherwise the README must say which of the two states it is in, because
 is not a published fix. The badges are live; when the two registries disagree, per-registry
 availability is documented here instead of claiming a single "current" version for both.
 
+At the time of writing (2026-10-25), PyPI serves **1.14.2** and npm serves **1.14.1**; npm has no
+1.14.2 release yet.
+
 ## Supply-chain attestations: what exists and what does not
 
 Do not write "published with provenance" without checking which registry you mean. The two
-ecosystems differ here, and the npm package is the weaker of the pair. State at `1.14.1`:
+ecosystems differ here, and the npm package is the weaker of the pair. State at PyPI `1.14.2` /
+npm `1.14.1`:
 
-| Registry | Mechanism | Endpoint | State at 1.14.1 |
+| Registry | Mechanism | Endpoint | State |
 |---|---|---|---|
-| PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | **present** for both the wheel and the sdist |
-| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.14.1` was published in token mode |
+| PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | **present** for both the wheel and the sdist at `1.14.2` |
+| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.14.1` was published in token mode, and npm has no `1.14.2` |
 
-The asymmetry is real and worth being explicit about: **PyPI `1.14.1` is attested, npm `1.14.1` is
+The asymmetry is real and worth being explicit about: **PyPI `1.14.2` is attested, npm `1.14.1` is
 not.** Both PyPI files serve a bundle naming `GitHub / Furox-Art/axiomize / release.yml`,
 environment `pypi`, predicate `https://docs.pypi.org/attestations/publish/v1`, one transparency-log
 entry each, and the attested subject digest equals the digest of the file a consumer downloads.
@@ -129,9 +133,9 @@ attestation when it is not:
 # PyPI: PER-FILE. A directory-style URL names no artifact and 404s even when every
 # file in that release is attested, so it proves nothing either way.
 curl -s -o /dev/null -w '%{http_code}\n' \
-  https://pypi.org/integrity/axiomize/1.14.1/axiomize-1.14.1.tar.gz/provenance      # 200
+  https://pypi.org/integrity/axiomize/1.14.2/axiomize-1.14.2.tar.gz/provenance      # 200
 curl -s -o /dev/null -w '%{http_code}\n' \
-  https://pypi.org/integrity/axiomize/1.14.1/                                                        # 404, meaningless
+  https://pypi.org/integrity/axiomize/1.14.2/                                                        # 404, meaningless
 
 # npm: PER-VERSION.
 curl -s -o /dev/null -w '%{http_code}\n' \
@@ -158,8 +162,8 @@ if the endpoint stops discriminating.
 | **npm `dist.signatures`** | registry metadata, ECDSA under npm's registry key | The **registry** has not altered its own metadata for this version | **Anything about the build.** Every npm version has these, published or broken, token or OIDC. Transport integrity, not provenance. |
 | **`dist.integrity` / `digests.sha256`** | registry metadata | The bytes you downloaded are the bytes the registry published | That anyone built them, or from which commit |
 
-A package can have all three, two, or none. `1.14.1` has an attestation on PyPI, registry metadata
-signatures on npm, and digests on both.
+A package can have all three, two, or none. PyPI `1.14.2` has a PEP 740 attestation plus digests;
+npm `1.14.1` has registry metadata signatures plus digests, but no attestation.
 
 ## What a consumer can verify today
 
@@ -168,16 +172,16 @@ signatures on npm, and digests on both.
 ```bash
 # 1. attestation: confirm the bundle names this repo and workflow, and that its
 #    subject digest matches what you downloaded
-curl -s https://pypi.org/integrity/axiomize/1.14.1/axiomize-1.14.1.tar.gz/provenance \
+curl -s https://pypi.org/integrity/axiomize/1.14.2/axiomize-1.14.2.tar.gz/provenance \
   | python -c "import base64,json,sys; b=json.load(sys.stdin)['attestation_bundles'][0]; s=json.loads(base64.b64decode(b['attestations'][0]['envelope']['statement'])); print(b['publisher']); print([(x['name'],x['digest']['sha256']) for x in s['subject']])"
 
 # 2. digest: pin it
-pip download axiomize==1.14.1 --no-deps -d /tmp/ax
-python -c "import hashlib; print(hashlib.sha256(open('/tmp/ax/axiomize-1.14.1-py3-none-any.whl','rb').read()).hexdigest())"
+pip download axiomize==1.14.2 --no-deps -d /tmp/ax
+python -c "import hashlib; print(hashlib.sha256(open('/tmp/ax/axiomize-1.14.2-py3-none-any.whl','rb').read()).hexdigest())"
 ```
 
-Compare against `53da19927c8712698d510f23cc1c5320769eb1a55e41cbc166def9c86ecb7e9f` (wheel) and
-`ecac456c5f6bb1226a518b54de8cbbe4b6f57cc92ac52c2f006774c228aac283` (sdist) at `1.14.1`.
+Compare against `fb36d958bdfcf14490644ffc4751ea5b7da708d06679d7ed27f79b23d34a72bc` (wheel) and
+`80da3f62aebbeee14faee0559dbf7ed6860e9121b0f9e4a7e328f2fad8393a74` (sdist) at `1.14.2`.
 
 ### npm — digest only
 
@@ -237,15 +241,15 @@ attestations are bound to a publish event.
 if a documented `attested` value disagrees with the live registry. Editing the value here to match
 what you *want* to be true does not help: the check reads the registry, not the file.
 
-The current block, verified 2026-10-22 against the live endpoints:
+The current block, verified 2026-10-25 against the live endpoints:
 
 <!-- provenance-claims:begin -->
 ```json
 [
-  {"registry": "pypi", "package": "axiomize", "version": "1.14.1",
-   "filename": "axiomize-1.14.1-py3-none-any.whl", "attested": true},
-  {"registry": "pypi", "package": "axiomize", "version": "1.14.1",
-   "filename": "axiomize-1.14.1.tar.gz", "attested": true},
+  {"registry": "pypi", "package": "axiomize", "version": "1.14.2",
+   "filename": "axiomize-1.14.2-py3-none-any.whl", "attested": true},
+  {"registry": "pypi", "package": "axiomize", "version": "1.14.2",
+   "filename": "axiomize-1.14.2.tar.gz", "attested": true},
   {"registry": "npm", "package": "axiomize", "version": "1.14.1", "attested": false}
 ]
 ```

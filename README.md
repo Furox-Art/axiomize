@@ -16,8 +16,9 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.14.2**. Per-registry availability is tracked in
-[docs/documentation.md](docs/documentation.md#trusted-publishers-one-satisfied-one-pending); the
+Current package line: **1.14.2**. PyPI serves 1.14.2; npm serves 1.14.1. Per-registry
+availability is tracked in
+[docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not); the
 badges above are live and authoritative.
 
 Documentation: **[furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)** ·
@@ -329,7 +330,7 @@ Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi
 attested digest matches the file you download. You can confirm that before installing.
 
 npm releases are **not** attested: no npm trusted publisher is registered, so npm tarballs are
-digest-verifiable only. The current `1.14.x` shims have no build attestation:
+digest-verifiable only. The current npm shim (`1.14.1`) has no build attestation:
 
 ```bash
 npm view axiomize@1.14.1 dist.integrity   # pin this; npm ci enforces it from a lockfile
@@ -346,7 +347,7 @@ Pinning by digest is the honest recommendation today. Registering the npm truste
 close the npm gap; PyPI's is already registered. Verification commands, the per-file PyPI endpoint
 shape, and what each of the three proves are in
 [docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not),
-and CI re-checks the claims above against both registries on every run.
+and CI re-checks the provenance claims in that document against both registries on every run.
 
 ## npm
 
