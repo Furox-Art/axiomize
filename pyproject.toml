@@ -111,6 +111,10 @@ include = [
     "benchmarks/ideas.json",
     "tests",
     "conftest.py",
+    # tests/test_determinism_matrix.py executes both determinism scripts by
+    # path, so the shipped test suite needs them alongside the sources.
+    "scripts/determinism_matrix.py",
+    "scripts/determinism_workload.py",
     "pyproject.toml",
     "requirements-test.txt",
     "README.md",
