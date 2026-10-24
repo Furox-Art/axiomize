@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-TOOL_VERSION = "0.2.1"
+TOOL_VERSION = "0.2.2"
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_GATE_FAILED = 3
@@ -80,7 +80,7 @@ def comparison_digest(run: dict[str, Any]) -> str:
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
-def normalized_stdout_digest(payload: bytes) -> str:
+def normalized_bytes_digest(payload: bytes) -> str:
     normalized = payload.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     return hashlib.sha256(normalized).hexdigest()
 
@@ -176,7 +176,7 @@ def run_variant(
         "timed_out": timed_out,
         "duration_seconds": round(time.perf_counter() - started, 3),
         "stdout_bytes": len(stdout),
-        "stdout_sha256": normalized_stdout_digest(stdout),
+        "stdout_sha256": normalized_bytes_digest(stdout),
         "stdout_raw_sha256": hashlib.sha256(stdout).hexdigest(),
         "artifacts": artifacts,
         "artifacts_sha256": artifacts_digest(artifacts),
@@ -195,7 +195,8 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "distinct_digests": len(digests),
         "identical": len(digests) == 1,
         "digest_groups": [
-            {"comparison_sha256": digest, "variants": sorted(variants)} for digest, variants in sorted(digests.items())
+            {"comparison_sha256": digest, "variants": sorted(variants)}
+            for digest, variants in sorted(digests.items())
         ],
     }
 
@@ -230,12 +231,14 @@ def command_run(args: argparse.Namespace) -> int:
         "audit": "determinism-matrix",
         "tool_version": TOOL_VERSION,
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "digest_normalization": "stdout newlines normalized to LF",
+        "digest_normalization": "stdout and workload source newlines normalized to LF",
         "host": host_metadata(),
         "workload": {
             "path": str(workload),
             "args": args.workload_args,
-            "sha256": hashlib.sha256(workload.read_bytes()).hexdigest(),
+            # Checkouts on Windows may use CRLF; normalize so identical
+            # sources compare equal across hosts.
+            "sha256": normalized_bytes_digest(workload.read_bytes()),
         },
         "variants": {
             "hash_seeds": args.seeds,
@@ -243,15 +246,23 @@ def command_run(args: argparse.Namespace) -> int:
             "repeats": args.repeats,
             "thread_variables": list(THREAD_VARIABLES),
         },
-        "thread_probe": {str(threads): probe_threads(threads, args.timeout) for threads in sorted(set(args.threads))},
+        "thread_probe": {
+            str(threads): probe_threads(threads, args.timeout)
+            for threads in sorted(set(args.threads))
+        },
         "runs": runs,
         "summary": summary,
         "gate": {"mode": args.gate, "passed": summary["identical"] and not failures},
     }
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} manifest={output}")
+    output.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print(
+        f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} "
+        f"manifest={output}"
+    )
     if failures:
         print(f"{len(failures)} workload run(s) exited non-zero", file=sys.stderr)
         return EXIT_WORKLOAD_ERROR
@@ -272,8 +283,12 @@ def command_compare(args: argparse.Namespace) -> int:
     if workload_identity(baseline) != workload_identity(candidate):
         print("manifests describe different workloads", file=sys.stderr)
         return EXIT_USAGE
-    baseline_runs = {variant_key(run): comparison_digest(run) for run in baseline["runs"]}
-    candidate_runs = {variant_key(run): comparison_digest(run) for run in candidate["runs"]}
+    baseline_runs = {
+        variant_key(run): comparison_digest(run) for run in baseline["runs"]
+    }
+    candidate_runs = {
+        variant_key(run): comparison_digest(run) for run in candidate["runs"]
+    }
     shared = sorted(set(baseline_runs) & set(candidate_runs))
     mismatches = [
         {
