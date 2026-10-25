@@ -13,6 +13,11 @@ def main() -> None:
     source_dir = repo_root / "src"
     if source_dir.is_dir():
         sys.path.insert(0, str(source_dir))
+    tool_dir = repo_root / "skills" / "axiomize" / "tools"
+    if tool_dir.is_dir():
+        sys.path.insert(0, str(tool_dir))
+
+    import parallel_sweep
 
     from axiomize.advanced_diagnostics import stopping_decision
     from axiomize.bayesian.mh import normal_mean_posterior
@@ -38,6 +43,11 @@ def main() -> None:
         uncertainty_target=0.1,
     )
     payload = {"posterior": posterior, "epidemic": epidemic, "decision": decision}
+    mc_tasks = parallel_sweep._mc_tasks(0.3, 0.1, 1, 2000, 6)
+    payload["monte_carlo"] = {
+        "tasks": [list(task) for task in mc_tasks],
+        "extinct": sum(parallel_sweep.gillespie_chunk(task) for task in mc_tasks),
+    }
     if not payload["epidemic"]["steps"] or not payload["decision"]["checks"]:
         raise SystemExit("workload produced empty results; it is vacuous")
     artifact_dir = os.environ.get("DETERMINISM_ARTIFACT_DIR")
