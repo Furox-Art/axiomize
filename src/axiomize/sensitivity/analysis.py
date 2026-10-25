@@ -74,8 +74,10 @@ def mc_sensitivity(func: Callable[[dict[str, float]], float],
         normalized[str(name)] = (low, high)
 
     rng = np.random.default_rng(seed)
-    names = list(normalized.keys())
-    cols = {name: rng.uniform(low, high, n) for name, (low, high) in normalized.items()}
+    # Draw in sorted name order so the same parameter set gets the same columns
+    # regardless of the caller's mapping insertion order.
+    names = sorted(normalized)
+    cols = {name: rng.uniform(normalized[name][0], normalized[name][1], n) for name in names}
     y = np.empty(n, dtype=float)
     for i in range(n):
         y[i] = _finite(func({name: float(cols[name][i]) for name in names}), name=f"model output[{i}]")

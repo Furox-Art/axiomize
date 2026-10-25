@@ -117,3 +117,9 @@ def test_nested_output_is_valid_rfc8259_json():
     decoded = json.loads(encoded)
     assert decoded["metrics"] == ["Infinity", "-Infinity"]
     assert decoded["record"] == {"verdict": "PASS", "p_value": "NaN", "sample_count": 5}
+
+
+def test_sets_serialize_in_a_stable_sorted_order():
+    assert json_safe({"zeta", "alpha", "mu"}) == ["alpha", "mu", "zeta"]
+    assert json_safe(frozenset({"zeta", "alpha", "mu"})) == ["alpha", "mu", "zeta"]
+    assert json_safe({3, 1, 2}) == [1, 2, 3]

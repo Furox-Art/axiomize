@@ -8,6 +8,7 @@ silently emitting invalid JSON.
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import asdict, is_dataclass
 from enum import Enum
@@ -32,7 +33,14 @@ def json_safe(value: Any) -> Any:
         return json_safe(asdict(value))
     if isinstance(value, dict):
         return {str(key): json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple, set, frozenset)):
+    if isinstance(value, (set, frozenset)):
+        # Set iteration follows string hash randomisation, so the same payload
+        # would otherwise serialise differently in a second interpreter.
+        return sorted(
+            (json_safe(item) for item in value),
+            key=lambda item: json.dumps(item, sort_keys=True, ensure_ascii=False),
+        )
+    if isinstance(value, (list, tuple)):
         return [json_safe(item) for item in value]
 
     # NumPy scalar/array support without making numpy a hard dependency here.
