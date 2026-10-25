@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -271,26 +271,61 @@ def _run_axis_matrix(tmp_path: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Windows runtime ignores LC_ALL/LANG and TZ")
-def test_axes_take_effect_on_posix(tmp_path: Path) -> None:
+def test_axes_reflect_the_effective_host_state(tmp_path: Path) -> None:
     completed = _run_axis_matrix(tmp_path)
     assert completed.returncode == 0, completed.stderr
     data = _manifest(tmp_path / "axes.json")
-    assert data["axes"]["locale"]["applied"] is True
-    assert data["axes"]["timezone"]["applied"] is True
-    assert data["gate"]["inert_axes"] == []
+    supported = platform.system() != "Windows"
+    assert data["axes"]["locale"]["applied"] is supported
+    assert data["axes"]["timezone"]["applied"] is supported
+    assert data["gate"]["inert_axes"] == ([] if supported else ["locale", "timezone"])
     assert data["gate"]["passed"] is True
 
 
-@pytest.mark.skipif(os.name != "nt", reason="documents the Windows runtime limitation")
-def test_windows_records_inert_axes_without_failing_the_gate(tmp_path: Path) -> None:
-    completed = _run_axis_matrix(tmp_path)
-    assert completed.returncode == 0, completed.stderr
+def test_gate_fails_when_a_supported_axis_is_inert(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = _engine()
+    monkeypatch.setattr(engine, "axis_support", lambda: {"locale": True, "timezone": True})
+    monkeypatch.setattr(
+        engine,
+        "probe_environment",
+        lambda locale, timezone, timeout: {
+            "requested_locale": locale,
+            "requested_timezone": timezone,
+            "environment_matches_request": True,
+            "environment": {"LC_ALL": None, "LANG": None, "LANGUAGE": None, "TZ": None},
+            "locale": "C",
+            "tzname": ["UTC", "UTC"],
+            "timezone": 0,
+            "altzone": 0,
+        },
+    )
+    workload = tmp_path / "constant.py"
+    workload.write_text("print('constant')\n", encoding="utf-8")
+    exit_code = engine.main(
+        [
+            "run",
+            "--workload",
+            str(workload),
+            "--out",
+            str(tmp_path / "axes.json"),
+            "--seeds",
+            "0",
+            "--threads",
+            "1",
+            "--locales",
+            "inherit",
+            "C",
+            "--timezones",
+            "UTC",
+            "Europe/Istanbul",
+            "--gate",
+            "within-host",
+        ]
+    )
+    assert exit_code == 4
     data = _manifest(tmp_path / "axes.json")
-    assert data["axes"]["locale"]["applied"] is False
-    assert data["axes"]["timezone"]["applied"] is False
+    assert data["gate"]["passed"] is False
     assert data["gate"]["inert_axes"] == ["locale", "timezone"]
-    assert data["gate"]["passed"] is True
 
 
 def test_compare_gate_detects_stdout_mismatch(tmp_path: Path) -> None:
