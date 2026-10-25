@@ -23,6 +23,8 @@ from scipy.integrate import solve_ivp
 # layout. Approval is not a bypass for host process limits.
 MAX_WORKERS = 32
 MAX_MONTE_CARLO_RUNS = 100_000
+MC_SEED = 1000
+MC_CHUNK_RUNS = 50
 
 
 def _default_workers() -> int:
@@ -99,11 +101,14 @@ def sir_final_size(params):
 
 
 def gillespie_chunk(args):
-    beta, gamma, I0, N, runs, seed = args
+    beta, gamma, I0, N, start, runs, seed = args
     runs = _bounded_runs(runs)
-    rng = np.random.default_rng(seed)
+    # Each run's stream is derived from its global index, not from the chunk it
+    # happens to land in: any partition of the run budget therefore aggregates
+    # to the same count, whatever the worker count or CPU topology.
     extinct = 0
-    for _ in range(runs):
+    for index in range(start, start + runs):
+        rng = np.random.default_rng([seed, index])
         S, I, t = N - I0, I0, 0.0
         peak = I0
         while I > 0 and t < 365:
@@ -153,17 +158,21 @@ def job_sweep(workers):
     return 0 if ok else 1
 
 
+def _mc_tasks(beta, gamma, I0, N, total_runs, seed=MC_SEED):
+    """Split the run budget into fixed chunks, independent of the worker count."""
+    tasks = []
+    for start in range(0, total_runs, MC_CHUNK_RUNS):
+        count = min(MC_CHUNK_RUNS, total_runs - start)
+        tasks.append((beta, gamma, I0, N, start, count, seed))
+    return tasks
+
+
 def job_mc(workers, total_runs=400):
     workers = _bounded_workers(workers)
     total_runs = _bounded_runs(total_runs)
-    actual_workers = _dispatch_workers(workers, total_runs)
     beta, gamma, I0, N = 0.3, 0.1, 1, 5000
-    base, remainder = divmod(total_runs, actual_workers)
-    seeds = [1000 + i for i in range(actual_workers)]
-    tasks = [
-        (beta, gamma, I0, N, base + (1 if i < remainder else 0), seeds[i])
-        for i in range(actual_workers)
-    ]
+    tasks = _mc_tasks(beta, gamma, I0, N, total_runs)
+    actual_workers = _dispatch_workers(workers, len(tasks))
 
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=actual_workers) as ex:
@@ -171,13 +180,13 @@ def job_mc(workers, total_runs=400):
     dt = time.perf_counter() - t0
 
     done = sum(counts)
-    runs = sum(task[4] for task in tasks)
+    runs = sum(task[5] for task in tasks)
     p_obs = done / runs
     p_theory = (1 / (1 + beta / gamma)) ** I0
     tol = max(0.04, 3 * math.sqrt(p_theory * (1 - p_theory) / runs))
 
     print("=== parallel Monte Carlo ===")
-    print(f"{runs} CTMC runs split into {actual_workers} frozen-brief chunks on {actual_workers} workers in {dt:.2f}s")
+    print(f"{runs} CTMC runs split into {len(tasks)} fixed chunks on {actual_workers} workers in {dt:.2f}s")
     print(f"P(early fade-out) observed = {p_obs:.4f}")
     print(f"theory (1/(1+R0))^I0       = {p_theory:.4f}  (tolerance {tol:.4f})")
     ok = abs(p_obs - p_theory) < tol
