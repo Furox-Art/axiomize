@@ -26,6 +26,7 @@ sys.path.insert(0, str(repo_root / "src"))
 
 from axiomize.advanced_diagnostics import stopping_decision
 from axiomize.bayesian.mh import normal_mean_posterior
+from axiomize.json_safety import json_safe
 from axiomize.network.epidemic import build_er_graph, sir_on_network
 
 posterior = normal_mean_posterior(
@@ -47,7 +48,12 @@ decision = stopping_decision(
     uncertainty=0.05,
     uncertainty_target=0.1,
 )
-payload = {"posterior": posterior, "epidemic": epidemic, "decision": decision}
+payload = {
+    "posterior": posterior,
+    "epidemic": epidemic,
+    "decision": decision,
+    "set_order": json_safe({"zeta", "alpha", "mu", "beta"}),
+}
 print(json.dumps(payload, ensure_ascii=False))
 '''
 
@@ -90,3 +96,4 @@ def test_workload_exercises_non_empty_results() -> None:
     assert payload["decision"]["decision"] == "STOP"
     assert payload["decision"]["reasons"] == ["uncertainty_target"]
     assert payload["decision"]["checks"], "stopping decision produced no criteria"
+    assert payload["set_order"] == ["alpha", "beta", "mu", "zeta"]

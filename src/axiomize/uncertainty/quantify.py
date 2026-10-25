@@ -57,11 +57,10 @@ def propagate(func: Callable[[dict[str, float]], float],
         normalized[str(name)] = (value, err)
 
     rng = np.random.default_rng(seed)
-    names = list(normalized.keys())
-    columns = {
-        name: rng.normal(value, max(err, 1e-12), n)
-        for name, (value, err) in normalized.items()
-    }
+    # Draw in sorted name order so the same parameter set gets the same columns
+    # regardless of the caller's mapping insertion order.
+    names = sorted(normalized)
+    columns = {name: rng.normal(normalized[name][0], max(normalized[name][1], 1e-12), n) for name in names}
     draws = np.empty(n, dtype=float)
     for i in range(n):
         value = float(func({name: float(columns[name][i]) for name in names}))
