@@ -29,6 +29,13 @@ All notable changes to Axiomize are documented here. Axiomize follows semantic v
 
 ### Release engineering
 
+- Normalized the npm `bin` entry: `package.json` declared `./bin/axiomize.js`,
+  which npm 11 auto-corrects at publish time and reports as
+  `"bin[axiomize]" script name bin/axiomize.js was invalid and removed`. The
+  entry is in fact normalized and kept, and installed executables are unaffected,
+  but the warning suggests running `npm pkg fix`. The manifest now declares the
+  normalized path and the npm contract test rejects any `bin` target that is not
+  already normalized.
 - PyPI publishing no longer depends on the npm job. npm publishes only after the
   Python release succeeds and is non-blocking while the npm trusted publisher is
   unregistered; an existing npm version is skipped instead of failing the release.
