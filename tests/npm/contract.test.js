@@ -136,6 +136,12 @@ function testManifestPaths() {
   assert.ok(fs.existsSync(path.join(ROOT, manifest.main)), 'package.json main does not exist');
 
   for (const [name, target] of Object.entries(manifest.bin || {})) {
+    const normalized = path.posix.normalize(target);
+    assert.equal(
+      target,
+      normalized,
+      `bin ${name} -> ${target} is not normalized; npm auto-corrects such entries at publish with a warning (use ${normalized})`,
+    );
     assert.ok(fs.existsSync(path.join(ROOT, target)), `bin ${name} -> ${target} does not exist`);
     process.stdout.write(`PASS bin ${name} -> ${target}\n`);
   }

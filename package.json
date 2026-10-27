@@ -4,7 +4,7 @@
   "description": "Rigorous scientific modeling engine and agent skill pack",
   "main": "index.js",
   "bin": {
-    "axiomize": "./bin/axiomize.js"
+    "axiomize": "bin/axiomize.js"
   },
   "scripts": {
     "test": "node tests/npm/contract.test.js",
