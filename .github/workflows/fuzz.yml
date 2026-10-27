@@ -16,7 +16,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: fuzz-axiomize
+  # Per ref: a PR run must not cancel the main-branch run (or another PR's run),
+  # which otherwise reports a false red fuzz check; superseded runs still cancel.
+  group: fuzz-axiomize-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
