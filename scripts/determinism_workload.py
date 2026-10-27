@@ -23,6 +23,7 @@ def main() -> None:
     from axiomize.bayesian.mh import normal_mean_posterior
     from axiomize.json_safety import json_safe
     from axiomize.network.epidemic import build_er_graph, sir_on_network
+    from axiomize.safe_expression import auto_symbol_map, sympy_expression, validate_expression
     from axiomize.sensitivity.analysis import mc_sensitivity
     from axiomize.uncertainty.quantify import propagate
 
@@ -75,6 +76,38 @@ def main() -> None:
         "tasks": [list(task) for task in mc_tasks],
         "extinct": sum(parallel_sweep.gillespie_chunk(task) for task in mc_tasks),
     }
+    expression = "x**2 + 3.5*sin(x) - Max(a, b)/sqrt(c)"
+    expression_symbols = auto_symbol_map(expression)
+    translated = sympy_expression(expression, expression_symbols)
+    # The parser is the single policy for user-supplied expressions; without a
+    # sample here a parser regression would agree across every matrix variant.
+    policy_cases = {
+        "unknown_symbol": ("x + hidden", {"x"}),
+        "chained_comparison": ("x < y < z", {"x", "y", "z"}),
+        "attribute_access": ("x.__class__", {"x"}),
+        "oversized_exponent": ("x**(10**9)", {"x"}),
+        "unapproved_function": ("gamma(x)", {"x"}),
+        "keyword_argument": ("sin(x, limit=1)", {"x"}),
+        "non_finite_constant": ("1e400", set()),
+    }
+    policy: dict[str, str] = {}
+    for case, (text, allowed_names) in policy_cases.items():
+        try:
+            validate_expression(text, allowed_names=allowed_names)
+        except ValueError:
+            policy[case] = "rejected"
+        else:
+            policy[case] = "accepted"
+    accepted = sorted(case for case, verdict in policy.items() if verdict == "accepted")
+    if accepted:
+        raise SystemExit(f"expression policy accepts unsafe input: {accepted}")
+    # auto_symbol_map documents sorted symbol order; a regression to set
+    # iteration changes this list with PYTHONHASHSEED.
+    if list(expression_symbols) != ["a", "b", "c", "x"]:
+        raise SystemExit(f"auto_symbol_map order is not sorted: {list(expression_symbols)!r}")
+    if {symbol.name for symbol in translated.free_symbols} != set(expression_symbols):
+        raise SystemExit("expression translation dropped or invented symbols")
+    payload["expression"] = {"symbols": list(expression_symbols), "policy": policy}
     if not payload["epidemic"]["steps"] or not payload["decision"]["checks"]:
         raise SystemExit("workload produced empty results; it is vacuous")
     artifact_dir = os.environ.get("DETERMINISM_ARTIFACT_DIR")
