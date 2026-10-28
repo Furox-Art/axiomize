@@ -408,7 +408,7 @@ function testManualPublishUsesTheTaggedRelease() {
   );
   assert.match(
     gate,
-    /pypi\.org\/pypi\//,
+    /https:\/\/pypi\.org\/pypi\//,
     'npm-publish.yml: the released version must be proven live on PyPI before npm publish',
   );
   assert.match(
