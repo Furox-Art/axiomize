@@ -11,9 +11,18 @@ name: npm Publish
 # release.yml runs also runs here, so a manual publish is held to the same
 # standard as an automatic one. check_release_contract.py refuses this workflow
 # off refs/heads/main, even though workflow_dispatch can target any branch.
+#
+# The tag, not main, supplies the published bytes. Main keeps moving after a
+# release (v1.14.2 differs from main in README.md, package.json and
+# tests/npm/contract.test.js, all of which ship in the tarball), so checking out
+# the dispatch ref would publish unreleased content under a released version.
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: "Released version to publish, without the v prefix (checkout is tag v<version>), for example 1.14.2"
+        required: true
+        type: string
       reason:
         description: "Why this manual npm publish is needed"
         required: true
@@ -51,6 +60,12 @@ jobs:
       mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The tagged release is the source of the published bytes, never the
+          # dispatch ref.
+          ref: v${{ inputs.version }}
+          # Full history is needed to prove the tag commit is contained in main.
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1;
@@ -71,6 +86,68 @@ jobs:
           printf 'manual npm publish requested: %s\n' "$REASON"
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
+      - name: Verify the release tag, its ancestry and the PyPI release
+        # Three failures this gate exists for:
+        #   * a dispatch version that does not match the checked-out tag;
+        #   * a tag planted on an unmerged branch (release.yml enforces the same
+        #     ancestry rule before its PyPI upload);
+        #   * npm getting ahead of PyPI, which release.yml prevents by running
+        #     npm only after a successful PyPI publish. The manual path has no
+        #     PyPI job, so it waits for the released version to be live instead.
+        shell: bash
+        env:
+          REQUESTED: ${{ inputs.version }}
+          PYPI_PROJECT: axiomize
+        run: |
+          set -euo pipefail
+          version="${REQUESTED#v}"
+          actual="$(node -p "require('./package.json').version")"
+          if [ "${actual}" != "${version}" ]; then
+            echo "::error::Tag v${version} carries package.json version ${actual}."
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Release commit $(git rev-parse HEAD) is not on main."
+            exit 1
+          fi
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+
+          project = os.environ["PYPI_PROJECT"]
+          version = os.environ["REQUESTED"].removeprefix("v")
+          url = f"https://pypi.org/pypi/{project}/{version}/json"
+          attempts = 90
+          delay = 10
+          last_error = None
+          for attempt in range(1, attempts + 1):
+              try:
+                  with urllib.request.urlopen(url, timeout=30) as response:
+                      data = json.load(response)
+                  break
+              except urllib.error.HTTPError as error:
+                  if error.code != 404:
+                      raise
+                  last_error = error
+              except OSError as error:
+                  last_error = error
+              print(f"PyPI {project} {version} is not live yet (attempt {attempt}/{attempts}): {last_error}")
+              time.sleep(delay)
+          else:
+              raise SystemExit(
+                  f"FAIL: PyPI {project} {version} is not live after "
+                  f"{attempts * delay}s ({last_error!r}); refusing to publish npm"
+              )
+          if data["info"]["version"] != version:
+              raise SystemExit(
+                  f"FAIL: PyPI reports version {data['info']['version']!r}, expected {version!r}"
+              )
+          print(f"PASS: {project} {version} is live on PyPI; npm may publish")
+          PY
       - name: Verify the toolchain supports the selected auth mode
         id: toolchain
         # Numeric semver comparison, not a regex. A pattern such as
