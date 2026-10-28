@@ -407,7 +407,7 @@ function testManualPublishUsesTheTaggedRelease() {
     'npm-publish.yml: the tag commit must be proven to sit on main',
   );
   assert.ok(
-    gate.includes('https://pypi.org/pypi/'),
+    gate.includes('urllib.request.urlopen') && gate.includes('/pypi/{project}/{version}/json'),
     'npm-publish.yml: the released version must be proven live on PyPI before npm publish',
   );
   assert.match(
