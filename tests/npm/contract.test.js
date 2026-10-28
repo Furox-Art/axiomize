@@ -368,12 +368,70 @@ function testPublishModes() {
   process.stdout.write('PASS both modes fail closed with an actionable message\n');
 }
 
+/**
+ * The manual recovery path must publish the tagged release, not the tip of
+ * main. After a release, main keeps moving: v1.14.2 differs from main in
+ * README.md, package.json and tests/npm/contract.test.js, and all three ship in
+ * the tarball. A dispatch-HEAD publish would therefore ship unreleased content
+ * under an already-released version.
+ */
+function testManualPublishUsesTheTaggedRelease() {
+  const text = readWorkflow('npm-publish.yml');
+
+  assert.match(
+    text,
+    /version:\n\s+description:[\s\S]*?required:\s*true[\s\S]*?type:\s*string/,
+    'npm-publish.yml: a required version input names the released tag to publish',
+  );
+
+  const jobs = jobBlocks(text);
+  const job = jobs.get('publish');
+  assert.ok(job, 'npm-publish.yml: could not locate the publish job');
+  assert.match(
+    job,
+    /ref:\s*v\$\{\{\s*inputs\.version\s*\}\}/,
+    'npm-publish.yml: the checkout must pin the v<version> release tag',
+  );
+  assert.match(
+    job,
+    /fetch-depth:\s*0/,
+    'npm-publish.yml: full history is required to prove the tag is on main',
+  );
+
+  const gateLabel = 'Verify the release tag, its ancestry and the PyPI release';
+  const gate = stepBody(job, gateLabel);
+  assert.ok(gate, 'npm-publish.yml: the release identity gate is missing');
+  assert.match(
+    gate,
+    /merge-base --is-ancestor HEAD origin\/main/,
+    'npm-publish.yml: the tag commit must be proven to sit on main',
+  );
+  assert.match(
+    gate,
+    /pypi\.org\/pypi\//,
+    'npm-publish.yml: the released version must be proven live on PyPI before npm publish',
+  );
+  assert.match(
+    gate,
+    /raise SystemExit/,
+    'npm-publish.yml: a version missing from PyPI must fail closed',
+  );
+
+  const gateIndex = text.indexOf(gateLabel);
+  for (const label of ['Publish to npm (OIDC trusted publishing)', 'Publish to npm (NPM_TOKEN fallback)']) {
+    const index = text.indexOf(label);
+    assert.ok(index > gateIndex, `npm-publish.yml: "${label}" must run after the release identity gate`);
+  }
+  process.stdout.write('PASS npm-publish.yml: publishes the tagged release after proving it is on main and on PyPI\n');
+}
+
 const checks = [
   ['javascript syntax', () => parseFiles(['index.js', 'bin/axiomize.js'])],
   ['manifest paths', testManifestPaths],
   ['version lockstep', testVersionLockstep],
   ['entry point export', testEntrypointContract],
   ['publish modes', testPublishModes],
+  ['manual publish uses the tagged release', testManualPublishUsesTheTaggedRelease],
 ];
 
 let failures = 0;
