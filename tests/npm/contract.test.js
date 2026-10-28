@@ -406,9 +406,8 @@ function testManualPublishUsesTheTaggedRelease() {
     /merge-base --is-ancestor HEAD origin\/main/,
     'npm-publish.yml: the tag commit must be proven to sit on main',
   );
-  assert.match(
-    gate,
-    /https:\/\/pypi\.org\/pypi\//,
+  assert.ok(
+    gate.includes('https://pypi.org/pypi/'),
     'npm-publish.yml: the released version must be proven live on PyPI before npm publish',
   );
   assert.match(
