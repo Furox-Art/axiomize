@@ -28,7 +28,15 @@
     "scientific-computing",
     "agent-skills",
     "bayesian",
-    "causal-inference"
+    "causal-inference",
+    "modelica",
+    "sbml",
+    "cellml",
+    "differential-equations",
+    "optimization",
+    "uncertainty-quantification",
+    "mcp",
+    "reproducibility"
   ],
   "author": "Furox-Art",
   "license": "MIT",
