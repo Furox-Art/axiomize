@@ -173,7 +173,7 @@ Step-by-step versions of all of this, with the request files, are in
 
 ## Surface map
 
-The engine is 68 public modules behind four interfaces. This README names the whole CLI and
+The engine is 44 importable names (22 modules plus 22 subpackages) behind four interfaces. This README names the whole CLI and
 the shape of the two servers; the per-module detail belongs in
 [docs/integrations.md](docs/integrations.md).
 
