@@ -316,7 +316,7 @@ is repeated at the top of this README for clients that scrape it.
 
 - Quickstart and workflow: [furox-art.github.io/axiomize](https://furox-art.github.io/axiomize/)
 - Worked examples: [example gallery](https://furox-art.github.io/axiomize/example-gallery/),
-  or the [19 files in `examples/`](examples/)
+  or the [18 scenario reports plus the quickstart in `examples/`](examples/)
 - Domain packs (which lenses matter per field):
   [packs/domain-packs.md](packs/domain-packs.md)
 - Agent integration (MCP, REST, CLI): [docs/integrations.md](docs/integrations.md)
