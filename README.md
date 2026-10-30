@@ -16,7 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.14.2**. PyPI serves 1.14.2; npm serves 1.14.1. Per-registry
+Current package line: **1.14.2**. PyPI and npm both serve 1.14.2. Per-registry
 availability is tracked in
 [docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not); the
 badges above are live and authoritative.
@@ -329,23 +329,24 @@ PyPI releases are published with **PEP 740 attestations**: both the wheel and th
 Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi`, and each
 attested digest matches the file you download. You can confirm that before installing.
 
-npm releases are **not** attested: no npm trusted publisher is registered, so npm tarballs are
-digest-verifiable only. The current npm shim (`1.14.1`) has no build attestation:
+npm `1.14.2` is published with **SLSA provenance** as well: the registry serves a bundle naming
+`Furox-Art/axiomize` and `.github/workflows/npm-publish.yml`, and its attested subject digest equals
+the tarball's `dist.integrity`. npm `1.14.1` and every earlier npm release serve no attestation;
+those gaps are permanent and cannot be backfilled:
 
 ```bash
-npm view axiomize@1.14.1 dist.integrity   # pin this; npm ci enforces it from a lockfile
+npm view axiomize@1.14.2 dist.integrity   # pin this; npm ci enforces it from a lockfile
 ```
 
-Three different things are easy to confuse. A **PEP 740 attestation** says a build workflow signed
-this exact file digest. **npm `dist.signatures`** says only that the *registry* has not altered its
-own metadata — every npm version has those, token or OIDC, and they are not build provenance.
-**`dist.integrity` / `digests.sha256`** say the bytes you have are the bytes that were published,
-but not who built them.
+Three different things are easy to confuse. A **PEP 740 or SLSA attestation** says a build workflow
+signed this exact file digest. **npm `dist.signatures`** says only that the *registry* has not
+altered its own metadata — every npm version has those, token or OIDC, and they are not build
+provenance. **`dist.integrity` / `digests.sha256`** say the bytes you have are the bytes that were
+published, but not who built them.
 
-Pinning by digest is the honest recommendation today. Registering the npm trusted publisher
-(owner `Furox-Art`, repository `axiomize`, workflow `release.yml`, environment `npm`) is what would
-close the npm gap; PyPI's is already registered. Verification commands, the per-file PyPI endpoint
-shape, and what each of the three proves are in
+Pinning by digest remains a sound baseline; on `1.14.2` you can additionally check the attestation.
+PyPI and npm trusted publishers are both registered. Verification commands, the per-file PyPI
+endpoint shape, and what each of the three proves are in
 [docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not),
 and CI re-checks the provenance claims in that document against both registries on every run.
 

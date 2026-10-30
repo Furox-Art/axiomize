@@ -90,6 +90,38 @@ def _is_bundle(body: bytes) -> bool:
     return True
 
 
+def _is_npm_bundle(body: bytes) -> bool:
+    """A 200 from the npm endpoint must carry a real SLSA provenance bundle.
+
+    npm returns ``{"attestations": [...]}`` with one entry per predicate and the
+    DSSE envelope under ``bundle``; this is a different shape from PyPI's
+    ``attestation_bundles``. The publish attestation alone is not enough: a
+    provenance claim needs at least one SLSA predicate.
+    """
+    try:
+        doc = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(doc, dict):
+        return False
+    attestations = doc.get("attestations")
+    if not isinstance(attestations, list) or not attestations:
+        return False
+    has_slsa = False
+    for attestation in attestations:
+        if not isinstance(attestation, dict):
+            return False
+        predicate_type = attestation.get("predicateType")
+        if not isinstance(predicate_type, str):
+            return False
+        bundle = attestation.get("bundle")
+        if not isinstance(bundle, dict) or not isinstance(bundle.get("dsseEnvelope"), dict):
+            return False
+        if predicate_type.startswith("https://slsa.dev/provenance/"):
+            has_slsa = True
+    return has_slsa
+
+
 def parse_claims(text: str) -> list[dict[str, str]]:
     """Read the fenced JSON claim table that documentation.md publishes."""
     try:
@@ -136,9 +168,9 @@ def check_npm_claim(claim: dict[str, str]) -> tuple[bool, str]:
     url = NPM_ENDPOINT.format(package=claim["package"], version=claim["version"])
     status, body = _fetch(url)
     if status == 200:
-        if not _is_bundle(body):
-            return False, f"{url} returned 200 but the body is not an attestation bundle"
-        return True, f"{url} -> 200 with an attestation bundle"
+        if not _is_npm_bundle(body):
+            return False, f"{url} returned 200 but the body is not an SLSA provenance bundle"
+        return True, f"{url} -> 200 with an SLSA provenance bundle"
     if status == 404:
         return False, f"{url} -> 404, no provenance attestation for this version"
     return False, f"{url} -> unexpected status {status}"

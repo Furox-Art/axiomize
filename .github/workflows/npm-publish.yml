@@ -6,8 +6,7 @@ name: npm Publish
 # pyproject.toml, so this workflow cannot fire on a code push.
 #
 # This is the manual recovery path. Use it to publish an npm version after a
-# release.yml run failed between its gates and the npm publish, or to publish
-# while the npmjs.com trusted publisher is not yet registered. Every gate that
+# release.yml run failed between its gates and the npm publish. Every gate that
 # release.yml runs also runs here, so a manual publish is held to the same
 # standard as an automatic one. check_release_contract.py refuses this workflow
 # off refs/heads/main, even though workflow_dispatch can target any branch.
@@ -51,8 +50,8 @@ jobs:
     # publish and is not granted.
     #
     # The token fallback path reads secrets.NPM_TOKEN, a long-lived credential.
-    # It exists because the npmjs.com trusted publisher is not registered yet;
-    # once it is, every publish should use OIDC and NPM_TOKEN should be deleted.
+    # The trusted publisher is registered and OIDC is the default; the token
+    # path remains only as a fallback for registry incidents.
     permissions:
       contents: read
       id-token: write
@@ -190,10 +189,9 @@ jobs:
       - name: Select the publish credential mode
         id: select-mode
         # OIDC is the default and the target state. The token path is an
-        # explicit, opt-in fallback that exists only while the trusted publisher
-        # is unregistered. Both are fail-closed: each fails with a specific
-        # message rather than silently degrading to whichever credential happens
-        # to be present.
+        # explicit, opt-in fallback for registry incidents. Both are fail-closed:
+        # each fails with a specific message rather than silently degrading to
+        # whichever credential happens to be present.
         run: |
           set -euo pipefail
           if [ "${{ inputs.use_token_fallback }}" = "true" ]; then

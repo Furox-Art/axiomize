@@ -104,25 +104,25 @@ matches; otherwise the README must say which of the two states it is in, because
 is not a published fix. The badges are live; when the two registries disagree, per-registry
 availability is documented here instead of claiming a single "current" version for both.
 
-At the time of writing (2026-10-25), PyPI serves **1.14.2** and npm serves **1.14.1**; npm has no
-1.14.2 release yet.
+At the time of writing (2026-10-30), PyPI and npm both serve **1.14.2**.
 
 ## Supply-chain attestations: what exists and what does not
 
-Do not write "published with provenance" without checking which registry you mean. The two
-ecosystems differ here, and the npm package is the weaker of the pair. State at PyPI `1.14.2` /
-npm `1.14.1`:
+Do not write "published with provenance" without checking which registry you mean, and check the
+version as well as the registry. State at `1.14.2`:
 
 | Registry | Mechanism | Endpoint | State |
 |---|---|---|---|
 | PyPI | PEP 740 attestations, Sigstore/Fulcio + transparency log | `https://pypi.org/integrity/<project>/<version>/<filename>/provenance` | **present** for both the wheel and the sdist at `1.14.2` |
-| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **absent** — `1.14.1` was published in token mode, and npm has no `1.14.2` |
+| npm | Sigstore attestations, only with trusted publishing (OIDC/provenance) | `https://registry.npmjs.org/-/npm/v1/attestations/<pkg>@<version>` | **present** at `1.14.2` (SLSA provenance + npm publish attestation); **absent** for `1.14.1` and every earlier npm release |
 
-The asymmetry is real and worth being explicit about: **PyPI `1.14.2` is attested, npm `1.14.1` is
-not.** Both PyPI files serve a bundle naming `GitHub / Furox-Art/axiomize / release.yml`,
-environment `pypi`, predicate `https://docs.pypi.org/attestations/publish/v1`, one transparency-log
-entry each, and the attested subject digest equals the digest of the file a consumer downloads.
-The npm tarball is digest-verifiable only.
+Both registries attest `1.14.2`, and the version matters. Both PyPI files serve a bundle naming
+`GitHub / Furox-Art/axiomize / release.yml`, environment `pypi`, predicate
+`https://docs.pypi.org/attestations/publish/v1`, one transparency-log entry each, and the attested
+subject digest equals the digest of the file a consumer downloads. The npm tarball serves SLSA
+provenance naming `Furox-Art/axiomize` and `.github/workflows/npm-publish.yml`, and its attested
+subject digest equals `dist.integrity`. npm `1.14.1`, the previous latest, is digest-verifiable
+only.
 
 ### Reading a 404 correctly
 
@@ -138,6 +138,8 @@ curl -s -o /dev/null -w '%{http_code}\n' \
   https://pypi.org/integrity/axiomize/1.14.2/                                                        # 404, meaningless
 
 # npm: PER-VERSION.
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.14.2                                      # 200
 curl -s -o /dev/null -w '%{http_code}\n' \
   https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.14.1                                      # 404, genuinely absent
 ```
@@ -162,8 +164,9 @@ if the endpoint stops discriminating.
 | **npm `dist.signatures`** | registry metadata, ECDSA under npm's registry key | The **registry** has not altered its own metadata for this version | **Anything about the build.** Every npm version has these, published or broken, token or OIDC. Transport integrity, not provenance. |
 | **`dist.integrity` / `digests.sha256`** | registry metadata | The bytes you downloaded are the bytes the registry published | That anyone built them, or from which commit |
 
-A package can have all three, two, or none. PyPI `1.14.2` has a PEP 740 attestation plus digests;
-npm `1.14.1` has registry metadata signatures plus digests, but no attestation.
+A package can have all three, two, or none. At `1.14.2` both registries provide an attestation and
+digests, and npm metadata signatures as well; npm `1.14.1` has registry metadata signatures plus
+digests, but no attestation.
 
 ## What a consumer can verify today
 
@@ -183,7 +186,26 @@ python -c "import hashlib; print(hashlib.sha256(open('/tmp/ax/axiomize-1.14.2-py
 Compare against `fb36d958bdfcf14490644ffc4751ea5b7da708d06679d7ed27f79b23d34a72bc` (wheel) and
 `80da3f62aebbeee14faee0559dbf7ed6860e9121b0f9e4a7e328f2fad8393a74` (sdist) at `1.14.2`.
 
-### npm — digest only
+### npm — attestation or digest
+
+```bash
+# 1. attestation: confirm the bundle names this repo and workflow
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://registry.npmjs.org/-/npm/v1/attestations/axiomize@1.14.2                 # 200
+
+# 2. digest: pin it
+npm view axiomize@1.14.2 dist.integrity
+# sha512-fG3/KAQyg1+0HufLOROOOXKiOLSiXLVPytQxYrrF7GzLWyL9Ca5ZiWkVbLaIQgeoCAfcqnT6MGQTTSHiJmEItw==
+
+npm view axiomize@1.14.2 dist.shasum
+# a622fcc08100346c0a41c0d01330de447deec360
+```
+
+The attested subject digest of the `1.14.2` bundle is the SHA-512 hex form of that
+`dist.integrity` value. `npm ci` and `npm install` enforce `dist.integrity` automatically when a
+`package-lock.json` pins it, which is the practical pinning mechanism on the npm side.
+
+npm `1.14.1` has no attestation, so for that version the digest is the only check available:
 
 ```bash
 npm view axiomize@1.14.1 dist.integrity
@@ -193,13 +215,8 @@ npm view axiomize@1.14.1 dist.shasum
 # 5fecdcce36e0bc9c6edacfbb801bc1f84ec09d05
 ```
 
-`npm pack axiomize@1.14.1`, then hash the tarball with SHA-512 and base64 to compare against
-`dist.integrity`. `npm ci` and `npm install` enforce `dist.integrity` automatically when a
-`package-lock.json` pins it, which is the practical pinning mechanism on the npm side.
-
-**Pinning by digest is the honest recommendation for this project today.** It proves the bytes you
-review are the bytes that were published. It does not prove who built them, so it does not replace
-the PyPI attestation, and the npm gap is not closed by it.
+**Pinning by digest remains a sound baseline.** It proves the bytes you review are the bytes that
+were published, and on `1.14.2` it is backed by a published attestation as well.
 
 ### The in-repo integrity stories, which are different again
 
@@ -211,29 +228,24 @@ Do not conflate package provenance with the hashes this project computes at runt
 
 Those bind artifacts to their content and inputs. None of them is a registry or build attestation.
 
-## Trusted publishers: one satisfied, one pending
+## Trusted publishers: both satisfied
 
-Attestations require a registered trusted publisher; a long-lived API token cannot mint one. The
-PyPI side is already configured and evidenced by the bundles above. The npm side is not registered,
-so npm releases remain digest-only.
+Attestations require a registered trusted publisher; a long-lived API token cannot mint one. Both
+registries are configured. PyPI is evidenced by the PEP 740 bundles above; npm is evidenced by the
+`1.14.2` SLSA bundle naming `.github/workflows/npm-publish.yml`.
 
 | Registry | Owner / org | Repository | Workflow | Environment | Status |
 |---|---|---|---|---|---|
-| PyPI | `Furox-Art` | `axiomize` | `release.yml` | `pypi` | **satisfied** — evidenced by the `1.14.1` bundles naming this repo and workflow |
-| npm | `Furox-Art` | `axiomize` | `release.yml` | `npm` | **pending** — no trusted publisher registered |
+| PyPI | `Furox-Art` | `axiomize` | `release.yml` | `pypi` | **satisfied** — evidenced by the `1.14.2` bundles naming this repo and workflow |
+| npm | `Furox-Art` | `axiomize` | `npm-publish.yml` | `npm` | **satisfied** — evidenced by the `1.14.2` SLSA bundle naming this repo and workflow |
 
-For npm, register the trusted publisher at npmjs.com for `axiomize` with owner `Furox-Art`,
-repository `axiomize`, workflow filename `release.yml` and environment `npm`. Both release paths
-default to OIDC and fail loudly if `id-token:write` is not granted; the token path is an explicit
-`use_token_fallback` opt-in. The npm job runs only after the PyPI release succeeds, so an
-unavailable npm credential cannot block or undo the Python distribution; the run still fails so
-the missing channel is visible rather than masked.
-Once the publisher is registered, use the `npm Publish` recovery workflow to publish the pending
-shim version, then delete the `NPM_TOKEN` secret.
+Both release paths default to OIDC and fail loudly if `id-token:write` is not granted; the token
+path is an explicit `use_token_fallback` opt-in and produces no attestation. The npm job runs only
+after the PyPI release succeeds, so an unavailable npm credential cannot block or undo the Python
+distribution; the run still fails so the missing channel is visible rather than masked.
 
-Once npm is republished that way, add its attestations URL to the table above and update this
-page's claim block. **Do not backfill an attestation onto an already-published version:**
-attestations are bound to a publish event.
+**Do not backfill an attestation onto an already-published version:** attestations are bound to a
+publish event. `1.14.1` and every earlier npm release stay unattested.
 
 ## Machine-checked claim block
 
@@ -241,7 +253,7 @@ attestations are bound to a publish event.
 if a documented `attested` value disagrees with the live registry. Editing the value here to match
 what you *want* to be true does not help: the check reads the registry, not the file.
 
-The current block, verified 2026-10-25 against the live endpoints:
+The current block, verified 2026-10-30 against the live endpoints:
 
 <!-- provenance-claims:begin -->
 ```json
@@ -250,6 +262,7 @@ The current block, verified 2026-10-25 against the live endpoints:
    "filename": "axiomize-1.14.2-py3-none-any.whl", "attested": true},
   {"registry": "pypi", "package": "axiomize", "version": "1.14.2",
    "filename": "axiomize-1.14.2.tar.gz", "attested": true},
+  {"registry": "npm", "package": "axiomize", "version": "1.14.2", "attested": true},
   {"registry": "npm", "package": "axiomize", "version": "1.14.1", "attested": false}
 ]
 ```
