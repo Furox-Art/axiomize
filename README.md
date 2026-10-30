@@ -208,12 +208,14 @@ allowed to spend; `reproduce` and `compare-runs` work on stored run directories.
 
 ### MCP and REST
 
-The MCP server exposes **35 tools** named `axiomize.<verb>`. `axiomize.model_*` mirrors the
-`model --action` values above; the unprefixed names (`solve`, `fit_model`, `cross_validate`,
-`sensitivity_analysis`, `uncertainty_analysis`, `falsify`, `compare_models`, `intake`,
-`workflow_policy`, `clean_data`, `compare_runs`, `experiment_design`, `inspect_run`,
-`reproduce`, `get_capabilities`, `list_tools`, `select_tools`) cover the surrounding
-workflow. Enumerate them rather than trusting a list:
+The MCP server exposes **35 tools** named `axiomize.<verb>`. Sixteen are `axiomize.model_*`
+and follow the `model --action` values with two differences: `axiomize.model_visualize` has no
+CLI action counterpart, and `experiment-design` is exposed as `axiomize.experiment_design`
+rather than a `model_*` tool. The other nineteen names (`intake`, `solve`, `simulate`,
+`fit_model`, `validate`, `cross_validate`, `sensitivity_analysis`, `uncertainty_analysis`,
+`falsify`, `compare_models`, `experiment_design`, `clean_data`, `compare_runs`, `inspect_run`,
+`reproduce`, `get_capabilities`, `list_tools`, `select_tools`, `workflow_policy`) cover the
+surrounding workflow. Enumerate them rather than trusting a list:
 
 ```bash
 axiomize mcp        # stdio transport; send tools/list over stdin
