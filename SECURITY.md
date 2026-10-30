@@ -41,12 +41,12 @@ Network-facing REST service binding is loopback-only by default. Remote binding 
 ## Supply chain
 
 Distribution integrity and build provenance are separate properties, and Axiomize publishes them
-at different levels on purpose. State at `1.12.5`:
+at different levels on purpose. State at `1.14.2`:
 
 | Channel | Signed build provenance | What you can verify today |
 |---|---|---|
 | PyPI | **yes**, PEP 740 attestations for the wheel and the sdist | A Sigstore bundle naming `Furox-Art/axiomize` via `release.yml`, environment `pypi`, whose attested subject digest equals the file you downloaded |
-| npm | **no** — published in token mode, which cannot mint an attestation | The tarball digest only, via `dist.integrity` |
+| npm | **yes** at `1.14.2`, SLSA provenance and an npm publish attestation | A bundle naming `Furox-Art/axiomize` and `.github/workflows/npm-publish.yml`, whose attested subject digest equals the published tarball's `dist.integrity` |
 
 What this does and does not mean for you:
 
@@ -55,13 +55,12 @@ What this does and does not mean for you:
   would be equally present on a broken release.
 - `dist.integrity` and PyPI `digests.sha256` prove the bytes you received are the bytes the
   registry published. They do not identify who built them or from which commit.
-- Only an attestation bundle carries the build-workflow identity, and today only the PyPI
-  distributions do.
+- Only an attestation bundle carries the build-workflow identity. At `1.14.2` both registries
+  provide one; npm `1.14.1` and every earlier npm release provide none.
 
-Pinning by digest is the honest recommendation for the npm shim. The gap closes when the npm
-trusted publisher is registered (owner `Furox-Art`, repository `axiomize`, workflow `release.yml`,
-environment `npm`) and a release is published through it; attestations cannot be backfilled onto an
-already-published version.
+Pinning by digest remains a sound baseline. The npm trusted publisher is registered and `1.14.2`
+was published through it; the missing attestations on `1.14.1` and every earlier npm release are
+permanent because attestations cannot be backfilled onto an already-published version.
 
 `docs/documentation.md` carries the exact commands, the correct per-file PyPI endpoint shape, and
 what each of the three mechanisms proves. `.github/scripts/check_provenance_claims.py` re-checks

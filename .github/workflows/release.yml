@@ -178,9 +178,8 @@ jobs:
     # publish and is not granted.
     #
     # The token fallback path reads secrets.NPM_TOKEN, a long-lived credential.
-    # It exists because the npmjs.com trusted publisher is not registered yet;
-    # once it is, the OIDC path is the only one that should be used and
-    # NPM_TOKEN should be deleted from the repository.
+    # The trusted publisher is registered and OIDC is the default; the token
+    # path remains only as a fallback for registry incidents.
     permissions:
       contents: read
       id-token: write
@@ -202,7 +201,7 @@ jobs:
         id: select-mode
         # OIDC is the default and the target state, for automatic release
         # pushes and manual dispatches alike. The token path is an explicit
-        # opt-in that exists only while the trusted publisher is unregistered.
+        # opt-in fallback for registry incidents.
         # Both are fail-closed: each fails with a specific message rather than
         # silently degrading to whichever credential happens to be present.
         run: |
