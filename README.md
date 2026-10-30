@@ -353,8 +353,9 @@ and CI re-checks the provenance claims in that document against both registries 
 ## npm
 
 `npx axiomize` works and forwards to `python -m axiomize.cli`, so it needs Python and
-`pip install axiomize` underneath; it is not a standalone binary. npm `1.12.2` is published
-and broken (`index.js` had a syntax error); `1.12.4` is the first working release.
+`pip install axiomize` underneath; it is not a standalone binary. The current npm release is
+`1.14.2`; the old `1.12.2` tag was broken (`index.js` had a syntax error), and `1.12.4` was the
+first working release in that line.
 
 ## Related projects
 
