@@ -95,6 +95,7 @@ def test_documented_mcp_tool_counts_match_the_registry() -> None:
     assert len(model_tools) == 16, f"registry has {len(model_tools)} model_* tools, README says 16"
     assert "**35 tools**" in readme
     assert re.search(r"^35 tools,", integrations, re.MULTILINE)
+    assert "only the 35 canonical names" in integrations
     assert "Sixteen are `axiomize.model_*`" in readme
     assert "other nineteen names" in readme
 

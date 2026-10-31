@@ -89,7 +89,7 @@ axiomize mcp        # then send a tools/list request over stdin
 
 Structured JSON in, structured JSON out (API v1). Five unnamespaced legacy aliases
 (`solve_sir`, `validate_sir`, `fit_model`, `list_tools`, `get_capabilities`) are still
-accepted by `tools/call` for older clients, but `tools/list` advertises only the 34
+accepted by `tools/call` for older clients, but `tools/list` advertises only the 35
 canonical names.
 
 ## Via REST API (v1)
