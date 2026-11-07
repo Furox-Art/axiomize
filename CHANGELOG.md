@@ -2,6 +2,17 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.14.3] - 2026-11-07
+
+### Changed
+
+- Python 3.10 support dropped: `requires-python` is now `>=3.11`, the 3.10
+  classifier and the CI matrix entry are gone, and the ruff `target-version`
+  follows (`py311`). The required-check list in the "main quality gates"
+  ruleset drops `validate (3.10)` in the same change, otherwise that required
+  context would never report again. No code change; the portfolio is
+  consolidating on a single support floor and 3.10 is out of upstream support.
+
 ## [1.14.2] - 2026-10-21
 
 ### Security

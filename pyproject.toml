@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.14.2"
+version = "1.14.3"
 description = "Reproducible scientific modeling engine and agent skill pack: versioned Model IR with explicit units, dimensional and numerical validation, calibration, sensitivity and uncertainty analysis, causal/Bayesian inference, and portable export via CLI, REST and MCP"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Furox-Art", email = "177975472+Furox-Art@users.noreply.github.com" },
 ]
@@ -36,7 +36,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -149,7 +148,7 @@ fail_under = 100
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 extend-exclude = [".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "site"]
 
 [tool.ruff.lint]

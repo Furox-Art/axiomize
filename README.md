@@ -16,7 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.14.2**. PyPI and npm both serve 1.14.2. Per-registry
+Current package line: **1.14.3**. PyPI and npm both serve 1.14.2. Per-registry
 availability is tracked in
 [docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not); the
 badges above are live and authoritative.

@@ -1,2 +1,2 @@
-axiomize 1.14.2
-patch release: Windows symlink test skip, version and docs alignment
+axiomize 1.14.3
+drop Python 3.10 support (requires-python >=3.11, CI matrix 3.11-3.13)
