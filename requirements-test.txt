@@ -15,6 +15,12 @@ sympy>=1.12
 networkx>=3.0
 statsmodels>=0.14
 matplotlib>=3.7
+# Required by the yaml export path (axiomize.general_engine_core.export_model
+# format="yaml"). Without it the export honestly reports TOOL_UNAVAILABLE, but
+# CI must exercise the real serializer and the round-trip contract, so the
+# test environment installs it. Declared in pyproject.toml as well: the
+# dependency-manifest guard requires both manifests to agree on the set.
+PyYAML>=6.0
 # z3-solver is declared once, in both this file and pyproject.toml, with the
 # same requirement. It used to be declared twice in pyproject.toml, once per
 # platform marker ("...; sys_platform == 'darwin'" and

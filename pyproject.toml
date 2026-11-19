@@ -58,6 +58,7 @@ dependencies = [
     "control>=0.10",
     "cvxpy>=1.5",
     "casadi>=3.6",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
