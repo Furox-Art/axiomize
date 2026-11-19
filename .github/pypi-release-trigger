@@ -1,2 +1,2 @@
-axiomize 1.14.3
-drop Python 3.10 support (requires-python >=3.11, CI matrix 3.11-3.13)
+axiomize 1.15.0
+unit-scale fail-closed checks, mandatory-units flag, correlated uncertainty, multi-start calibration; export status + sweep flake fix

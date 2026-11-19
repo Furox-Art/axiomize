@@ -2,6 +2,50 @@
 
 All notable changes to Axiomize are documented here. Axiomize follows semantic versioning; release claims are tied to exact-wheel CI/release evidence.
 
+## [1.15.0] - 2026-11-19
+
+### Added
+
+- Canonical unit-scale layer: `validation.dimensions.scale_of` / `convert_value`
+  and a per-equation `equation_unit_scale` check merged into validation. A model
+  whose dimensions agree but whose scales disagree (e.g. a rate in `1/s`
+  integrated against `t` in `day`, off by 86400x) now fails closed instead of
+  silently passing a wrong number. Time uses a 365-day year; concentration is
+  canonical mol/m^3.
+- Mandatory units made explicit: `ModelIR.from_dict(require_units=True)` refuses
+  omitted unit declarations, and `model_ir.unit_declaration_audit(payload)`
+  reports a WARNING listing every symbol that would default to `dimensionless`.
+  The default remains backward compatible.
+- Correlated uncertainty propagation: `uncertainty.quantify.propagate` and
+  `advanced_diagnostics.propagate_parameter_uncertainty` accept a fit covariance
+  (fail-closed validated: finite, symmetric, positive semidefinite) and draw
+  joint correlated samples instead of independent marginals. The Monte-Carlo
+  report now states `quantiles_conditioned_on_success` and emits an explicit
+  `exclusion_bias_warning` when failed samples are excluded from the interval.
+- Multi-start calibration: `fitting.estimator.fit_curve(n_starts=...)` runs
+  deterministic bound-spanning starts and keeps the lowest-RSS fit;
+  `fit_curve(profile=True)` adds a profile-likelihood identifiability flag per
+  parameter. Both default to the previous single-start behaviour.
+- JSON and Python exports now carry `status: "PASS"`, aligning every export
+  format with the README export table.
+- PyYAML is declared in both `pyproject.toml` and `requirements-test.txt` (the
+  manifest guard requires agreement) and a real `safe_dump`/`safe_load`
+  round-trip test pins bit-exact value/unit preservation.
+
+### Fixed
+
+- Parallel sweep worker-count invariance flake: spawned pool workers aborted
+  under full-suite memory pressure with an OpenBLAS allocation failure
+  (`BrokenProcessPool`). BLAS threads are now capped before numpy import (fresh
+  spawn workers re-import the module), the invariance child propagates
+  `job_mc`'s return code to its exit status, and failures surface child stderr
+  instead of hiding it. Verified 0/20 failures under concurrent full-suite load.
+
+### Docs
+
+- README registry claim corrected: PyPI serves 1.14.3 and npm serves 1.14.2
+  (previously claimed both serve 1.14.2).
+
 ## [1.14.3] - 2026-11-07
 
 ### Changed

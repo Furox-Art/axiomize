@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "axiomize"
-version = "1.14.3"
+version = "1.15.0"
 description = "Reproducible scientific modeling engine and agent skill pack: versioned Model IR with explicit units, dimensional and numerical validation, calibration, sensitivity and uncertainty analysis, causal/Bayesian inference, and portable export via CLI, REST and MCP"
 readme = "README.md"
 license = "MIT"
@@ -172,7 +172,7 @@ python_version = "3.13"
 module = [
     "sympy.*", "scipy.*", "numpy.*", "networkx.*", "statsmodels.*",
     "matplotlib.*", "z3.*", "control.*", "cvxpy.*", "casadi.*", "pymc", "fenics", "dolfin.*",
-    "dolfinx.*", "ufl", "ufl.*", "petsc4py", "petsc4py.*", "mpi4py", "mpi4py.*",
+    "dolfinx.*", "ufl", "ufl.*", "petsc4py", "petsc4py.*", "mpi4py", "mpi4py.*", "yaml",
 ]
 ignore_missing_imports = true
 

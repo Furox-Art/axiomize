@@ -16,7 +16,7 @@ mcp-name: io.github.Furox-Art/axiomize
 [![Python](https://img.shields.io/pypi/pyversions/axiomize)](https://pypi.org/project/axiomize/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Current package line: **1.14.3**. PyPI serves 1.14.3; npm serves 1.14.2. Per-registry
+Current package line: **1.15.0**. PyPI serves 1.14.3; npm serves 1.14.2. Per-registry
 availability is tracked in
 [docs/documentation.md](docs/documentation.md#supply-chain-attestations-what-exists-and-what-does-not); the
 badges above are live and authoritative.
@@ -285,6 +285,14 @@ is repeated at the top of this README for clients that scrape it.
 ## What it actually does
 
 - Validates dimensional consistency, so you cannot add meters to seconds
+- Checks canonical unit *scales*, not just dimensions: a rate declared `1/s` while
+  integrating against `t` in `day` is off by 86400× and now fails closed instead of
+  passing a wrong number. `validation.dimensions.scale_of` / `convert_value` convert
+  explicitly between known units
+- Makes mandatory units auditable: `model_ir.unit_declaration_audit(payload)` reports
+  every symbol that would silently default to `dimensionless`, and
+  `ModelIR.from_dict(..., require_units=True)` refuses omitted units. The default stays
+  backward compatible
 - Refuses to simulate a model that fails those checks: execution goes through the same
   validation as `axiomize model --action validate`, and a mismatch raises
   `ModelDimensionMismatch` carrying the failing checks instead of returning numbers
