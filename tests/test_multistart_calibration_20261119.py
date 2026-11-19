@@ -153,3 +153,15 @@ def test_fit_result_to_dict_includes_new_fields() -> None:
     payload = res.to_dict()
     assert payload["n_starts"] == 2
     assert "identifiability" in payload
+
+
+def test_fit_once_failure_path_returns_start() -> None:
+    t, y = _linear_data()
+
+    def raising(tt, a):
+        raise ValueError("boom")
+
+    popt, perr, success = est._fit_once(raising, t, y, [2.0], [0.0], [10.0])
+    assert success is False
+    assert popt[0] == 2.0
+    assert np.isinf(perr[0])

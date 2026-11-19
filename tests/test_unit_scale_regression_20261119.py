@@ -205,3 +205,11 @@ _SCALES = {"x": 0.01, "t": 60.0}
 ])
 def test_parse_scale_combines_canonical_scales(expression: str, expected: float) -> None:
     assert de._parse_scale(expression, _DIMS, _SCALES) == pytest.approx(expected)
+
+
+def test_scale_of_unit_without_registered_scale_fail_closed(monkeypatch) -> None:
+    from axiomize.validation import dimensions as dim
+
+    monkeypatch.delitem(dim._UNIT_SCALE, "day")
+    with pytest.raises(DimensionalMismatch, match="no canonical scale"):
+        dim.scale_of("day")
