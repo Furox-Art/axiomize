@@ -67,6 +67,47 @@ def _bounded_list(payload: Any, *, name: str, maximum: int) -> list[Any]:
     return payload
 
 
+def _omitted_unit_symbols(payload: dict[str, Any]) -> list[str]:
+    """Symbols whose unit declaration is absent (would default to dimensionless)."""
+    omitted: list[str] = []
+    variables = payload.get("variables", [])
+    if isinstance(variables, list):
+        for entry in variables:
+            if isinstance(entry, dict) and "unit" not in entry:
+                omitted.append(f"variable:{entry.get('name', '?')}")
+    parameters = payload.get("parameters", [])
+    if isinstance(parameters, list):
+        for entry in parameters:
+            if isinstance(entry, dict) and "unit" not in entry:
+                omitted.append(f"parameter:{entry.get('name', '?')}")
+    if "independent_unit" not in payload:
+        omitted.append("independent_unit")
+    return omitted
+
+
+def unit_declaration_audit(payload: dict[str, Any]) -> dict[str, Any]:
+    """Explicit status for unit declarations instead of a silent dimensionless default.
+
+    The README promises mandatory units. For backward compatibility an omitted
+    unit still defaults to ``dimensionless`` when constructing the IR, but this
+    audit surfaces exactly which symbols omitted a unit (WARNING) so a caller
+    can see the assumption; ``ModelIR.from_dict(..., require_units=True)``
+    turns the same condition into a fail-closed error.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Model IR must be an object")
+    omitted = _omitted_unit_symbols(payload)
+    return {
+        "status": "WARNING" if omitted else "PASS",
+        "omitted": omitted,
+        "defaulted_to": "dimensionless",
+        "detail": (
+            "units omitted and defaulted to dimensionless; pass require_units=True to enforce explicit units"
+            if omitted else "every symbol declares a unit"
+        ),
+    }
+
+
 class ModelFamily(str, Enum):
     ALGEBRAIC = "algebraic"
     ODE = "ode"
@@ -306,10 +347,18 @@ class ModelIR:
     schema_version: str = CURRENT_SCHEMA_VERSION
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any], *, allow_migration: bool = False) -> "ModelIR":
+    def from_dict(cls, payload: dict[str, Any], *, allow_migration: bool = False,
+                  require_units: bool = False) -> "ModelIR":
         if not isinstance(payload, dict):
             raise ValueError("Model IR must be an object")
         migrated = migrate_payload(payload, allow_migration=allow_migration)
+        if require_units:
+            omitted = _omitted_unit_symbols(migrated)
+            if omitted:
+                raise ValueError(
+                    "require_units: missing unit declarations (dimensionless must be explicit): "
+                    + ", ".join(omitted)
+                )
         variables = _bounded_list(migrated.get("variables", []), name="variables", maximum=MAX_MODEL_VARIABLES)
         parameters = _bounded_list(migrated.get("parameters", []), name="parameters", maximum=MAX_MODEL_PARAMETERS)
         equations = _bounded_list(migrated.get("equations", []), name="equations", maximum=MAX_MODEL_EQUATIONS)
