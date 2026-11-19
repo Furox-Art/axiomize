@@ -15,8 +15,20 @@ import os
 import time
 from concurrent.futures import ProcessPoolExecutor
 
-import numpy as np
-from scipy.integrate import solve_ivp
+# Windows spawn workers died under full-suite memory pressure with "OpenBLAS
+# error: Memory allocation still failed after 10 retries" -> BrokenProcessPool.
+# OpenBLAS allocates per-thread buffers at load; capping threads before numpy
+# import keeps each fresh worker's footprint small. Spawn workers re-import
+# this module in a new interpreter, so the cap applies there too. The
+# Gillespie chunks use no BLAS and the small ODE solves do not benefit from
+# multithreaded BLAS. An explicit non-empty user setting is respected; an
+# absent or empty value is not a meaningful thread count, so it gets the cap.
+for _blas_var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    if not os.environ.get(_blas_var, "").strip():
+        os.environ[_blas_var] = "1"
+
+import numpy as np  # noqa: E402
+from scipy.integrate import solve_ivp  # noqa: E402
 
 # This file is both a direct source-checkout script and a wheel console module,
 # so keep the hard process ceiling local rather than relying on package import

@@ -54,15 +54,22 @@ def test_cli_aggregate_does_not_move_with_worker_count(tmp_path: Path) -> None:
         f"sys.path.insert(0, {str(TOOL.parent)!r})\n"
         "import parallel_sweep\n"
         "if __name__ == '__main__':\n"
-        "    for workers in (1, 3):\n"
-        "        parallel_sweep.job_mc(workers, total_runs=120)\n",
+        "    codes = [parallel_sweep.job_mc(w, total_runs=120) for w in (1, 3)]\n"
+        "    raise SystemExit(max(codes))\n",
         encoding="utf-8",
     )
+    # check=False + an assertion that carries stderr: the previous
+    # capture_output/check=True combination hid the child traceback inside
+    # CalledProcessError, so a load-induced pool failure was undiagnosable.
     completed = subprocess.run(
         [sys.executable, str(child)],
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
+    )
+    assert completed.returncode == 0, (
+        f"child exit={completed.returncode}\n"
+        f"--- stdout ---\n{completed.stdout}\n--- stderr ---\n{completed.stderr}"
     )
     values = re.findall(r"observed = ([0-9.]+)", completed.stdout)
     assert len(values) == 2, completed.stdout
