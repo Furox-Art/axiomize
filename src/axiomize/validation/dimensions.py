@@ -8,6 +8,7 @@ producing a meaningless number.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
@@ -92,6 +93,38 @@ _UNIT_TABLE: dict[str, dict[str, int]] = {
     "1": {},
 }
 
+# unit name -> canonical scale factor to SI base units. Dimensional checks
+# ignore scale, but a model that declares a rate in 1/day while integrating in
+# seconds is off by 86400x even though the dimensions agree. This table lets
+# the engine detect (and convert) that instead of silently passing a wrong
+# number. Time uses a 365-day year; concentration is canonical mol/m^3.
+_UNIT_SCALE: dict[str, float] = {
+    "metre": 1.0, "meter": 1.0, "m": 1.0,
+    "centimeter": 0.01, "cm": 0.01, "millimeter": 0.001, "mm": 0.001,
+    "kilometer": 1000.0, "km": 1000.0,
+    "litre": 0.001, "liter": 0.001, "L": 0.001,
+    "m^2": 1.0, "m2": 1.0, "m^3": 1.0, "m3": 1.0,
+    "kilogram": 1.0, "kg": 1.0, "gram": 0.001, "g": 0.001,
+    "second": 1.0, "s": 1.0, "minute": 60.0, "min": 60.0,
+    "day": 86400.0, "hour": 3600.0, "h": 3600.0,
+    "year": 31536000.0, "yr": 31536000.0,
+    "ampere": 1.0, "A": 1.0, "kelvin": 1.0, "K": 1.0,
+    "mole": 1.0, "mol": 1.0, "candela": 1.0,
+    "hertz": 1.0, "Hz": 1.0, "newton": 1.0, "N": 1.0,
+    "joule": 1.0, "J": 1.0, "watt": 1.0, "W": 1.0,
+    "pascal": 1.0, "Pa": 1.0, "volt": 1.0, "V": 1.0,
+    "coulomb": 1.0, "C": 1.0,
+    "persons": 1.0, "person": 1.0, "cells": 1.0, "molecules": 1.0,
+    "1/day": 1.0 / 86400.0, "1/second": 1.0, "1/s": 1.0,
+    "1/min": 1.0 / 60.0, "1/hour": 1.0 / 3600.0, "1/h": 1.0 / 3600.0,
+    "1/year": 1.0 / 31536000.0, "per_day": 1.0 / 86400.0,
+    "m/s": 1.0, "m/s^2": 1.0, "m/s2": 1.0,
+    "kg/m^3": 1.0, "kg/m3": 1.0,
+    "mol/m^3": 1.0, "mol/m3": 1.0,
+    "mol/L": 1000.0, "mmol/L": 1.0, "umol/L": 0.001, "M": 1000.0,
+    "dimensionless": 1.0, "1": 1.0,
+}
+
 
 class DimensionalMismatch(ValueError):
     """Raised when an operation combines dimensionally incompatible quantities."""
@@ -139,6 +172,40 @@ def dimension_of(unit: str) -> Dimension:
         return Dimension(_UNIT_TABLE[unit])
     except KeyError:
         raise DimensionalMismatch(f"unknown unit: {unit!r}") from None
+
+
+def scale_of(unit: str) -> float:
+    """Canonical SI scale factor for a known unit (fail-closed on unknown).
+
+    ``dimension_of`` is checked first so an empty or unknown unit raises the
+    same :class:`DimensionalMismatch` as everywhere else; a unit that has a
+    dimension but no registered scale is also refused rather than guessed.
+    """
+    dimension_of(unit)
+    try:
+        return _UNIT_SCALE[unit]
+    except KeyError:
+        raise DimensionalMismatch(f"no canonical scale for unit: {unit!r}") from None
+
+
+def convert_value(value: float, from_unit: str, to_unit: str) -> float:
+    """Convert a numeric value between two units of the same dimension.
+
+    Dimensional mismatch is fail-closed: converting metres to seconds raises
+    instead of returning a meaningless number. ``1/day -> 1/s`` divides by
+    86400; ``day -> s`` multiplies by 86400.
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("value must be numeric") from exc
+    if not math.isfinite(number):
+        raise ValueError("value must be finite")
+    if dimension_of(from_unit) != dimension_of(to_unit):
+        raise DimensionalMismatch(
+            f"cannot convert {from_unit!r} to {to_unit!r}: dimensions differ"
+        )
+    return number * scale_of(from_unit) / scale_of(to_unit)
 
 
 @dataclass

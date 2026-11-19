@@ -59,7 +59,7 @@ def test_dimension_mismatched_model_cannot_simulate() -> None:
     with pytest.raises(ModelDimensionMismatch) as excinfo:
         simulate_model(model, t_span=(0.0, 1.0))
     failed = excinfo.value.failed_checks
-    assert [check["name"] for check in failed] == ["equation_dimension:x"]
+    assert [check["name"] for check in failed] == ["equation_dimension:x", "equation_unit_scale:x"]
     assert "expected={'T': -1.0}; basis=d(x)/d(t)" in failed[0]["detail"]
     assert excinfo.value.validation["status"] == "FAIL"
 
