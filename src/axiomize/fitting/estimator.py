@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+
+from axiomize.limits import bounded_int
 
 
 @dataclass
@@ -27,6 +29,8 @@ class FitResult:
     method: str
     n: int
     k: int
+    n_starts: int = 1
+    identifiability: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +38,7 @@ class FitResult:
             "rmse": self.rmse, "aic": self.aic, "bic": self.bic,
             "resid_autocorr": self.resid_autocorr, "success": self.success,
             "method": self.method, "n": self.n, "k": self.k,
+            "n_starts": self.n_starts, "identifiability": self.identifiability,
         }
 
 
@@ -119,31 +124,142 @@ def _diagnostics(y: np.ndarray, fitted: np.ndarray, k: int) -> tuple[float, floa
     return rmse, aic, bic, ac
 
 
-def fit_curve(model: Callable[..., np.ndarray], t: np.ndarray, y: np.ndarray,
-              p0: list[float], param_names: list[str],
-              bounds: tuple[list[float], list[float]] | None = None) -> FitResult:
+def _fit_once(model, t_arr, y_arr, start, low, high):
     from scipy.optimize import curve_fit
 
-    t_arr, y_arr = _coerce_xy(t, y)
-    low, high = _validate_fit_spec(t_arr, p0, param_names, bounds)
     try:
-        popt, pcov = curve_fit(
-            model,
-            t_arr,
-            y_arr,
-            p0=p0,
-            bounds=(low, high),
-            maxfev=20000,
-        )
+        popt, pcov = curve_fit(model, t_arr, y_arr, p0=start, bounds=(low, high), maxfev=20000)
         diag = np.diag(pcov)
         with np.errstate(invalid="ignore"):
             perr = np.sqrt(np.where(diag >= 0.0, diag, np.inf))
         perr = np.where(np.isfinite(perr), perr, np.inf)
         success = bool(np.all(np.isfinite(popt)))
     except (RuntimeError, ValueError, TypeError, FloatingPointError, OverflowError):
-        popt = np.array(p0, dtype=float)
-        perr = np.full(len(p0), np.inf)
+        popt = np.array(start, dtype=float)
+        perr = np.full(len(start), np.inf)
         success = False
+    return popt, perr, success
+
+
+def _generate_starts(p0, low, high, n_starts):
+    """Deterministic multi-start seeds: p0 plus bound-spanning fractions."""
+    p0_arr = np.asarray(p0, dtype=float)
+    starts = [p0_arr.copy()]
+    for j in range(1, n_starts):
+        frac = j / n_starts
+        cand = []
+        for i in range(len(p0_arr)):
+            lo, hi = float(low[i]), float(high[i])
+            if math.isfinite(lo) and math.isfinite(hi):
+                cand.append(lo + frac * (hi - lo))
+            else:
+                cand.append(float(p0_arr[i]) * (1.0 + 0.25 * j))
+        starts.append(np.asarray(cand, dtype=float))
+    return starts
+
+
+def _multistart_fit(model, t_arr, y_arr, p0, low, high, n_starts):
+    best = None
+    for start in _generate_starts(p0, low, high, n_starts):
+        popt, perr, success = _fit_once(model, t_arr, y_arr, start, low, high)
+        if not success:
+            continue
+        try:
+            fitted = np.asarray(model(t_arr, *popt), dtype=float)
+        except (ValueError, TypeError, FloatingPointError, OverflowError):
+            continue
+        if fitted.shape != y_arr.shape or not np.all(np.isfinite(fitted)):
+            continue
+        rss = float(np.sum((y_arr - fitted) ** 2))
+        if best is None or rss < best[0]:
+            best = (rss, popt, perr)
+    if best is None:
+        return _fit_once(model, t_arr, y_arr, np.asarray(p0, dtype=float), low, high)
+    return best[1], best[2], True
+
+
+def _profile_rss(model, t_arr, y_arr, popt, low, high, i, fixed, rss_best):
+    """RSS increase when parameter i is fixed away from its optimum (profile)."""
+    from scipy.optimize import curve_fit
+
+    k = len(popt)
+
+    def wrapper(tt, *others):
+        full = list(others)
+        full.insert(i, fixed)
+        return model(tt, *full)
+
+    if k == 1:
+        try:
+            fitted = np.asarray(wrapper(t_arr), dtype=float)
+        except (ValueError, TypeError, FloatingPointError, OverflowError):
+            return 0.0
+        if fitted.shape != y_arr.shape or not np.all(np.isfinite(fitted)):
+            return 0.0
+        return max(0.0, float(np.sum((y_arr - fitted) ** 2)) - rss_best)
+    other_p0 = [float(popt[j]) for j in range(k) if j != i]
+    other_low = [float(low[j]) for j in range(k) if j != i]
+    other_high = [float(high[j]) for j in range(k) if j != i]
+    try:
+        pop, _ = curve_fit(wrapper, t_arr, y_arr, p0=other_p0, bounds=(other_low, other_high), maxfev=20000)
+        fitted = np.asarray(wrapper(t_arr, *pop), dtype=float)
+    except (RuntimeError, ValueError, TypeError, FloatingPointError, OverflowError):
+        return 0.0
+    if fitted.shape != y_arr.shape or not np.all(np.isfinite(fitted)):
+        return 0.0
+    return max(0.0, float(np.sum((y_arr - fitted) ** 2)) - rss_best)
+
+
+def _profile_identifiability(model, t_arr, y_arr, popt, low, high, param_names, rss_best):
+    """Profile-likelihood identifiability flag per parameter.
+
+    A parameter is practically identifiable when fixing it away from the
+    optimum (re-optimizing the rest) raises the RSS above a small threshold.
+    A flat profile means the data cannot pin the parameter down.
+    """
+    threshold = max(1e-10, 1e-4 * (rss_best + 1e-10))
+    report: dict[str, Any] = {}
+    for i, name in enumerate(param_names):
+        delta = max(abs(float(popt[i])) * 0.25, 1e-3)
+        fixed = float(np.clip(popt[i] + delta, low[i], high[i]))
+        increase = 0.0
+        if abs(fixed - float(popt[i])) > 1e-12:
+            increase = _profile_rss(model, t_arr, y_arr, popt, low, high, i, fixed, rss_best)
+        report[name] = {"identifiable": bool(increase > threshold), "profile_rss_increase": float(increase)}
+    report["identifiable"] = all(report[name]["identifiable"] for name in param_names)
+    return report
+
+
+def fit_curve(model: Callable[..., np.ndarray], t: np.ndarray, y: np.ndarray,
+              p0: list[float], param_names: list[str],
+              bounds: tuple[list[float], list[float]] | None = None,
+              n_starts: int = 1, profile: bool = False) -> FitResult:
+    from scipy.optimize import curve_fit
+
+    t_arr, y_arr = _coerce_xy(t, y)
+    low, high = _validate_fit_spec(t_arr, p0, param_names, bounds)
+    n_starts = bounded_int(n_starts, name="fit starts", minimum=1, maximum=16)
+    if n_starts > 1:
+        popt, perr, success = _multistart_fit(model, t_arr, y_arr, p0, low, high, n_starts)
+    else:
+        try:
+            popt, pcov = curve_fit(
+                model,
+                t_arr,
+                y_arr,
+                p0=p0,
+                bounds=(low, high),
+                maxfev=20000,
+            )
+            diag = np.diag(pcov)
+            with np.errstate(invalid="ignore"):
+                perr = np.sqrt(np.where(diag >= 0.0, diag, np.inf))
+            perr = np.where(np.isfinite(perr), perr, np.inf)
+            success = bool(np.all(np.isfinite(popt)))
+        except (RuntimeError, ValueError, TypeError, FloatingPointError, OverflowError):
+            popt = np.array(p0, dtype=float)
+            perr = np.full(len(p0), np.inf)
+            success = False
 
     try:
         fitted = np.asarray(model(t_arr, *popt), dtype=float)
@@ -157,11 +273,16 @@ def fit_curve(model: Callable[..., np.ndarray], t: np.ndarray, y: np.ndarray,
     else:
         rmse, aic, bic, ac = _diagnostics(y_arr, fitted, len(p0))
     ok = bool(success and np.all(np.isfinite([rmse, aic, bic])))
+    identifiability: dict[str, Any] = {}
+    if ok and profile:
+        rss_best = float(rmse ** 2 * len(y_arr))
+        identifiability = _profile_identifiability(model, t_arr, y_arr, popt, low, high, param_names, rss_best)
     return FitResult(
         params={name: (float(v), float(e)) for name, v, e in zip(param_names, popt, perr)},
         rmse=rmse, aic=aic, bic=bic, resid_autocorr=ac,
         success=ok,
-        method="bounded_least_squares", n=len(y_arr), k=len(p0))
+        method="bounded_least_squares", n=len(y_arr), k=len(p0),
+        n_starts=n_starts, identifiability=identifiability)
 
 
 def fit_logistic_curve(t: np.ndarray, y: np.ndarray) -> FitResult:
