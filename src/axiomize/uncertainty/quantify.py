@@ -40,9 +40,29 @@ def confidence_intervals(fit: FitResult, alpha: float = 0.05) -> dict[str, tuple
     return intervals
 
 
+def validate_covariance_matrix(covariance: Any, k: int) -> np.ndarray:
+    """Validate a joint parameter covariance (fail-closed).
+
+    Must be a finite, symmetric, positive-semidefinite ``k x k`` matrix. Used
+    by both direct propagation and the Model IR Monte-Carlo path so a fit
+    covariance can drive correlated draws instead of independent marginals.
+    """
+    cov = np.asarray(covariance, dtype=float)
+    if cov.shape != (k, k):
+        raise ValueError(f"covariance must be a {k}x{k} matrix matching the parameter count")
+    if not np.all(np.isfinite(cov)):
+        raise ValueError("covariance must contain only finite values")
+    if not np.allclose(cov, cov.T, atol=1e-12):
+        raise ValueError("covariance must be symmetric")
+    if float(np.min(np.linalg.eigvalsh(cov))) < -1e-10:
+        raise ValueError("covariance must be positive semidefinite")
+    return cov
+
+
 def propagate(func: Callable[[dict[str, float]], float],
               params: dict[str, tuple[float, float]],
-              n: int = 5000, seed: int = 0) -> dict[str, float]:
+              n: int = 5000, seed: int = 0,
+              covariance: list[list[float]] | None = None) -> dict[str, float]:
     if not isinstance(params, dict) or not params or len(params) > MAX_MODEL_PARAMETERS:
         raise ValueError(f"params must contain 1..{MAX_MODEL_PARAMETERS} entries")
     n = bounded_int(n, name="uncertainty samples", minimum=2, maximum=MAX_SAMPLES)
@@ -58,9 +78,16 @@ def propagate(func: Callable[[dict[str, float]], float],
 
     rng = np.random.default_rng(seed)
     # Draw in sorted name order so the same parameter set gets the same columns
-    # regardless of the caller's mapping insertion order.
+    # regardless of the caller's mapping insertion order. A supplied covariance
+    # is interpreted in that same sorted order.
     names = sorted(normalized)
-    columns = {name: rng.normal(normalized[name][0], max(normalized[name][1], 1e-12), n) for name in names}
+    if covariance is not None:
+        cov = validate_covariance_matrix(covariance, len(names))
+        means = [normalized[name][0] for name in names]
+        matrix = rng.multivariate_normal(means, cov, size=n)
+        columns = {name: matrix[:, i] for i, name in enumerate(names)}
+    else:
+        columns = {name: rng.normal(normalized[name][0], max(normalized[name][1], 1e-12), n) for name in names}
     draws = np.empty(n, dtype=float)
     for i in range(n):
         value = float(func({name: float(columns[name][i]) for name in names}))

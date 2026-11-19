@@ -19,6 +19,7 @@ from axiomize.general_engine import (
     simulate_model,
 )
 from axiomize.model_ir import ModelFamily, ModelIR
+from axiomize.uncertainty.quantify import validate_covariance_matrix
 
 
 def stopping_decision(
@@ -158,11 +159,16 @@ def propagate_parameter_uncertainty(
     seed: int = 0,
     quantiles: tuple[float, ...] = (0.025, 0.5, 0.975),
     approve_heavy: bool = False,
+    parameter_covariance: list[list[float]] | None = None,
 ) -> dict[str, Any]:
     """Monte-Carlo propagation of parameter uncertainty through Model IR.
 
     It is approval-gated because it multiplies model executions. Failed samples
     are counted and never silently discarded from the reported success rate.
+    A supplied ``parameter_covariance`` (over ``sorted(parameter_uncertainty)``)
+    drives correlated joint draws from a fit covariance instead of independent
+    marginals. Quantiles are conditioned on successful samples; when any sample
+    fails an explicit exclusion-bias warning is reported.
     """
     if model.family not in {ModelFamily.ODE, ModelFamily.STOCHASTIC, ModelFamily.ALGEBRAIC}:
         return {
@@ -193,9 +199,29 @@ def propagate_parameter_uncertainty(
         raise ValueError(f"uncertainty supplied for unknown parameters: {unknown}")
     rng = np.random.default_rng(seed)
     draws: dict[str, np.ndarray] = {}
-    for name, parameter in by_name.items():
-        spec = parameter_uncertainty.get(name, {"distribution": "fixed", "value": baseline[name]})
-        draws[name] = _sample_parameter(rng, spec, baseline[name], parameter.bounds, samples)
+    if parameter_covariance is not None:
+        cov_names = sorted(parameter_uncertainty)
+        cov = validate_covariance_matrix(parameter_covariance, len(cov_names))
+        means = [float(parameter_uncertainty[n].get("mean", baseline[n])) for n in cov_names]
+        matrix = rng.multivariate_normal(means, cov, size=samples)
+        for i, name in enumerate(cov_names):
+            values = matrix[:, i]
+            bounds = by_name[name].bounds
+            low, high = bounds if bounds is not None else (None, None)
+            if low is not None:
+                values = np.maximum(values, float(low))
+            if high is not None:
+                values = np.minimum(values, float(high))
+            draws[name] = np.asarray(values, dtype=float)
+        for name, parameter in by_name.items():
+            if name not in draws:
+                draws[name] = _sample_parameter(
+                    rng, {"distribution": "fixed", "value": baseline[name]}, baseline[name], parameter.bounds, samples
+                )
+    else:
+        for name, parameter in by_name.items():
+            spec = parameter_uncertainty.get(name, {"distribution": "fixed", "value": baseline[name]})
+            draws[name] = _sample_parameter(rng, spec, baseline[name], parameter.bounds, samples)
 
     successful: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -238,7 +264,7 @@ def propagate_parameter_uncertainty(
         }
 
     first_time = successful[0].get("time")
-    return {
+    result = {
         "status": "PASS",
         "method": "monte_carlo_parameter_propagation",
         "seed": int(seed),
@@ -253,8 +279,15 @@ def propagate_parameter_uncertainty(
             name: {"mean": float(np.mean(values)), "std": float(np.std(values, ddof=1))}
             for name, values in draws.items()
         },
+        "quantiles_conditioned_on_success": True,
         "cost": cost,
     }
+    if failures:
+        result["exclusion_bias_warning"] = (
+            f"{len(failures)} of {samples} samples failed and were excluded from mean/std/quantiles; "
+            "if failure correlates with the parameter region the reported interval is biased — inspect failures"
+        )
+    return result
 
 
 def _equilibrium_for_ode(
