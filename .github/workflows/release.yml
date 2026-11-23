@@ -5,18 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/pypi-release-trigger"
-  # Manual runs can still choose the npm credential mode explicitly. OIDC is
-  # the default for every event; the token fallback is an explicit opt-in until
-  # the npm Trusted Publisher is registered. The npm job runs after the PyPI
-  # release and is non-blocking, so a missing npm credential can no longer
-  # prevent the Python distribution from being published.
   workflow_dispatch:
-    inputs:
-      use_token_fallback:
-        description: "Publish the npm shim with the NPM_TOKEN secret instead of OIDC trusted publishing. Drops the provenance attestation."
-        required: false
-        default: false
-        type: boolean
 
 concurrency:
   group: pypi-release
@@ -161,189 +150,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  npm-package:
-    # The npm shim is part of the release contract. It runs after `publish`, so
-    # PyPI is already released before npm is attempted; a failure here marks the
-    # release failed (honestly: one channel is missing) without undoing or
-    # blocking the PyPI upload. A job-level `continue-on-error` used to hide
-    # test, tarball-allowlist and credential failures from the run result.
-    name: release npm-package
-    needs: [preflight, publish]
-    runs-on: ubuntu-latest
-    environment:
-      name: npm
-      url: https://www.npmjs.com/package/axiomize
-    # id-token:write mints the OIDC token for the default trusted-publishing
-    # path. contents:read is for the checkout. contents:write is not needed to
-    # publish and is not granted.
-    #
-    # The token fallback path reads secrets.NPM_TOKEN, a long-lived credential.
-    # The trusted publisher is registered and OIDC is the default; the token
-    # path remains only as a fallback for registry incidents.
-    permissions:
-      contents: read
-      id-token: write
-    outputs:
-      mode: ${{ steps.select-mode.outputs.mode }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          # npm trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1;
-          # Node 20 ships npm 10.x, which cannot do OIDC at all. npm's own
-          # reference workflow pins 24. Required for BOTH modes.
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-          # Never cache in a release build: a warm cache is a way to publish
-          # bytes that were not produced by this checkout.
-          package-manager-cache: false
-      - name: Select the publish credential mode
-        id: select-mode
-        # OIDC is the default and the target state, for automatic release
-        # pushes and manual dispatches alike. The token path is an explicit
-        # opt-in fallback for registry incidents.
-        # Both are fail-closed: each fails with a specific message rather than
-        # silently degrading to whichever credential happens to be present.
-        run: |
-          set -euo pipefail
-          if [ "${{ inputs.use_token_fallback }}" = "true" ]; then
-            mode=token
-          else
-            mode=oidc
-          fi
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-
-          if [ "$mode" = "oidc" ]; then
-            if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-              echo "::error::OIDC publish requested but this job cannot mint an OIDC token."
-              echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is unset, so the runner did not grant id-token:write."
-              echo "::error::Either fix the id-token:write permission, or use a manual token-mode dispatch while the trusted publisher is unavailable."
-              exit 1
-            fi
-            echo "mode=oidc (provenance attestation enabled)"
-          else
-            if [ -z "${NPM_TOKEN:-}" ]; then
-              echo "::error::Token publish requested but the NPM_TOKEN secret is empty."
-              echo "::error::Add a repository or npm-environment secret named NPM_TOKEN, or use a manual OIDC dispatch after the trusted publisher is registered."
-              exit 1
-            fi
-            echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
-            echo "::warning::Automatic releases use NPM_TOKEN until npm Trusted Publishing is registered."
-          fi
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Verify the toolchain supports the selected auth mode
-        # Numeric semver comparison, not a regex. A pattern such as
-        # ^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\. is wrong twice over: it rejects
-        # 11.5.1 and 11.19.0 (both of which satisfy >= 11.5.1) and accepts only
-        # 11.99.0 and 12+ within the 11 line. Compared as (major, minor, patch)
-        # integers instead.
-        run: |
-          set -euo pipefail
-          node -e '
-            // `node --version` prints a leading "v" ("v24.14.0"); npm does not.
-            // A pre-release suffix is ignored: only (major, minor, patch) matter
-            // for the minimum-version comparison.
-            const semver = (raw) => {
-              const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(raw).trim());
-              if (!m) return null;
-              return [Number(m[1]), Number(m[2]), Number(m[3])];
-            };
-            const gte = (a, b) => a[0] !== b[0] ? a[0] > b[0] : (a[1] !== b[1] ? a[1] > b[1] : a[2] >= b[2]);
-            const npmRaw = process.argv[1];
-            const npmVer = semver(npmRaw);
-            if (!npmVer) { console.error(`FAIL: cannot parse npm version ${npmRaw}`); process.exit(1); }
-            const nodeRaw = process.argv[2];
-            const nodeVer = semver(nodeRaw);
-            if (!nodeVer) { console.error(`FAIL: cannot parse node version ${nodeRaw}`); process.exit(1); }
-            const NPM_MIN = [11, 5, 1];
-            const NODE_MIN = [22, 14, 0];
-            if (!gte(npmVer, NPM_MIN)) {
-              console.error(`FAIL: npm ${npmRaw} is older than the required ${NPM_MIN.join(".")}; trusted publishing cannot work`);
-              process.exit(1);
-            }
-            if (!gte(nodeVer, NODE_MIN)) {
-              console.error(`FAIL: node ${nodeRaw} is older than the required ${NODE_MIN.join(".")}`);
-              process.exit(1);
-            }
-            console.log(`PASS npm ${npmRaw} >= ${NPM_MIN.join(".")}, node ${nodeRaw} >= ${NODE_MIN.join(".")}`);
-          ' "$(npm --version)" "$(node --version)"
-      - name: Parse every shipped JavaScript file
-        # The published shim shipped with a truncated arrow function in
-        # index.js and no CI step ever parsed JavaScript, so the SyntaxError
-        # reached the registry as axiomize@1.12.2.
-        run: |
-          node --check index.js
-          node --check bin/axiomize.js
-          node --check tests/npm/contract.test.js
-      - name: npm package contract tests
-        run: npm test
-      - name: npm/Python version lockstep and registry state
-        id: registry
-        # Fails closed on version disagreement and records whether this exact
-        # version is already on npm. An existing version is not an error here:
-        # the publish steps below are skipped, which makes a re-run of the
-        # release workflow idempotent instead of failing before PyPI.
-        run: python .github/scripts/npm_release_contract.py --registry-state
-      - name: Assert the tarball contains only the allowlisted files
-        # `files` in package.json is the allowlist. Without this assertion npm
-        # would silently fall back to .gitignore and pack the entire checkout.
-        run: |
-          set -euo pipefail
-          npm pack --dry-run --json | python -c "
-          import json, sys
-          names = sorted(e['path'] for e in json.load(sys.stdin)[0]['files'])
-          print('packed files:')
-          for name in names:
-              print('  ' + name)
-          expected = {
-              'index.js', 'bin/axiomize.js', 'package.json',
-              'LICENSE', 'README.md', 'tests/npm/contract.test.js',
-          }
-          actual = set(names)
-          missing = expected - actual
-          if missing:
-              raise SystemExit(f'FAIL: npm tarball is missing {sorted(missing)}')
-          extra = actual - expected
-          if extra:
-              raise SystemExit(f'FAIL: npm tarball has unexpected files {sorted(extra)}')
-          print(f'PASS npm tarball contains exactly the {len(names)} allowlisted files')
-          "
-      - name: Choose the npm dist-tag
-        id: disttag
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${{ needs.preflight.outputs.package_version }}"
-          if [[ "$version" == *-* ]]; then
-            tag=next
-          else
-            tag=latest
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "::notice::Publishing ${version} under the '${tag}' dist-tag."
-      - name: Publish to npm (OIDC trusted publishing)
-        if: steps.select-mode.outputs.mode == 'oidc' && steps.registry.outputs.exists != 'true'
-        # No NODE_AUTH_TOKEN: npm's CLI authenticates from the job's OIDC
-        # identity. Provenance is generated automatically for OIDC publishes
-        # from a public repository; --provenance is explicit so the attestation
-        # survives any future change to that default. The dist-tag is explicit:
-        # a prerelease must not move `latest`.
-        run: npm publish --provenance --access public --tag "${{ steps.disttag.outputs.tag }}"
-      - name: Publish to npm (NPM_TOKEN fallback)
-        if: steps.select-mode.outputs.mode == 'token' && steps.registry.outputs.exists != 'true'
-        # --provenance is deliberately absent: provenance is backed by a Sigstore
-        # attestation derived from the OIDC identity, and a long-lived token
-        # cannot mint one. Passing the flag here would fail the publish.
-        run: npm publish --access public --tag "${{ steps.disttag.outputs.tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Report an npm leg failure after PyPI published
-        if: failure()
-        run: |
-          echo "::warning::The npm leg failed; inspect the failed step. PyPI is already published and unaffected."
-          echo "::warning::Register the npm trusted publisher (docs/documentation.md) or set NPM_TOKEN, then use the npm Publish workflow to recover."
-
   platform-smoke:
     name: release wheel-cli (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -400,9 +206,7 @@ jobs:
           retention-days: 30
 
   publish:
-    # npm-package deliberately does not appear here: the Python distribution
-    # must ship even while the npm credential is unavailable. The npm job
-    # depends on this job, which keeps npm from getting ahead of PyPI.
+    # The npm Publish workflow waits for this workflow to complete.
     needs: [preflight, platform-smoke]
     runs-on: ubuntu-latest
     environment:

@@ -239,10 +239,10 @@ registries are configured. PyPI is evidenced by the PEP 740 bundles above; npm i
 | PyPI | `Furox-Art` | `axiomize` | `release.yml` | `pypi` | **satisfied** — evidenced by the `1.14.2` bundles naming this repo and workflow |
 | npm | `Furox-Art` | `axiomize` | `npm-publish.yml` | `npm` | **satisfied** — evidenced by the `1.14.2` SLSA bundle naming this repo and workflow |
 
-Both release paths default to OIDC and fail loudly if `id-token:write` is not granted; the token
-path is an explicit `use_token_fallback` opt-in and produces no attestation. The npm job runs only
-after the PyPI release succeeds, so an unavailable npm credential cannot block or undo the Python
-distribution; the run still fails so the missing channel is visible rather than masked.
+The PyPI workflow publishes and tags the release. A successful release on main triggers
+`npm-publish.yml`, which checks out the tag and verifies the version on PyPI before publishing to
+npm with OIDC. The same workflow accepts a version for manual recovery. The optional
+`use_token_fallback` input uses the npm token and produces no attestation.
 
 **Do not backfill an attestation onto an already-published version:** attestations are bound to a
 publish event. `1.14.1` and every earlier npm release stay unattested.
