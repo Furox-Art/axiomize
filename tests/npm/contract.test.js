@@ -169,203 +169,122 @@ function testEntrypointContract() {
  * path must not ask for provenance.
  */
 function testPublishModes() {
-  const workflows = ['release.yml', 'npm-publish.yml'];
+  const name = 'npm-publish.yml';
+  const text = readWorkflow(name);
 
-  for (const name of workflows) {
-    const text = readWorkflow(name);
-
-    // Node 24 is required for both modes: npm's OIDC support needs
-    // npm >= 11.5.1 / node >= 22.14.0, and node 20 ships npm 10.x.
-    assert.match(
-      text,
-      /node-version:\s*"24"/,
-      `${name}: node-version must stay 24 for trusted publishing`,
-    );
-
-    // Both modes are wired, selected by the same step output.
-    assert.match(
-      text,
-      /if:\s*steps\.select-mode\.outputs\.mode == 'oidc'/,
-      `${name}: missing the OIDC publish step`,
-    );
-    assert.match(
-      text,
-      /if:\s*steps\.select-mode\.outputs\.mode == 'token'/,
-      `${name}: missing the NPM_TOKEN fallback publish step`,
-    );
-
-    // OIDC publishes with provenance and no token.
-    assert.match(
-      text,
-      /npm publish --provenance --access public/,
-      `${name}: OIDC publish must use --provenance`,
-    );
-
-    const jobs = jobBlocks(text);
-    const npmJobName = name === 'release.yml' ? 'npm-package' : 'publish';
-    const npmJob = jobs.get(npmJobName);
-    assert.ok(npmJob, `${name}: could not locate the ${npmJobName} job`);
-
-    // The token publish must omit --provenance: provenance is a Sigstore
-    // attestation bound to the OIDC identity, so a long-lived token cannot
-    // produce one and passing the flag fails the publish.
-    const tokenStep = stepBody(npmJob, 'Publish to npm (NPM_TOKEN fallback)');
-    assert.ok(tokenStep, `${name}: could not locate the NPM_TOKEN fallback step`);
-    assert.ok(
-      /npm publish --access public/.test(tokenStep),
-      `${name}: the token publish must run 'npm publish --access public'`,
-    );
-    assert.ok(
-      !/--provenance/.test(tokenStep),
-      `${name}: the token publish must NOT pass --provenance; a long-lived token cannot mint a Sigstore attestation`,
-    );
-    assert.match(
-      tokenStep,
-      /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/,
-      `${name}: the token publish must set NODE_AUTH_TOKEN from secrets.NPM_TOKEN`,
-    );
-
-    const oidcStep = stepBody(npmJob, 'Publish to npm (OIDC trusted publishing)');
-    assert.ok(oidcStep, `${name}: could not locate the OIDC publish step`);
-    assert.ok(
-      /npm publish --provenance --access public/.test(oidcStep),
-      `${name}: the OIDC publish must run 'npm publish --provenance --access public'`,
-    );
-    assert.ok(
-      !/NODE_AUTH_TOKEN/.test(oidcStep),
-      `${name}: the OIDC publish must not set NODE_AUTH_TOKEN`,
-    );
-
-    // Neither npm publish step may fail silently, and every publish must carry
-    // an explicit dist-tag so a prerelease cannot move `latest`.
-    for (const label of ['Publish to npm (OIDC trusted publishing)', 'Publish to npm (NPM_TOKEN fallback)']) {
-      const step = stepBody(npmJob, label);
-      assert.ok(step, `${name}: could not locate the "${label}" step`);
-      assert.ok(
-        !/continue-on-error/.test(step),
-        `${name}: "${label}" must not use continue-on-error; a failed npm publish must fail the release`,
-      );
-      assert.match(
-        step,
-        /--tag "\$\{\{ steps\.disttag\.outputs\.tag \}\}"/,
-        `${name}: "${label}" must publish under the computed dist-tag`,
-      );
-    }
-    assert.match(
-      npmJob,
-      /tag=next/,
-      `${name}: a prerelease version must publish under the next dist-tag`,
-    );
-
-    // Least privilege, scoped to the npm job. release.yml's separate `publish`
-    // job does hold contents:write (it creates the GitHub release), so a
-    // whole-file assertion would be wrong.
-    assert.match(text, /id-token:\s*write/, `${name}: id-token:write is required for OIDC`);
-    const perms = /^    permissions:\n((?:      .*\n)+)/m.exec(npmJob);
-    assert.ok(perms, `${name}: ${npmJobName} must declare its own permissions block`);
-    assert.match(perms[1], /id-token:\s*write/, `${name}: ${npmJobName} needs id-token:write for OIDC`);
-    assert.match(perms[1], /contents:\s*read/, `${name}: ${npmJobName} needs contents:read to check out`);
-    assert.ok(
-      !/contents:\s*write/.test(perms[1]),
-      `${name}: ${npmJobName} must not request contents:write; publishing does not need it`,
-    );
-
-    process.stdout.write(`PASS ${name}: both publish modes present, token path omits --provenance\n`);
-  }
-
-  // The manual workflow must expose the opt-in input and default it to false,
-  // so OIDC stays the preferred path.
-  const manual = readWorkflow('npm-publish.yml');
-  assert.match(manual, /use_token_fallback:/, 'npm-publish.yml: missing use_token_fallback input');
+  // Node 24 is required for both modes: npm's OIDC support needs
+  // npm >= 11.5.1 / node >= 22.14.0, and node 20 ships npm 10.x.
   assert.match(
-    manual,
-    /use_token_fallback:[\s\S]*?default:\s*false/,
-    'npm-publish.yml: use_token_fallback must default to false so OIDC is preferred',
+    text,
+    /node-version:\s*"24"/,
+    `${name}: node-version must stay 24 for trusted publishing`,
+  );
+
+  // Both modes are wired, selected by the same step output.
+  assert.match(
+    text,
+    /if:\s*steps\.select-mode\.outputs\.mode == 'oidc'/,
+    `${name}: missing the OIDC publish step`,
   );
   assert.match(
-    manual,
-    /use_token_fallback:[\s\S]*?type:\s*boolean/,
-    'npm-publish.yml: use_token_fallback must be a boolean input',
+    text,
+    /if:\s*steps\.select-mode\.outputs\.mode == 'token'/,
+    `${name}: missing the NPM_TOKEN fallback publish step`,
   );
-  process.stdout.write('PASS npm-publish.yml: use_token_fallback input defaults to false (OIDC preferred)\n');
 
-  // OIDC is the default for every event; only the explicit dispatch input can
-  // select the token fallback. The token path is not "verified" (the registry
-  // rejects it today), so automatic releases must not force it.
-  const release = readWorkflow('release.yml');
-  assert.doesNotMatch(
-    release,
-    /github\.event_name[\s\S]*workflow_dispatch[\s\S]*else[\s\S]*mode=token/,
-    'release.yml: automatic pushes must not force token mode',
-  );
+  // OIDC publishes with provenance and no token.
   assert.match(
-    release,
-    /inputs\.use_token_fallback[\s\S]*mode=token[\s\S]*else[\s\S]*mode=oidc/,
-    'release.yml: OIDC must be the default with token only as an explicit opt-in',
+    text,
+    /npm publish --provenance --access public/,
+    `${name}: OIDC publish must use --provenance`,
   );
-  assert.doesNotMatch(
-    release,
-    /vars\.npm_publish_mode/,
-    'release.yml: automatic publishing must not depend on a repository variable',
-  );
-  process.stdout.write('PASS release.yml: OIDC is the default; token is an explicit opt-in\n');
 
-  // PyPI must ship even when npm cannot: the npm job runs after the release, so
-  // an npm failure cannot block or undo the PyPI upload -- but it must still be
-  // visible as a failed release rather than masked by continue-on-error.
-  const releaseJobs = jobBlocks(release);
-  const publishJob = releaseJobs.get('publish');
-  const npmJob = releaseJobs.get('npm-package');
-  assert.ok(publishJob && npmJob, 'release.yml: missing publish or npm-package job');
+  const jobs = jobBlocks(text);
+  const npmJobName = 'publish';
+  const npmJob = jobs.get(npmJobName);
+  assert.ok(npmJob, `${name}: could not locate the ${npmJobName} job`);
+
+  // The token publish must omit --provenance: provenance is a Sigstore
+  // attestation bound to the OIDC identity, so a long-lived token cannot
+  // produce one and passing the flag fails the publish.
+  const tokenStep = stepBody(npmJob, 'Publish to npm (NPM_TOKEN fallback)');
+  assert.ok(tokenStep, `${name}: could not locate the NPM_TOKEN fallback step`);
   assert.ok(
-    !/needs:\s*\[[^\]]*npm-package/.test(publishJob),
-    'release.yml: PyPI publish must not depend on npm-package',
+    /npm publish --access public/.test(tokenStep),
+    `${name}: the token publish must run 'npm publish --access public'`,
   );
+  assert.ok(
+    !/--provenance/.test(tokenStep),
+    `${name}: the token publish must NOT pass --provenance; a long-lived token cannot mint a Sigstore attestation`,
+  );
+  assert.match(
+    tokenStep,
+    /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/,
+    `${name}: the token publish must set NODE_AUTH_TOKEN from secrets.NPM_TOKEN`,
+  );
+
+  const oidcStep = stepBody(npmJob, 'Publish to npm (OIDC trusted publishing)');
+  assert.ok(oidcStep, `${name}: could not locate the OIDC publish step`);
+  assert.ok(
+    /npm publish --provenance --access public/.test(oidcStep),
+    `${name}: the OIDC publish must run 'npm publish --provenance --access public'`,
+  );
+  assert.ok(
+    !/NODE_AUTH_TOKEN/.test(oidcStep),
+    `${name}: the OIDC publish must not set NODE_AUTH_TOKEN`,
+  );
+
+  // Neither npm publish step may fail silently, and every publish must carry
+  // an explicit dist-tag so a prerelease cannot move `latest`.
+  for (const label of ['Publish to npm (OIDC trusted publishing)', 'Publish to npm (NPM_TOKEN fallback)']) {
+    const step = stepBody(npmJob, label);
+    assert.ok(step, `${name}: could not locate the "${label}" step`);
+    assert.ok(
+      !/continue-on-error/.test(step),
+      `${name}: "${label}" must not use continue-on-error; a failed npm publish must fail the release`,
+    );
+    assert.match(
+      step,
+      /--tag "\$\{\{ steps\.disttag\.outputs\.tag \}\}"/,
+      `${name}: "${label}" must publish under the computed dist-tag`,
+    );
+  }
   assert.match(
     npmJob,
-    /needs:\s*\[preflight, publish\]/,
-    'release.yml: npm must run after the PyPI release',
+    /tag=next/,
+    `${name}: a prerelease version must publish under the next dist-tag`,
   );
-  assert.ok(
-    !/^    continue-on-error:\s*true/m.test(npmJob),
-    'release.yml: an npm contract or publish failure must fail the release, not be masked',
-  );
-  // PyPI is fail-closed and attested: no long-lived token path, and the publish
-  // action must request PEP 740 attestations.
-  assert.match(release, /attestations:\s*true/, 'release.yml: PyPI publish must request attestations');
-  assert.ok(!/PYPI_API_TOKEN/.test(release), 'release.yml: no long-lived PyPI token fallback');
-  assert.match(
-    release,
-    /--registry-state/,
-    'release.yml: npm must skip an existing version instead of failing',
-  );
-  assert.match(
-    release,
-    /steps\.registry\.outputs\.exists != 'true'/,
-    'release.yml: publish steps must honour an existing npm version',
-  );
-  assert.match(
-    release,
-    /release-assets\/\*\.sbom\.spdx\.json/,
-    'release.yml: the SBOM must be attached to the GitHub release',
-  );
-  process.stdout.write('PASS release.yml: PyPI is independent of npm and the SBOM is preserved\n');
 
-  // Both modes must fail closed with an actionable message.
-  for (const name of workflows) {
-    const text = readWorkflow(name);
-    assert.match(
-      text,
-      /NPM_TOKEN secret is empty/,
-      `${name}: the token mode must fail closed when NPM_TOKEN is unset`,
-    );
-    assert.match(
-      text,
-      /cannot mint an OIDC token/,
-      `${name}: the OIDC mode must fail closed when id-token:write was not granted`,
-    );
+  // The job can obtain an npm identity and read source.
+  assert.match(text, /id-token:\s*write/, `${name}: id-token:write is required for OIDC`);
+  const perms = /^    permissions:\n((?:      .*\n)+)/m.exec(npmJob);
+  assert.ok(perms, `${name}: ${npmJobName} must declare its own permissions block`);
+  assert.match(perms[1], /id-token:\s*write/, `${name}: ${npmJobName} needs id-token:write for OIDC`);
+  assert.match(perms[1], /contents:\s*read/, `${name}: ${npmJobName} needs contents:read to check out`);
+  assert.ok(
+    !/contents:\s*write/.test(perms[1]),
+    `${name}: ${npmJobName} must not request contents:write; publishing does not need it`,
+  );
+
+  process.stdout.write(`PASS ${name}: both publish modes present, token path omits --provenance\n`);
+
+  assert.match(text, /use_token_fallback:[\s\S]*?default:\s*false/);
+  assert.match(text, /use_token_fallback:[\s\S]*?type:\s*boolean/);
+  assert.match(text, /inputs\.use_token_fallback[\s\S]*mode=token[\s\S]*else[\s\S]*mode=oidc/);
+  assert.match(text, /NPM_TOKEN secret is empty/);
+  assert.match(text, /cannot mint an OIDC token/);
+  assert.match(text, /--registry-state/);
+  for (const label of ['Publish to npm (OIDC trusted publishing)', 'Publish to npm (NPM_TOKEN fallback)']) {
+    assert.match(stepBody(npmJob, label), /steps\.registry\.outputs\.exists != 'true'/);
   }
-  process.stdout.write('PASS both modes fail closed with an actionable message\n');
+
+  const release = readWorkflow('release.yml');
+  assert.ok(jobBlocks(release).has('publish'));
+  assert.doesNotMatch(release, /npm publish --/);
+  assert.match(release, /attestations:\s*true/);
+  assert.doesNotMatch(release, /PYPI_API_TOKEN/);
+  assert.match(release, /release-assets\/\*\.sbom\.spdx\.json/);
+  process.stdout.write('PASS PyPI workflow retains attestations and the SBOM\n');
 }
 
 /**
@@ -375,7 +294,7 @@ function testPublishModes() {
  * the tarball. A dispatch-HEAD publish would therefore ship unreleased content
  * under an already-released version.
  */
-function testManualPublishUsesTheTaggedRelease() {
+function testPublishUsesTheTaggedRelease() {
   const text = readWorkflow('npm-publish.yml');
 
   assert.match(
@@ -385,11 +304,19 @@ function testManualPublishUsesTheTaggedRelease() {
   );
 
   const jobs = jobBlocks(text);
+  const releaseGate = jobs.get('release_gate');
   const job = jobs.get('publish');
-  assert.ok(job, 'npm-publish.yml: could not locate the publish job');
+  assert.ok(releaseGate && job, 'npm-publish.yml: the release gate and publish job are required');
+  assert.match(text, /workflow_run:\s*\n\s*workflows: \[Release\]\s*\n\s*types: \[completed\]\s*\n\s*branches: \[main\]/);
+  assert.match(releaseGate, /\.head_repository\.full_name/);
+  assert.match(releaseGate, /\.github\/workflows\/release\.yml/);
+  assert.match(releaseGate, /select\(\.name == "publish"\)/);
+  assert.match(releaseGate, /"\$published" != "success"/);
+  assert.match(job, /needs: release_gate/);
+  assert.match(job, /PUBLISH_VERSION:.*inputs\.version \|\| needs\.release_gate\.outputs\.version/);
   assert.match(
     job,
-    /ref:\s*v\$\{\{\s*inputs\.version\s*\}\}/,
+    /ref:\s*refs\/tags\/v\$\{\{\s*env\.PUBLISH_VERSION\s*\}\}/,
     'npm-publish.yml: the checkout must pin the v<version> release tag',
   );
   assert.match(
@@ -401,6 +328,7 @@ function testManualPublishUsesTheTaggedRelease() {
   const gateLabel = 'Verify the release tag, its ancestry and the PyPI release';
   const gate = stepBody(job, gateLabel);
   assert.ok(gate, 'npm-publish.yml: the release identity gate is missing');
+  assert.match(gate, /"\$\(git rev-parse HEAD\)" != "\$RELEASE_SHA"/);
   assert.match(
     gate,
     /merge-base --is-ancestor HEAD origin\/main/,
@@ -430,7 +358,7 @@ const checks = [
   ['version lockstep', testVersionLockstep],
   ['entry point export', testEntrypointContract],
   ['publish modes', testPublishModes],
-  ['manual publish uses the tagged release', testManualPublishUsesTheTaggedRelease],
+  ['publish uses the tested release tag', testPublishUsesTheTaggedRelease],
 ];
 
 let failures = 0;

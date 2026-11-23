@@ -1,21 +1,12 @@
 name: npm Publish
 
-# Normal npm releases happen in release.yml, from the same
-# .github/pypi-release-trigger commit as the Python distributions. Keeping a
-# second automatic trigger is how package.json drifted a release behind
-# pyproject.toml, so this workflow cannot fire on a code push.
-#
-# This is the manual recovery path. Use it to publish an npm version after a
-# release.yml run failed between its gates and the npm publish. Every gate that
-# release.yml runs also runs here, so a manual publish is held to the same
-# standard as an automatic one. check_release_contract.py refuses this workflow
-# off refs/heads/main, even though workflow_dispatch can target any branch.
-#
-# The tag, not main, supplies the published bytes. Main keeps moving after a
-# release (v1.14.2 differs from main in README.md, package.json and
-# tests/npm/contract.test.js, all of which ship in the tarball), so checking out
-# the dispatch ref would publish unreleased content under a released version.
+# npm trusts this workflow file. Automatic and recovery runs publish from the
+# GitHub release tag after PyPI serves the same version.
 on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -40,7 +31,57 @@ permissions:
   contents: read
 
 jobs:
+  release_gate:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Resolve the completed PyPI release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          data="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" \
+            --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name, .head_repository.full_name, .path] | @tsv')"
+          IFS=$'\t' read -r sha event branch conclusion repo head_repo path <<< "$data"
+          if [[ "$path" != ".github/workflows/release.yml" || "$branch" != "main" ||
+                "$repo" != "$GITHUB_REPOSITORY" || "$head_repo" != "$GITHUB_REPOSITORY" ||
+                "$conclusion" != "success" || ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Run $RUN_ID is not a successful Release run from this repository's main branch."
+            exit 1
+          fi
+          case "$event" in
+            push|workflow_dispatch) ;;
+            *) echo "::error::Unexpected Release event: $event"; exit 1 ;;
+          esac
+          published="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name == "publish") | .conclusion] | first // "missing"')"
+          if [[ "$published" != "success" ]]; then
+            echo "::error::The PyPI publish job for run $RUN_ID did not succeed."
+            exit 1
+          fi
+          version="$(gh api "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$sha" --jq .content \
+            | base64 --decode | jq -er '.version | strings | select(length > 0)')"
+          git check-ref-format "refs/tags/v$version"
+          printf 'sha=%s\nversion=%s\n' "$sha" "$version" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: release_gate
+    if: |
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+        (needs.release_gate.result == 'success' && needs.release_gate.outputs.version != ''))
+    env:
+      PUBLISH_VERSION: ${{ inputs.version || needs.release_gate.outputs.version }}
+      RELEASE_SHA: ${{ needs.release_gate.outputs.sha }}
     runs-on: ubuntu-latest
     environment:
       name: npm
@@ -58,11 +99,16 @@ jobs:
     outputs:
       mode: ${{ steps.select-mode.outputs.mode }}
     steps:
+      - name: Validate the workflow ref and release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test -n "$PUBLISH_VERSION"
+          git check-ref-format "refs/tags/v$PUBLISH_VERSION"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # The tagged release is the source of the published bytes, never the
-          # dispatch ref.
-          ref: v${{ inputs.version }}
+          ref: refs/tags/v${{ env.PUBLISH_VERSION }}
           # Full history is needed to prove the tag commit is contained in main.
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -77,6 +123,7 @@ jobs:
           # bytes this checkout did not produce.
           package-manager-cache: false
       - name: Report the manual publish reason
+        if: github.event_name == 'workflow_dispatch'
         # Passed through the environment, never interpolated into the script:
         # a write-access dispatcher controls this string.
         env:
@@ -86,23 +133,19 @@ jobs:
       - name: Enforce release version contract
         run: python .github/scripts/check_release_contract.py
       - name: Verify the release tag, its ancestry and the PyPI release
-        # Three failures this gate exists for:
-        #   * a dispatch version that does not match the checked-out tag;
-        #   * a tag planted on an unmerged branch (release.yml enforces the same
-        #     ancestry rule before its PyPI upload);
-        #   * npm getting ahead of PyPI, which release.yml prevents by running
-        #     npm only after a successful PyPI publish. The manual path has no
-        #     PyPI job, so it waits for the released version to be live instead.
         shell: bash
         env:
-          REQUESTED: ${{ inputs.version }}
           PYPI_PROJECT: axiomize
         run: |
           set -euo pipefail
-          version="${REQUESTED#v}"
+          version="$PUBLISH_VERSION"
           actual="$(node -p "require('./package.json').version")"
           if [ "${actual}" != "${version}" ]; then
             echo "::error::Tag v${version} carries package.json version ${actual}."
+            exit 1
+          fi
+          if [[ -n "$RELEASE_SHA" && "$(git rev-parse HEAD)" != "$RELEASE_SHA" ]]; then
+            echo "::error::Tag v$version does not match the successful Release run's commit."
             exit 1
           fi
           git fetch --no-tags origin main
@@ -118,7 +161,7 @@ jobs:
           import urllib.request
 
           project = os.environ["PYPI_PROJECT"]
-          version = os.environ["REQUESTED"].removeprefix("v")
+          version = os.environ["PUBLISH_VERSION"]
           url = f"https://pypi.org/pypi/{project}/{version}/json"
           attempts = 90
           delay = 10
@@ -227,12 +270,9 @@ jobs:
           node --check tests/npm/contract.test.js
       - name: npm package contract tests
         run: npm test
-      - name: npm/Python version lockstep and registry contract
-        # Fails closed on any version disagreement across the six sources, and
-        # --check-registry fails closed if this exact version already exists on
-        # npm. npm versions are immutable, so a republish can never succeed and
-        # would leave the two registries permanently out of step.
-        run: python .github/scripts/npm_release_contract.py --check-registry
+      - name: npm/Python version lockstep and registry state
+        id: registry
+        run: python .github/scripts/npm_release_contract.py --registry-state
       - name: Assert the tarball contains only the allowlisted files
         run: |
           set -euo pipefail
@@ -269,7 +309,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "::notice::Publishing ${version} under the '${tag}' dist-tag."
       - name: Publish to npm (OIDC trusted publishing)
-        if: steps.select-mode.outputs.mode == 'oidc'
+        if: steps.select-mode.outputs.mode == 'oidc' && steps.registry.outputs.exists != 'true'
         # No NODE_AUTH_TOKEN: npm's CLI authenticates from this job's OIDC
         # identity. Provenance is generated automatically for OIDC publishes
         # from a public repository; --provenance is explicit so the attestation
@@ -277,7 +317,7 @@ jobs:
         # failed publish must fail loudly rather than let the registries drift.
         run: npm publish --provenance --access public --tag "${{ steps.disttag.outputs.tag }}"
       - name: Publish to npm (NPM_TOKEN fallback)
-        if: steps.select-mode.outputs.mode == 'token'
+        if: steps.select-mode.outputs.mode == 'token' && steps.registry.outputs.exists != 'true'
         # --provenance is deliberately absent: provenance is backed by a Sigstore
         # attestation derived from the OIDC identity, and a long-lived token
         # cannot mint one. Passing the flag here would fail the publish.
